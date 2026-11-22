@@ -208,3 +208,9 @@ Czeka na usera: ten sam długi losowy token (≥32 znaki) w `api_token` (Zakupy)
 ## E3 PLAN GOTOWY 2026-11-22
 Wywiad zakończony, plan: `docs/PLAN_E3.md`. Źródła 0.1.0: Respo, Lidl, Policzona Szama (blog); nocny crawl + „Odśwież teraz”; metadane z reguł + AI; brak kcal = plakietka i poza planerem;
 sort po znajomości, próg 70% w UI; polubione wspólne. Paczki: W1 konektory ‖ W2 migracja v3/crawl/znajomość (sonnet, ryzyko), potem W3 ekran Katalog. Po E3: simplify → code-review → release 0.1.0 + instalacja.
+
+## E3 KOD ZAKOŃCZONY 2026-11-22 (przed wydaniem 0.1.0)
+Commity: `1967692` W1 konektory (Respo, Lidl, Policzona), `bb09e19` W2 (migracja v3, katalog, crawl, znajomość), `3bcbef4` W3 (ekran Katalog, fetcher, nocny crawl, kolejka metadanych).
+Weryfikacja: 137 testów, ruff/mypy czyste; verifier W1 po REJECT (kcal partii Policzonej → podział przez porcje / None), W2 i W3 APPROVE; Playwright 390 px jasny i 1280 px ciemny bez przewijania poziomego.
+Nieblokujące do raportu wydania: fetcher bez allowlisty hostów po redirectach, `HTTPException` nie łapany jako `FetchError`, brak testów locka runnera / `_nightly` / limitu 5 MB; Policzona rozpoznaje tylko frazę partii „z N g … będzie mieć N kcal”.
+Pomiar znajomości (Policzona, odsetek ≥70/60/50%) — wymaga żywego crawla z tokenem Zakupów, po instalacji 0.1.0. Dalej: simplify → code-review → release 0.1.0.
