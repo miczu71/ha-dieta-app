@@ -10,7 +10,7 @@ import re
 from dataclasses import dataclass
 from datetime import date
 
-from dieta.dictionary import BATCH_SIZE, AskFn, make_llm_ask, normalize_name
+from dieta.dictionary import BATCH_SIZE, AskFn, normalize_name
 from dieta.sources.base import Fetch, Recipe, RecipeSource
 from dieta.store import MEAL_CATEGORIES, RecipeMeta, Store
 
@@ -156,10 +156,6 @@ META_PROMPT = (
     '"mrozenie": true albo false (czy nadaje się do zamrożenia)}. '
     "Odpowiedz WYŁĄCZNIE tablicą JSON, bez komentarza."
 )
-
-
-def make_meta_ask(url: str, key: str) -> AskFn:
-    return make_llm_ask(url, key, META_PROMPT)
 
 
 def _valid_days(value: object) -> int | None:
