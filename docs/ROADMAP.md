@@ -204,3 +204,7 @@ Otwarte (nieblokujące): seed bez trwałości → składnik trafia do kolejki �
 Wydane (non-draft, tag `v1.10.0`, commit `e720540`), zainstalowane przez Supervisor, kontener działa. Przed wydaniem: simplify, code-review, silent-failure-hunter, pr-test-analyzer, security review (bez blokujących; poprawione: `spend` po rabacie, strip `api_token`, log odrzuconych prób, testy granic okna). Pełny zestaw: 865 testów. Pubguard: 0 flag.
 Na żywo (przez proxy Ingress, `api_token` puste): `/api/v1/purchases` → 503 „API wyłączone”, inna trasa spoza Ingressu → 403 — zgodnie z projektem.
 Czeka na usera: ten sam długi losowy token (≥32 znaki) w `api_token` (Zakupy) i `zakupy_token` w Diecie, `zakupy_url=http://f0987e0f-lidl:8099`; potem test 200 i sync. Dalej: E3 (wywiad `grill-me`).
+
+## E3 PLAN GOTOWY 2026-11-22
+Wywiad zakończony, plan: `docs/PLAN_E3.md`. Źródła 0.1.0: Respo, Lidl, Policzona Szama (blog); nocny crawl + „Odśwież teraz”; metadane z reguł + AI; brak kcal = plakietka i poza planerem;
+sort po znajomości, próg 70% w UI; polubione wspólne. Paczki: W1 konektory ‖ W2 migracja v3/crawl/znajomość (sonnet, ryzyko), potem W3 ekran Katalog. Po E3: simplify → code-review → release 0.1.0 + instalacja.
