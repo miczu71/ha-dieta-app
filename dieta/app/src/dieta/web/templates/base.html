@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dieta</title>
+<link rel="icon" href="static/icon.svg?v={{ version }}" type="image/svg+xml">
+<link rel="stylesheet" href="static/app.css?v={{ version }}">
+</head>
+<body class="dz">
+<main class="dz-page">
+<header class="dz-head">
+  <h1 class="dz-title">Profile</h1>
+  <span class="dz-ver dz-num">v{{ version }}</span>
+</header>
+{% block content %}{% endblock %}
+<p class="dz-note">Wartości są szacunkowe i nie stanowią porady medycznej.</p>
+</main>
+</body>
+</html>

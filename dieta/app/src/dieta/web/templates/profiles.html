@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block content %}
+{% if error %}<p class="dz-err" role="alert">Nie zapisano: {{ 'niepoprawne dane profilu' if error == 'profil' else 'niepoprawna waga lub data' }}.</p>{% endif %}
+<div class="dz-grid">
+{% for c in cards %}
+{% set p = c.profile %}
+<section class="dz-card" aria-labelledby="h{{ c.person_id }}">
+  <h2 id="h{{ c.person_id }}" class="dz-heading">{{ c.name }}</h2>
+  {% if c.kcal %}
+  <p class="dz-kcal"><span class="dz-figure dz-num">{{ c.kcal }}</span> <span class="dz-unit">kcal / dzień</span></p>
+  {% if p.kcal_override %}<p class="dz-sub">Ręczny cel (wyliczony: <span class="dz-num">{{ c.auto_kcal }}</span> kcal)</p>{% endif %}
+  <p class="dz-sub">{{ goal_labels[p.goal] }} · BMR <span class="dz-num">{{ c.bmr }}</span> · TDEE <span class="dz-num">{{ c.tdee }}</span> · waga <span class="dz-num">{{ '%.1f'|format(c.weight) }}</span> kg</p>
+  {% set m = c.macros %}
+  {% set mt = m.protein_g * 4 + m.carb_g * 4 + m.fat_g * 9 %}
+  <div class="dz-macro" aria-hidden="true">
+    <i class="p" style="flex:{{ m.protein_g * 4 }}"></i><i class="c" style="flex:{{ m.carb_g * 4 }}"></i><i class="f" style="flex:{{ m.fat_g * 9 }}"></i>
+  </div>
+  <div class="dz-leg">
+    <span><s class="p"></s>Białko <b>{{ m.protein_g }} g</b></span>
+    <span><s class="c"></s>Węglowodany <b>{{ m.carb_g }} g</b></span>
+    <span><s class="f"></s>Tłuszcz <b>{{ m.fat_g }} g</b></span>
+  </div>
+  {% else %}
+  <p class="dz-sub">{% if not p %}Uzupełnij profil{% endif %}{% if not p and not c.weight %} i {% endif %}{% if not c.weight %}wpisz wagę{% endif %}, aby zobaczyć cel kcal.</p>
+  {% endif %}
+
+  <h3 class="dz-eyebrow">Waga</h3>
+  {% if c.chart %}<div class="dz-chart">{{ c.chart|safe }}</div>
+  <p class="dz-sub">Punkty: wpisy, linia: średnia 7 dni (ostatnie 90 dni).</p>{% else %}<p class="dz-sub">Brak wpisów wagi.</p>{% endif %}
+  <form method="post" action="weight/{{ c.person_id }}" class="dz-row">
+    <label>Data<input type="date" name="day" value="{{ today }}" max="{{ today }}" required></label>
+    <label>Waga (kg)<input type="text" inputmode="decimal" name="kg" value="{{ '%.1f'|format(c.weight) if c.weight else '' }}" required></label>
+    <button class="dz-btn" type="submit">Zapisz wagę</button>
+  </form>
+
+  <details class="dz-details"{% if not p %} open{% endif %}>
+    <summary>Profil</summary>
+    <form method="post" action="profile/{{ c.person_id }}" class="dz-form">
+      <label>Płeć
+        <select name="sex"><option value="m"{{ ' selected' if p and p.sex == 'm' }}>mężczyzna</option><option value="f"{{ ' selected' if p and p.sex == 'f' }}>kobieta</option></select></label>
+      <label>Wiek<input type="number" name="age" min="10" max="120" value="{{ p.age if p else 30 }}" required></label>
+      <label>Wzrost (cm)<input type="number" name="height_cm" min="100" max="250" step="0.5" value="{{ p.height_cm|round(1) if p else 170 }}" required></label>
+      <label>Aktywność
+        <select name="pal_level">{% for k, v in pal_labels.items() %}<option value="{{ k }}"{{ ' selected' if (p.pal_level if p else 2) == k }}>{{ v }}</option>{% endfor %}</select></label>
+      <label>Cel
+        <select name="goal">{% for k, v in goal_labels.items() %}<option value="{{ k }}"{{ ' selected' if (p.goal if p else 'maintain') == k }}>{{ v }}</option>{% endfor %}</select></label>
+      <label>Tempo (kg / tydzień)<input type="number" name="pace_kg_week" min="0" max="1.5" step="0.05" value="{{ p.pace_kg_week if p else 0.5 }}"></label>
+      <label>Ręczny cel kcal (puste = wyliczony)<input type="number" name="kcal_override" min="800" max="6000" value="{{ p.kcal_override if p and p.kcal_override else '' }}"></label>
+      <label>Białko g/kg (puste = domyślnie)<input type="text" inputmode="decimal" name="protein_g_kg" value="{{ p.protein_g_kg if p and p.protein_g_kg else '' }}"></label>
+      <label>Tłuszcz % kcal<input type="number" name="fat_pct" min="15" max="50" value="{{ (p.fat_pct * 100)|round|int if p else 30 }}"></label>
+      <button class="dz-btn" type="submit">Zapisz profil</button>
+    </form>
+  </details>
+</section>
+{% endfor %}
+</div>
+{% endblock %}
