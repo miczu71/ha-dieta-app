@@ -91,7 +91,7 @@ Opcje Zakupów: `api_token` (password?, domyślnie puste → API wyłączone).
   `tests/test_web_kupujemy.py`, `DESIGN.md`.
 - Zmiana: nawigacja Profile / Co kupujemy; `GET /kupujemy` (top składniki: częstość, wydatek, ostatni zakup, znacznik „prawdopodobnie w domu”, stan ostatniego syncu),
   `POST /kupujemy/odswiez` (sync w wątku, przekierowanie z komunikatem), `GET /kupujemy/zatwierdz` (kolejka `pending`: zatwierdź / zmień składnik+trwałość / odrzuć jako nie-składnik),
-  `POST /kupujemy/zatwierdz/{code}`; brak tokena/URL → pusty stan z instrukcją opcji; wiersz kolejki jako „pojemnik” (styl Pojemniki), SVG, tokeny, ścieżki względne.
+  `POST /kupujemy/zatwierdz` (kod w polu formularza); brak tokena/URL → pusty stan z instrukcją opcji; wiersz kolejki jako „pojemnik” (styl Pojemniki), SVG, tokeny, ścieżki względne.
 - Test: TestClient z fałszywym sync; Playwright 390/1280 px, jasny/ciemny, na danych demo.
 - DONE: testy zielone, brak przewijania poziomego, kolejka działa end-to-end na demo.
 - NIE RÓB: emoji/PNG, kolorów literałem poza tokenami, edycji `store.py` poza ewentualną drobną metodą zgłoszoną w raporcie.

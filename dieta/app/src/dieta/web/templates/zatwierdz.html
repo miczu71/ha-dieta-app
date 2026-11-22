@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block content %}
+{% if error %}<p class="dz-err" role="alert">Nie zapisano: {{ 'podaj nazwę składnika i trwałość' if error == 'dane' else 'pozycji nie ma już w kolejce' }}.</p>{% endif %}
+<p class="dz-sub"><a class="dz-link" href="../kupujemy">← Co kupujemy</a></p>
+{% if not queue %}<p class="dz-sub">Nic do zatwierdzenia.</p>{% endif %}
+<ul class="dz-list">
+{% for q in queue %}
+  <li class="dz-card dz-pending">
+    <h2 class="dz-heading">{{ q.name }}</h2>
+    <p class="dz-sub">{% if q.ingredient %}Zmapowano na „{{ q.ingredient }}”, brakuje trwałości.{% else %}Brak pewnego składnika.{% endif %}</p>
+    <form method="post" action="zatwierdz" class="dz-form">
+      <input type="hidden" name="code" value="{{ q.code }}">
+      <label>Składnik<input type="text" name="ingredient" maxlength="80" value="{{ q.ingredient or '' }}"></label>
+      <label>Trwałość
+        <select name="durability" required><option value=""{{ ' selected' if not q.durability }} disabled>wybierz…</option>{% for k, v in durability_labels.items() %}<option value="{{ k }}"{{ ' selected' if q.durability == k }}>{{ v }}</option>{% endfor %}</select></label>
+      <div class="dz-row">
+        <button class="dz-btn" type="submit" name="action" value="approve">Zatwierdź</button>
+        <button class="dz-btn dz-btn--ghost" type="submit" name="action" value="exclude">To nie składnik</button>
+      </div>
+    </form>
+  </li>
+{% endfor %}
+</ul>
+{% endblock %}

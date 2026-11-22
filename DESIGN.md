@@ -27,3 +27,8 @@ Dieta to planer posiłków wielodniowych: gotujesz raz, jeść będziesz kilka d
 
 ## Dla kodu add-onu
 Źródłem prawdy jest kod add-onu: `dieta/app/src/dieta/web/static/app.css` (tokeny + komponenty `.dz-*`). Lustro z narzędzia projektowego: `~/dev/dieta-spike/design-system/project/` (`tokens.json`, `components/bundle.css`); po zmianie stylu w kodzie odtwórz ją tam.
+
+## E2: Co kupujemy
+Nawigacja `.dz-nav` (zakładki Profile / Co kupujemy, chip z liczbą pozycji do zatwierdzenia), lista `.dz-list` z wierszami `.dz-item`
+(składnik, znacznik `.dz-chip--home` „prawdopodobnie w domu”, meta w DM Mono) i kolejka `.dz-pending` w kartach z formularzem
+zatwierdzania. Adresy są względne: szablony dostają `root` ("" albo "../"), więc działają pod prefiksem Ingress.

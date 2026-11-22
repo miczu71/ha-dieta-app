@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
+import asyncio
+import logging
 import re
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
 from importlib import metadata
 from pathlib import Path
 from typing import Literal, cast
@@ -18,6 +22,9 @@ from .. import nutrition
 from ..settings import Settings
 from ..store import PERSON_IDS, Profile, Store
 from .chart import weight_chart
+from .kupujemy import SyncRunner, default_runner, make_router, seconds_until
+
+log = logging.getLogger(__name__)
 
 WEB_DIR = Path(__file__).parent
 GOAL_LABELS = {"lose": "Redukcja", "maintain": "Utrzymanie", "gain": "Masa"}
@@ -77,13 +84,39 @@ def build_card(store: Store, settings: Settings, person_id: int) -> Card:
     return card
 
 
-def create_app(settings: Settings) -> FastAPI:
-    app = FastAPI(title="Dieta", docs_url=None, redoc_url=None)
-    app.state.settings = settings
+async def _nightly(settings: Settings, runner: SyncRunner) -> None:
+    """Odświeża snapshot zakupów codziennie o `refresh_time`; błąd jednego przebiegu nie zatrzymuje pętli."""
+    while True:
+        await asyncio.sleep(seconds_until(datetime.now(), settings.refresh_time))
+        try:
+            await asyncio.to_thread(runner)
+        except Exception as exc:  # noqa: BLE001 — pętla tła ma przeżyć; logujemy tylko typ (bez treści z tokenami)
+            log.warning("nocny sync zakończony błędem: %s", type(exc).__name__)
+
+
+def create_app(settings: Settings, *, sync_runner: SyncRunner | None = None) -> FastAPI:
     store = Store(settings.db_path)
+    runner = sync_runner or default_runner(settings, store)
+
+    @asynccontextmanager
+    async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+        task = None
+        if sync_runner is None and settings.zakupy_url and settings.zakupy_token:
+            task = asyncio.create_task(_nightly(settings, runner))
+        try:
+            yield
+        finally:
+            if task is not None:
+                task.cancel()
+                await asyncio.gather(task, return_exceptions=True)
+
+    app = FastAPI(title="Dieta", docs_url=None, redoc_url=None, lifespan=lifespan)
+    app.state.settings = settings
     version = app_version()
+    app.state.version = version
     templates = Jinja2Templates(directory=str(WEB_DIR / "templates"))
     app.mount("/static", StaticFiles(directory=str(WEB_DIR / "static")), name="static")
+    app.include_router(make_router(settings, store, templates, runner))
 
     @app.middleware("http")
     async def no_store(request: Request, call_next):  # type: ignore[no-untyped-def]
@@ -109,6 +142,9 @@ def create_app(settings: Settings) -> FastAPI:
                 "goal_labels": GOAL_LABELS,
                 "pal_labels": PAL_LABELS,
                 "today": date.today().isoformat(),
+                "page_title": "Profile",
+                "section": "profile",
+                "root": "",
             },
         )
 

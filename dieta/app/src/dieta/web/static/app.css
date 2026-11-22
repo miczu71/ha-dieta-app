@@ -148,3 +148,17 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font-sans)
 .dz-card input:focus-visible,.dz-card select:focus-visible,.dz-card summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .dz-details{margin-top:var(--space-4);border-top:1px solid var(--line);padding-top:var(--space-3)}
 .dz-details summary{cursor:pointer;font:700 14px var(--font-sans)}
+
+/* E2: Co kupujemy */
+.dz-nav{display:flex;gap:var(--space-4);margin:0 0 var(--space-4);border-bottom:1px solid var(--line)}
+.dz-nav a{padding:var(--space-2) 0;color:var(--muted);text-decoration:none;font:600 14px/20px var(--font-sans);border-bottom:2px solid transparent}
+.dz-nav a[aria-current="page"]{color:var(--ink);border-bottom-color:var(--accent)}
+.dz-bar{display:flex;gap:var(--space-3);align-items:center;justify-content:space-between;flex-wrap:wrap}
+.dz-ok{background:var(--promo-bg);color:var(--promo-ink);padding:var(--space-2) var(--space-3);border-radius:var(--radius-md)}
+.dz-link{color:var(--accent)}
+.dz-list{list-style:none;margin:0;padding:0;display:grid;gap:var(--space-2)}
+.dz-item{display:flex;gap:var(--space-3);justify-content:space-between;align-items:center;flex-wrap:wrap;padding:var(--space-3);background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-md)}
+.dz-item-main{display:flex;gap:var(--space-2);align-items:center;flex-wrap:wrap;min-width:0}
+.dz-item-meta{color:var(--muted);font-size:13px}
+.dz-pending{display:block}
+.dz-chip--home{background:transparent;color:var(--accent);border:1px solid var(--accent)}
