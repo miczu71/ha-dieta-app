@@ -1,0 +1,10 @@
+configuration:
+  log_level:
+    name: Poziom logów
+    description: Szczegółowość logów add-onu.
+  person_1_name:
+    name: Imię osoby 1
+    description: Wyświetlane w panelu. Pozostałe dane profilu wpisujesz w panelu i zostają w /data.
+  person_2_name:
+    name: Imię osoby 2
+    description: Jak wyżej, dla drugiej osoby.

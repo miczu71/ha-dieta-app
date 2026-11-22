@@ -1,0 +1,10 @@
+configuration:
+  log_level:
+    name: Log level
+    description: Add-on log verbosity.
+  person_1_name:
+    name: Person 1 name
+    description: Shown in the panel. The rest of the profile is entered in the panel and stays in /data.
+  person_2_name:
+    name: Person 2 name
+    description: Same, for the second person.
