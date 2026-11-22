@@ -11,12 +11,14 @@ from dataclasses import dataclass
 from datetime import date
 
 from dieta.dictionary import BATCH_SIZE, AskFn, normalize_name
+from dieta.fetcher import FetchError
 from dieta.sources.base import Fetch, Recipe, RecipeSource
 from dieta.store import MEAL_CATEGORIES, RecipeMeta, Store
 
 _log = logging.getLogger(__name__)
 
 MAX_STORAGE_DAYS = 14
+SKIP_TTL_DAYS = 30  # po tylu dniach strona „nie-przepis” jest pobierana ponownie
 
 _CATEGORY_HINTS: dict[str, str] = {
     "breakfast": "breakfast",
@@ -96,6 +98,20 @@ def _used_today(store: Store, source: str, today: date) -> int:
     return int(count) if day == today.isoformat() and count.isdigit() else 0
 
 
+def _skip_active(value: str | None, today: date) -> bool:
+    """Wpis ``crawl_skip`` (``<data ISO>[ powód]``) obowiązuje przez ``SKIP_TTL_DAYS`` dni."""
+    try:
+        since = date.fromisoformat((value or "").split(" ", 1)[0])
+    except ValueError:
+        return False
+    return (today - since).days < SKIP_TTL_DAYS
+
+
+def _record_counts(store: Store, name: str, errors: int, skipped: int) -> None:
+    store.set_meta(f"last_crawl_errors:{name}", str(errors))
+    store.set_meta(f"last_crawl_skipped:{name}", str(skipped))
+
+
 def crawl(
     store: Store,
     source: RecipeSource,
@@ -106,8 +122,9 @@ def crawl(
 ) -> CrawlResult:
     """Pobiera nowe przepisy źródła; dzienny limit zapytań o nowe strony.
 
-    Przepis raz pobrany (albo rozpoznany jako nie-przepis) nie jest pobierany ponownie. Wyjątek per URL
-    trafia do ``meta.last_crawl_error:<źródło>`` i nie przerywa pętli (URL wróci następnego dnia).
+    Przepis raz pobrany nie jest pobierany ponownie; nie-przepis i trwałe błędy (4xx poza 429, robots) są
+    pomijane przez ``SKIP_TTL_DAYS`` dni. Wyjątek per URL trafia do ``meta.last_crawl_error:<źródło>`` i nie
+    przerywa pętli (błąd przejściowy wróci następnego dnia). Pusta lista URL to błąd (bez ``last_crawl_at``).
     """
     name = source.name
     error_key = f"last_crawl_error:{name}"
@@ -116,11 +133,20 @@ def crawl(
         urls = source.list_urls(fetch=fetch)
     except Exception as exc:
         store.set_meta(error_key, f"list_urls: {type(exc).__name__}: {exc}"[:300])
+        _record_counts(store, name, 1, 0)
+        return CrawlResult(0, 0, 1, 0, False)
+    if not urls:
+        store.set_meta(error_key, "sitemapa nie zawiera przepisów")
+        _record_counts(store, name, 1, 0)
         return CrawlResult(0, 0, 1, 0, False)
 
     known = store.recipe_source_ids(name)
     skip_prefix = f"crawl_skip:{name}:"
-    skipped_urls = {key[len(skip_prefix) :] for key in store.meta_keys(skip_prefix)}
+    skipped_urls = {
+        key[len(skip_prefix) :]
+        for key in store.meta_keys(skip_prefix)
+        if _skip_active(store.get_meta(key), today)
+    }
     used = _used_today(store, name, today)
     added = skipped = errors = already = 0
     limit_reached = False
@@ -144,6 +170,9 @@ def crawl(
         except Exception as exc:
             errors += 1
             store.set_meta(error_key, f"{url}: {type(exc).__name__}: {exc}"[:300])
+            if isinstance(exc, FetchError) and exc.permanent:
+                store.set_meta(skip_prefix + url, f"{today.isoformat()} {exc}"[:200])
+    _record_counts(store, name, errors, skipped)
     store.set_meta(f"last_crawl_at:{name}", today.isoformat())
     return CrawlResult(added, skipped, errors, already, limit_reached)
 

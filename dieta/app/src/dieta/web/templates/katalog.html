@@ -12,7 +12,7 @@
     <li class="dz-item">
       <div class="dz-item-main">
         <b>{{ s.label }}</b>
-        <span class="dz-item-meta dz-num">{{ s.count }} przepisów{% if s.last %} · ost. {{ s.last }}{% endif %}</span>
+        <span class="dz-item-meta dz-num">{{ s.count }} przepisów{% if s.last %} · ost. {{ s.last }} · błędów: {{ s.errors }} · pominiętych: {{ s.skipped }}{% endif %}</span>
         {% if s.running %}<span class="dz-chip dz-chip--plain">pobieranie…</span>{% endif %}
       </div>
       <form method="post" action="katalog/odswiez?zrodlo={{ s.name }}"><button class="dz-btn dz-btn--ghost" type="submit"{{ ' disabled' if s.running }}>Odśwież teraz</button></form>

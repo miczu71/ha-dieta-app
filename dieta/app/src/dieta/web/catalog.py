@@ -92,6 +92,8 @@ def make_catalog_router(
                 "count": store.recipe_count(name),
                 "last": store.get_meta(f"last_crawl_at:{name}"),
                 "error": store.get_meta(f"last_crawl_error:{name}") or "",
+                "errors": store.get_meta(f"last_crawl_errors:{name}") or "0",
+                "skipped": store.get_meta(f"last_crawl_skipped:{name}") or "0",
                 "running": running in ("*", name),
             }
             for name in settings.sources

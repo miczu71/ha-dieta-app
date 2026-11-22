@@ -138,7 +138,10 @@ def map_recipe_ingredients(store: Store, ask: AskFn | None) -> int:
                 linked += 1
             continue
         entry = seed.get(name)
-        if entry is not None and entry.klasa == "skladnik" and entry.skladnik:
+        if entry is not None and entry.klasa != "skladnik":
+            store.set_mapping(code, "excluded", None, None, name)
+            continue
+        if entry is not None and entry.skladnik:
             durability = _resolve(store, entry.skladnik, None)
             store.set_mapping(code, "seed", entry.skladnik, durability, name)
             store.link_recipe_ingredient(raw, entry.skladnik, durability)
@@ -160,10 +163,13 @@ def map_recipe_ingredients(store: Store, ask: AskFn | None) -> int:
     for raw in unresolved:
         name = normalize_name(raw)
         result = results[name]
+        if not result.answered:
+            continue  # awaria LLM: bez wpisu, nazwa wróci przy następnym przebiegu (jak enrich_meta)
         code = f"ing:{name}"
         durability = _resolve(store, result.ingredient, result.durability) if result.ingredient else None
         if result.ingredient is None:
-            store.set_mapping(code, "pending", None, None, name)
+            excluded = result.klasa is not None and result.klasa != "skladnik"
+            store.set_mapping(code, "excluded" if excluded else "pending", None, None, name)
             continue
         store.set_mapping(code, "ai", result.ingredient, durability, name)
         store.link_recipe_ingredient(raw, result.ingredient, durability)

@@ -100,6 +100,7 @@ class LlmMapping:
     klasa: str | None
     ingredient: str | None
     durability: Durability | None
+    answered: bool = True  # False = awaria LLM dla paczki (nie to samo co odpowiedź bez mapowania)
 
 
 AskFn = Callable[[list[str]], list[dict[str, object]] | None]
@@ -130,7 +131,7 @@ def _parse_durability(value: object) -> Durability | None:
 def map_with_llm(names: list[str], *, ask: AskFn) -> list[LlmMapping]:
     """Mapuje nazwy w paczkach po 25.
 
-    Przy braku odpowiedzi jedna ponowna próba, potem pozycje bez mapowania.
+    Przy braku odpowiedzi jedna ponowna próba, potem pozycje bez mapowania i z ``answered=False``.
     """
     results: list[LlmMapping] = []
     for start in range(0, len(names), BATCH_SIZE):
@@ -154,7 +155,15 @@ def map_with_llm(names: list[str], *, ask: AskFn) -> list[LlmMapping]:
                 if klasa == "skladnik" and isinstance(raw_ingredient, str) and raw_ingredient.strip():
                     ingredient = normalize_name(raw_ingredient)
                     durability = _parse_durability(row.get("trwalosc"))
-            results.append(LlmMapping(name=name, klasa=klasa, ingredient=ingredient, durability=durability))
+            results.append(
+                LlmMapping(
+                    name=name,
+                    klasa=klasa,
+                    ingredient=ingredient,
+                    durability=durability,
+                    answered=reply is not None,
+                )
+            )
     return results
 
 

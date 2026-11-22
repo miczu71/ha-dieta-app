@@ -193,12 +193,14 @@ def _recipe_from_node(
 
 
 def parse_jsonld_recipe(source: str, url: str, page: str) -> Recipe | None:
-    """Pierwszy węzeł `Recipe` ze strony → Recipe; None gdy brak lub uszkodzony JSON-LD."""
+    """Pierwszy poprawny (z nazwą) węzeł `Recipe` ze strony → Recipe; None gdy brak lub uszkodzony JSON-LD."""
     nodes = _json_ld_nodes(page)
     index = {n["@id"]: n for n in nodes if isinstance(n.get("@id"), str)}
     for node in nodes:
         if _is_recipe(node):
-            return _recipe_from_node(source, url, node, index)
+            recipe = _recipe_from_node(source, url, node, index)
+            if recipe is not None:
+                return recipe
     return None
 
 
