@@ -29,7 +29,7 @@ def make_catalog_router(
     settings: Settings, store: Store, templates: Jinja2Templates, crawler: CrawlRunner
 ) -> APIRouter:
     router = APIRouter()
-    running: set[str] = set()
+    running: str | None = None
     lock = threading.Lock()
 
     def stat_map() -> Mapping[str, IngredientStat]:
@@ -66,7 +66,7 @@ def make_catalog_router(
         return templates.TemplateResponse(request, name, {**base, **ctx})
 
     @router.get("/katalog")
-    async def catalog(
+    def catalog(
         request: Request,
         prog: str = "",
         kat: str = "",
@@ -89,10 +89,10 @@ def make_catalog_router(
             {
                 "name": name,
                 "label": SOURCE_LABELS[name],
-                "count": len(store.recipe_source_ids(name)),
+                "count": store.recipe_count(name),
                 "last": store.get_meta(f"last_crawl_at:{name}"),
                 "error": store.get_meta(f"last_crawl_error:{name}") or "",
-                "running": "*" in running or name in running,
+                "running": running in ("*", name),
             }
             for name in settings.sources
             if name in SOURCE_LABELS
@@ -111,10 +111,10 @@ def make_catalog_router(
         )
 
     def _flag(recipe_id: int, flag: str, qs: str, to_detail: bool) -> Response:
-        row = store.recipe(recipe_id, {}, DEFAULT_BASICS)
-        if row is None:
+        flags = store.recipe_flags(recipe_id)
+        if flags is None:
             raise HTTPException(404)
-        current = row.liked if flag == "liked" else row.dismissed
+        current = flags[0] if flag == "liked" else flags[1]
         store.set_flag(recipe_id, "liked" if flag == "liked" else "dismissed", not current)
         if to_detail:
             return RedirectResponse(f"../{recipe_id}", status_code=303)
@@ -123,15 +123,15 @@ def make_catalog_router(
         return RedirectResponse(f"../../katalog?{query(safe)}", status_code=303)
 
     @router.post("/katalog/{recipe_id}/serce")
-    async def like(recipe_id: int, qs: str = Form(""), detail: str = Form("")) -> Response:
+    def like(recipe_id: int, qs: str = Form(""), detail: str = Form("")) -> Response:
         return _flag(recipe_id, "liked", qs, detail == "1")
 
     @router.post("/katalog/{recipe_id}/odrzuc")
-    async def dismiss(recipe_id: int, qs: str = Form(""), detail: str = Form("")) -> Response:
+    def dismiss(recipe_id: int, qs: str = Form(""), detail: str = Form("")) -> Response:
         return _flag(recipe_id, "dismissed", qs, detail == "1")
 
     @router.get("/katalog/{recipe_id}")
-    async def detail(request: Request, recipe_id: int) -> Response:
+    def detail(request: Request, recipe_id: int) -> Response:
         by_name = stat_map()
         row = store.recipe(recipe_id, by_name, DEFAULT_BASICS)
         if row is None:
@@ -163,10 +163,11 @@ def make_catalog_router(
         if zrodlo and zrodlo not in settings.sources:
             return RedirectResponse("../katalog?notice=zrodlo", status_code=303)
         key = zrodlo or "*"
+        nonlocal running
         with lock:
-            if running:
+            if running is not None:
                 return RedirectResponse("../katalog?notice=trwa", status_code=303)
-            running.add(key)
+            running = key
 
         def work() -> None:
             try:
@@ -174,8 +175,9 @@ def make_catalog_router(
             except Exception as exc:  # noqa: BLE001 — logujemy tylko typ (komunikat może zawierać adresy z tokenem)
                 log.warning("odświeżenie katalogu zakończone błędem: %s", type(exc).__name__)
             finally:
+                nonlocal running
                 with lock:
-                    running.discard(key)
+                    running = None
 
         threading.Thread(target=work, name="catalog-refresh", daemon=True).start()
         return RedirectResponse("../katalog?notice=start", status_code=303)

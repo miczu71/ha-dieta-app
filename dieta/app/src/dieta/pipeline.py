@@ -1,18 +1,17 @@
 """Nocny potok katalogu: crawl włączonych źródeł → mapowanie składników przepisów → metadane AI.
 
-Ten sam kod obsługuje „Odśwież teraz”. Seamy ``fetch``/``ask``/``sleep`` wstrzykiwane w testach.
+Ten sam kod obsługuje „Odśwież teraz”. Seamy ``fetch``/``ask`` wstrzykiwane w testach.
 """
 
 from __future__ import annotations
 
 import logging
 import threading
-import time
 from collections.abc import Callable
 from datetime import date
 
-from dieta.catalog import CrawlResult, SleepFn, crawl, enrich_meta, make_meta_ask
-from dieta.dictionary import AskFn, make_llm_ask
+from dieta.catalog import META_PROMPT, CrawlResult, crawl, enrich_meta
+from dieta.dictionary import AskFn, llm_ask_from
 from dieta.fetcher import make_fetch
 from dieta.settings import Settings
 from dieta.sources.base import Fetch, RecipeSource
@@ -44,7 +43,6 @@ def run_catalog(
     ask_ingredients: AskFn | None,
     ask_meta: AskFn | None,
     today: date,
-    sleep: SleepFn = time.sleep,
 ) -> dict[str, CrawlResult]:
     """Crawl ``source`` (albo wszystkich włączonych), potem mapowanie składników i metadane AI."""
     names = [source] if source is not None else list(settings.sources)
@@ -53,9 +51,7 @@ def run_catalog(
         factory = SOURCE_FACTORIES.get(name)
         if factory is None:
             continue
-        results[name] = crawl(
-            store, factory(), fetch=fetch, today=today, limit=settings.crawl_daily_limit, sleep=sleep
-        )
+        results[name] = crawl(store, factory(), fetch=fetch, today=today, limit=settings.crawl_daily_limit)
     map_recipe_ingredients(store, ask_ingredients)
     enrich_meta(store, ask_meta)
     return results
@@ -67,17 +63,14 @@ def default_crawl_runner(settings: Settings, store: Store) -> CrawlRunner:
 
     def run(source: str | None = None) -> dict[str, CrawlResult]:
         with lock:
-            llm = bool(settings.llm_url and settings.llm_key)
-            # fetch dławi sam (≤ 1/s), więc sleep crawla jest pusty — inaczej czekalibyśmy podwójnie
             return run_catalog(
                 store,
                 settings,
                 source=source,
                 fetch=make_fetch(),
-                ask_ingredients=make_llm_ask(settings.llm_url, settings.llm_key) if llm else None,
-                ask_meta=make_meta_ask(settings.llm_url, settings.llm_key) if llm else None,
+                ask_ingredients=llm_ask_from(settings),
+                ask_meta=llm_ask_from(settings, META_PROMPT),
                 today=date.today(),
-                sleep=lambda _: None,
             )
 
     return run

@@ -77,11 +77,9 @@ def test_crawl_adds_and_is_idempotent(tmp_path: Path) -> None:
     store = Store(tmp_path / "d.db")
     source = FakeSource(["u1", "u2"])
     fetch = _fetch_factory()
-    sleeps: list[float] = []
-    first = crawl(store, source, fetch=fetch, today=TODAY, limit=10, sleep=sleeps.append)
+    first = crawl(store, source, fetch=fetch, today=TODAY, limit=10)
     assert first.added == 2
-    assert sleeps == [1, 1]
-    again = crawl(store, source, fetch=fetch, today=TODAY, limit=10, sleep=sleeps.append)
+    again = crawl(store, source, fetch=fetch, today=TODAY, limit=10)
     assert again.added == 0 and again.already_known == 2
     assert fetch.calls == ["u1", "u2"]  # type: ignore[attr-defined]
 
@@ -90,11 +88,11 @@ def test_crawl_respects_daily_limit_across_runs(tmp_path: Path) -> None:
     store = Store(tmp_path / "d.db")
     source = FakeSource(["u1", "u2", "u3"])
     fetch = _fetch_factory()
-    r1 = crawl(store, source, fetch=fetch, today=TODAY, limit=2, sleep=lambda s: None)
+    r1 = crawl(store, source, fetch=fetch, today=TODAY, limit=2)
     assert (r1.added, r1.limit_reached) == (2, True)
-    r2 = crawl(store, source, fetch=fetch, today=TODAY, limit=2, sleep=lambda s: None)
+    r2 = crawl(store, source, fetch=fetch, today=TODAY, limit=2)
     assert r2.added == 0 and r2.limit_reached
-    r3 = crawl(store, source, fetch=fetch, today=date(2026, 11, 23), limit=2, sleep=lambda s: None)
+    r3 = crawl(store, source, fetch=fetch, today=date(2026, 11, 23), limit=2)
     assert r3.added == 1
 
 
@@ -102,7 +100,7 @@ def test_crawl_error_on_one_url_does_not_stop(tmp_path: Path) -> None:
     store = Store(tmp_path / "d.db")
     source = FakeSource(["u1", "u2", "u3"])
     fetch = _fetch_factory(fail={"u2"})
-    result = crawl(store, source, fetch=fetch, today=TODAY, limit=10, sleep=lambda s: None)
+    result = crawl(store, source, fetch=fetch, today=TODAY, limit=10)
     assert (result.added, result.errors) == (2, 1)
     assert "u2" in (store.get_meta("last_crawl_error:respo") or "")
     assert store.recipe_source_ids("respo") == {"u1", "u3"}
@@ -112,9 +110,9 @@ def test_crawl_remembers_non_recipe_pages(tmp_path: Path) -> None:
     store = Store(tmp_path / "d.db")
     source = FakeSource(["u1", "blog"], notrecipe={"blog"})
     fetch = _fetch_factory()
-    r = crawl(store, source, fetch=fetch, today=TODAY, limit=10, sleep=lambda s: None)
+    r = crawl(store, source, fetch=fetch, today=TODAY, limit=10)
     assert (r.added, r.skipped) == (1, 1)
-    crawl(store, source, fetch=fetch, today=date(2026, 11, 23), limit=10, sleep=lambda s: None)
+    crawl(store, source, fetch=fetch, today=date(2026, 11, 23), limit=10)
     assert fetch.calls == ["u1", "blog"]  # type: ignore[attr-defined]
 
 
@@ -125,7 +123,7 @@ def test_crawl_list_urls_error_is_recorded(tmp_path: Path) -> None:
         def list_urls(self, *, fetch):  # type: ignore[no-untyped-def]
             raise OSError("sitemap down")
 
-    r = crawl(store, Broken([]), fetch=_fetch_factory(), today=TODAY, limit=5, sleep=lambda s: None)
+    r = crawl(store, Broken([]), fetch=_fetch_factory(), today=TODAY, limit=5)
     assert r.errors == 1
     assert "sitemap down" in (store.get_meta("last_crawl_error:respo") or "")
 

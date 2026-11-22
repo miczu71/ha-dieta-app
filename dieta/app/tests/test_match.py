@@ -29,7 +29,6 @@ def test_five_of_six_missing_tahini_basics_skipped() -> None:
     result = familiarity(names, STATS, basics=BASICS)
     assert (result.known, result.total) == (5, 6)
     assert result.missing == ("tahini",)
-    assert result.at_home == ("ryż", "cebula")
     assert round(result.ratio, 3) == 0.833
 
 

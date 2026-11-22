@@ -1,24 +1,21 @@
 """Katalog przepisów: metadane planera z reguł (+ AI), crawl źródeł z limitem i bez ponownych pobrań.
 
-Sieć tylko przez wstrzyknięte ``fetch`` i ``sleep``; klucze API nie trafiają do logów.
+Sieć tylko przez wstrzyknięte ``fetch`` (tempo ≤ 1/s robi ``fetcher.make_fetch``); klucze API poza logami.
 """
 
 from __future__ import annotations
 
 import logging
 import re
-import time
-from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date
 
-from dieta.dictionary import BATCH_SIZE, AskFn, make_llm_ask
+from dieta.dictionary import BATCH_SIZE, AskFn, make_llm_ask, normalize_name
 from dieta.sources.base import Fetch, Recipe, RecipeSource
 from dieta.store import MEAL_CATEGORIES, RecipeMeta, Store
 
 _log = logging.getLogger(__name__)
 
-SleepFn = Callable[[float], None]
 MAX_STORAGE_DAYS = 14
 
 _CATEGORY_HINTS: dict[str, str] = {
@@ -56,7 +53,7 @@ _MEAL_RULES: tuple[tuple[tuple[str, ...], str | None, int | None, bool | None], 
 
 
 def _norm_hint(hint: str | None) -> str | None:
-    return None if hint is None else _CATEGORY_HINTS.get(hint.strip().lower())
+    return None if hint is None else _CATEGORY_HINTS.get(normalize_name(hint))
 
 
 def classify_meal(recipe: Recipe) -> tuple[str | None, int | None, bool | None]:
@@ -106,9 +103,8 @@ def crawl(
     fetch: Fetch,
     today: date,
     limit: int,
-    sleep: SleepFn = time.sleep,
 ) -> CrawlResult:
-    """Pobiera nowe przepisy źródła; ≤ 1 zapytanie/s, dzienny limit zapytań o nowe strony.
+    """Pobiera nowe przepisy źródła; dzienny limit zapytań o nowe strony.
 
     Przepis raz pobrany (albo rozpoznany jako nie-przepis) nie jest pobierany ponownie. Wyjątek per URL
     trafia do ``meta.last_crawl_error:<źródło>`` i nie przerywa pętli (URL wróci następnego dnia).
@@ -124,17 +120,17 @@ def crawl(
 
     known = store.recipe_source_ids(name)
     skip_prefix = f"crawl_skip:{name}:"
+    skipped_urls = {key[len(skip_prefix) :] for key in store.meta_keys(skip_prefix)}
     used = _used_today(store, name, today)
     added = skipped = errors = already = 0
     limit_reached = False
     for url in urls:
-        if url in known or store.get_meta(skip_prefix + url) is not None:
+        if url in known or url in skipped_urls:
             already += 1
             continue
         if used >= limit:
             limit_reached = True
             break
-        sleep(1)
         used += 1
         store.set_meta(f"crawl_used:{name}", f"{today.isoformat()}:{used}")
         try:
@@ -180,7 +176,8 @@ def enrich_meta(store: Store, ask: AskFn | None) -> int:
     """
     if ask is None:
         return 0
-    todo = [p for p in store.pending_recipe_meta() if store.get_meta(f"recipe_meta_asked:{p.id}") is None]
+    asked = store.meta_keys("recipe_meta_asked:")
+    todo = [p for p in store.pending_recipe_meta() if f"recipe_meta_asked:{p.id}" not in asked]
     done = 0
     for start in range(0, len(todo), BATCH_SIZE):
         batch = todo[start : start + BATCH_SIZE]

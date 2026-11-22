@@ -123,6 +123,8 @@ _MIGRATIONS: list[str] = [
         ingredient_id INTEGER REFERENCES ingredient(id),
         PRIMARY KEY (recipe_id, pos)
     );
+    CREATE INDEX idx_recipe_ingredient_name ON recipe_ingredient(name);
+    CREATE INDEX idx_recipe_source ON recipe(source);
     CREATE TABLE recipe_flag (
         recipe_id INTEGER PRIMARY KEY REFERENCES recipe(id),
         liked INTEGER NOT NULL DEFAULT 0,
@@ -449,6 +451,27 @@ class Store:
             rows = conn.execute("SELECT source_id FROM recipe WHERE source = ?", (source,)).fetchall()
         return {row[0] for row in rows}
 
+    def recipe_count(self, source: str) -> int:
+        with closing(self._connect()) as conn:
+            return int(conn.execute("SELECT COUNT(*) FROM recipe WHERE source = ?", (source,)).fetchone()[0])
+
+    def meta_keys(self, prefix: str) -> set[str]:
+        """Wszystkie klucze ``meta`` zaczynające się od ``prefix`` (jedno zapytanie)."""
+        pattern = prefix.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
+        with closing(self._connect()) as conn:
+            rows = conn.execute("SELECT key FROM meta WHERE key LIKE ? ESCAPE '\\'", (pattern,)).fetchall()
+        return {row[0] for row in rows}
+
+    def recipe_flags(self, recipe_id: int) -> tuple[bool, bool] | None:
+        """(liked, dismissed) przepisu albo None, gdy przepis nie istnieje."""
+        with closing(self._connect()) as conn:
+            row = conn.execute(
+                "SELECT COALESCE(f.liked, 0), COALESCE(f.dismissed, 0) FROM recipe r "
+                "LEFT JOIN recipe_flag f ON f.recipe_id = r.id WHERE r.id = ?",
+                (recipe_id,),
+            ).fetchone()
+        return None if row is None else (bool(row[0]), bool(row[1]))
+
     def upsert_recipe(self, recipe: Recipe, meta: RecipeMeta, fetched_at: str | None = None) -> int:
         """Dodaje albo odświeża przepis; metadane ze statusem ``approved`` nigdy nie są nadpisywane."""
         stamp = fetched_at or datetime.now().isoformat(timespec="seconds")
@@ -546,7 +569,10 @@ class Store:
         params: tuple[object, ...],
         stats: Mapping[str, IngredientStat],
         basics: frozenset[str],
+        recipe_id: int | None = None,
     ) -> list[RecipeRow]:
+        ing_where = "" if recipe_id is None else "WHERE ri.recipe_id = ? "
+        ing_params = () if recipe_id is None else (recipe_id,)
         with closing(self._connect()) as conn:
             rows = conn.execute(
                 f"SELECT {_RECIPE_COLUMNS} FROM recipe r LEFT JOIN recipe_flag f ON f.recipe_id = r.id "
@@ -555,7 +581,9 @@ class Store:
             ).fetchall()
             ing_rows = conn.execute(
                 "SELECT ri.recipe_id, i.name FROM recipe_ingredient ri "
-                "LEFT JOIN ingredient i ON i.id = ri.ingredient_id ORDER BY ri.recipe_id, ri.pos"
+                "LEFT JOIN ingredient i ON i.id = ri.ingredient_id "
+                f"{ing_where}ORDER BY ri.recipe_id, ri.pos",
+                ing_params,
             ).fetchall()
         by_recipe: dict[int, list[str | None]] = {}
         for recipe_id, name in ing_rows:
@@ -591,7 +619,7 @@ class Store:
     def recipe(
         self, recipe_id: int, stats: Mapping[str, IngredientStat], basics: frozenset[str]
     ) -> RecipeRow | None:
-        rows = self._recipe_rows("WHERE r.id = ?", (recipe_id,), stats, basics)
+        rows = self._recipe_rows("WHERE r.id = ?", (recipe_id,), stats, basics, recipe_id)
         return rows[0] if rows else None
 
     def recipes(

@@ -14,7 +14,7 @@ from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 
-from ..dictionary import Durability, make_llm_ask
+from ..dictionary import Durability, llm_ask_from
 from ..settings import Settings
 from ..store import MEAL_CATEGORIES, MappingRow, PendingRecipeMeta, Store
 from ..sync import map_recipe_ingredients, stats, sync
@@ -59,12 +59,7 @@ def default_runner(settings: Settings, store: Store) -> SyncRunner:
             return _run()
 
     def _run() -> int:
-        ask = (
-            make_llm_ask(settings.llm_url, settings.llm_key)
-            if settings.llm_url and settings.llm_key
-            else None
-        )
-        return sync(store, settings, date.today(), fetch=fetch_purchases, ask=ask)
+        return sync(store, settings, date.today(), fetch=fetch_purchases, ask=llm_ask_from(settings))
 
     return run
 
@@ -117,7 +112,7 @@ def make_router(
         return templates.TemplateResponse(request, name, {**base, **ctx})
 
     @router.get("/kupujemy")
-    async def kupujemy(request: Request, error: str = "", notice: str = "") -> Response:
+    def kupujemy(request: Request, error: str = "", notice: str = "") -> Response:
         rows = stats(store, settings, date.today())
         return page(
             request,
@@ -144,7 +139,7 @@ def make_router(
         return back("../kupujemy", notice="ok")
 
     @router.get("/kupujemy/zatwierdz")
-    async def review(request: Request, error: str = "") -> Response:
+    def review(request: Request, error: str = "") -> Response:
         return page(
             request,
             "zatwierdz.html",

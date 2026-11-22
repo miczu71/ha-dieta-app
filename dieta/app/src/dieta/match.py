@@ -15,7 +15,6 @@ class Familiarity(NamedTuple):
     known: int
     total: int
     missing: tuple[str, ...]
-    at_home: tuple[str, ...]
 
     @property
     def ratio(self) -> float:
@@ -37,7 +36,6 @@ def familiarity(
     known = 0
     total = 0
     missing: list[str] = []
-    at_home: list[str] = []
     for name in ingredients:
         if name is None:
             total += 1
@@ -51,6 +49,4 @@ def familiarity(
             missing.append(name)
             continue
         known += 1
-        if stat.at_home:
-            at_home.append(name)
-    return Familiarity(known=known, total=total, missing=tuple(missing), at_home=tuple(at_home))
+    return Familiarity(known=known, total=total, missing=tuple(missing))

@@ -11,7 +11,10 @@ import urllib.request
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal, cast
+from typing import TYPE_CHECKING, Literal, cast
+
+if TYPE_CHECKING:
+    from dieta.settings import Settings
 
 Durability = Literal["fresh", "chilled", "dry", "frozen"]
 DURABILITIES: tuple[Durability, ...] = ("fresh", "chilled", "dry", "frozen")
@@ -192,3 +195,10 @@ def make_llm_ask(
         return [row for row in data if isinstance(row, dict)]
 
     return ask
+
+
+def llm_ask_from(settings: Settings, prompt: str = PROMPT) -> AskFn | None:
+    """`ask` z opcji add-onu albo None, gdy LLM nie jest skonfigurowany (brak url/klucza)."""
+    if not (settings.llm_url and settings.llm_key):
+        return None
+    return make_llm_ask(settings.llm_url, settings.llm_key, prompt)

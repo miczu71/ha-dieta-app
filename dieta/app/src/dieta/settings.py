@@ -58,14 +58,6 @@ def _clock(value: object) -> str:
     return text if _REFRESH_RE.match(text) else DEFAULT_REFRESH_TIME
 
 
-def _days(options: dict[str, object], key: str, default: int) -> int:
-    try:
-        value = int(str(options.get(key, default)))
-    except ValueError:
-        return default
-    return value if 1 <= value <= 365 else default
-
-
 def _bounded(options: dict[str, object], key: str, default: int, low: int, high: int) -> int:
     try:
         value = int(str(options.get(key, default)))
@@ -98,10 +90,10 @@ def load_settings() -> Settings:
         llm_url=str(options.get("llm_url") or "").strip(),
         llm_key=str(options.get("llm_key") or "").strip(),
         refresh_time=_clock(options.get("refresh_time")),
-        shelf_fresh_days=_days(options, "shelf_fresh_days", 4),
-        shelf_chilled_days=_days(options, "shelf_chilled_days", 10),
-        shelf_dry_days=_days(options, "shelf_dry_days", 30),
-        shelf_frozen_days=_days(options, "shelf_frozen_days", 60),
+        shelf_fresh_days=_bounded(options, "shelf_fresh_days", 4, 1, 365),
+        shelf_chilled_days=_bounded(options, "shelf_chilled_days", 10, 1, 365),
+        shelf_dry_days=_bounded(options, "shelf_dry_days", 30, 1, 365),
+        shelf_frozen_days=_bounded(options, "shelf_frozen_days", 60, 1, 365),
         crawl_daily_limit=_bounded(options, "crawl_daily_limit", 150, 1, 1000),
         familiar_threshold=_bounded(options, "familiar_threshold", 70, 0, 100),
         sources=_sources(options.get("sources")),
