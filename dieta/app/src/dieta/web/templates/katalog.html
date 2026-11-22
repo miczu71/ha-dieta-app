@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% from "_flags.html" import flag_forms %}
+{% block content %}
+{% if notice == 'start' %}<p class="dz-ok" role="status">Pobieranie przepisów ruszyło w tle — odśwież stronę za chwilę.</p>{% endif %}
+{% if notice == 'trwa' %}<p class="dz-err" role="alert">Pobieranie już trwa.</p>{% endif %}
+{% if notice == 'zrodlo' %}<p class="dz-err" role="alert">Nieznane albo wyłączone źródło.</p>{% endif %}
+
+<section class="dz-card" aria-labelledby="zrodla">
+  <h2 id="zrodla" class="dz-eyebrow dz-eyebrow--flush">Źródła</h2>
+  <ul class="dz-list">
+  {% for s in sources %}
+    <li class="dz-item">
+      <div class="dz-item-main">
+        <b>{{ s.label }}</b>
+        <span class="dz-item-meta dz-num">{{ s.count }} przepisów{% if s.last %} · ost. {{ s.last }}{% endif %}</span>
+        {% if s.running %}<span class="dz-chip dz-chip--plain">pobieranie…</span>{% endif %}
+      </div>
+      <form method="post" action="katalog/odswiez?zrodlo={{ s.name }}"><button class="dz-btn dz-btn--ghost" type="submit"{{ ' disabled' if s.running }}>Odśwież teraz</button></form>
+      {% if s.error %}<p class="dz-err dz-full" role="alert">Ostatni błąd: {{ s.error }}</p>{% endif %}
+    </li>
+  {% else %}
+    <li class="dz-sub">Brak włączonych źródeł (opcja <span class="dz-num">sources</span>).</li>
+  {% endfor %}
+  </ul>
+</section>
+
+<form class="dz-card dz-filters" method="get" action="katalog" aria-label="Filtry katalogu">
+  <label>Znajomość od (%)
+    <input type="number" name="prog" min="0" max="100" step="5" value="{{ f.prog }}" inputmode="numeric"></label>
+  <label>Posiłek
+    <select name="kat"><option value="">wszystkie</option>{% for k, v in meal_labels.items() %}<option value="{{ k }}"{{ ' selected' if f.kat == k }}>{{ v }}</option>{% endfor %}</select></label>
+  <label>Źródło
+    <select name="zrodlo"><option value="">wszystkie</option>{% for k, v in source_labels.items() %}<option value="{{ k }}"{{ ' selected' if f.zrodlo == k }}>{{ v }}</option>{% endfor %}</select></label>
+  <label class="dz-check"><input type="checkbox" name="polubione" value="1"{{ ' checked' if f.polubione }}>Tylko polubione</label>
+  <label class="dz-check"><input type="checkbox" name="odrzucone" value="1"{{ ' checked' if f.odrzucone }}>Pokaż odrzucone</label>
+  <button class="dz-btn" type="submit">Filtruj</button>
+</form>
+
+<h2 class="dz-eyebrow">Przepisy · <span class="dz-num">{{ rows|length }}</span></h2>
+{% if not rows %}<p class="dz-sub">Brak przepisów dla tych filtrów. Obniż próg znajomości albo odśwież źródła.</p>{% endif %}
+<ul class="dz-recipes">
+{% for r in rows %}
+  {% set fam = r.familiarity %}
+  <li class="dz-card dz-recipe{{ ' is-dismissed' if r.dismissed }}">
+    <div class="dz-recipe-head">
+      <h3 class="dz-recipe-title"><a href="katalog/{{ r.id }}">{{ r.title }}</a></h3>
+      {{ flag_forms(r, '', qs, false) }}
+    </div>
+    <p class="dz-item-meta">{{ source_labels.get(r.source, r.source) }}{% if r.meal_category %} · {{ meal_labels.get(r.meal_category, r.meal_category) }}{% endif %}{% if r.minutes %} · <span class="dz-num">{{ r.minutes }}</span> min{% endif %}</p>
+    {% if r.has_nutrition %}
+    <p class="dz-leg">
+      <span><b>{{ '%.0f'|format(r.kcal) }}</b> kcal</span>
+      <span><s class="p"></s><b>{{ '%.0f'|format(r.protein or 0) }} g</b> B</span>
+      <span><s class="c"></s><b>{{ '%.0f'|format(r.carbs or 0) }} g</b> W</span>
+      <span><s class="f"></s><b>{{ '%.0f'|format(r.fat or 0) }} g</b> T</span>
+      <span class="dz-item-meta">na porcję</span>
+    </p>
+    {% else %}<p><span class="dz-chip">brak kcal</span></p>{% endif %}
+    <div class="dz-know">
+      <span class="bar" aria-hidden="true"><i style="width:{{ (fam.ratio * 100)|round|int }}%"></i></span>
+      <span class="dz-item-meta">znajomość <b class="dz-num">{{ fam.known }}/{{ fam.total }}</b></span>
+    </div>
+    {% if fam.missing %}<p class="dz-item-meta">brakuje: {{ fam.missing[:missing_shown]|join(', ') }}{% if fam.missing|length > missing_shown %} +{{ fam.missing|length - missing_shown }}{% endif %}</p>{% endif %}
+  </li>
+{% endfor %}
+</ul>
+{% endblock %}

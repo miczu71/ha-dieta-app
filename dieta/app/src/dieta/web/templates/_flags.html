@@ -1,0 +1,16 @@
+{% macro flag_forms(r, root, qs, detail) %}
+<div class="dz-flags">
+  <form method="post" action="{{ root }}katalog/{{ r.id }}/serce">
+    <input type="hidden" name="qs" value="{{ qs }}"><input type="hidden" name="detail" value="{{ '1' if detail else '' }}">
+    <button class="dz-icon-btn{{ ' is-on' if r.liked }}" type="submit" aria-pressed="{{ 'true' if r.liked else 'false' }}" title="{{ 'Usuń z polubionych' if r.liked else 'Polub' }}" aria-label="{{ 'Usuń z polubionych' if r.liked else 'Polub' }}: {{ r.title }}">
+      <svg class="dz-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.5 1-1.1a5.5 5.5 0 0 0 0-7.8z"/></svg>
+    </button>
+  </form>
+  <form method="post" action="{{ root }}katalog/{{ r.id }}/odrzuc">
+    <input type="hidden" name="qs" value="{{ qs }}"><input type="hidden" name="detail" value="{{ '1' if detail else '' }}">
+    <button class="dz-icon-btn{{ ' is-on' if r.dismissed }}" type="submit" aria-pressed="{{ 'true' if r.dismissed else 'false' }}" title="{{ 'Przywróć do propozycji' if r.dismissed else 'Nie proponuj' }}" aria-label="{{ 'Przywróć do propozycji' if r.dismissed else 'Nie proponuj' }}: {{ r.title }}">
+      <svg class="dz-i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/></svg>
+    </button>
+  </form>
+</div>
+{% endmacro %}

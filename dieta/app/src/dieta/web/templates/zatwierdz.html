@@ -2,7 +2,7 @@
 {% block content %}
 {% if error %}<p class="dz-err" role="alert">Nie zapisano: {{ 'podaj nazwę składnika i trwałość' if error == 'dane' else 'pozycji nie ma już w kolejce' }}.</p>{% endif %}
 <p class="dz-sub"><a class="dz-link" href="../kupujemy">← Co kupujemy</a></p>
-{% if not queue %}<p class="dz-sub">Nic do zatwierdzenia.</p>{% endif %}
+{% if not queue and not recipe_queue %}<p class="dz-sub">Nic do zatwierdzenia.</p>{% endif %}
 <ul class="dz-list">
 {% for q in queue %}
   <li class="dz-card dz-pending">
@@ -16,6 +16,23 @@
       <div class="dz-row">
         <button class="dz-btn" type="submit" name="action" value="approve">Zatwierdź</button>
         <button class="dz-btn dz-btn--ghost" type="submit" name="action" value="exclude">To nie składnik</button>
+      </div>
+    </form>
+  </li>
+{% endfor %}
+{% for p in recipe_queue %}
+  <li class="dz-card dz-pending">
+    <h2 class="dz-heading">{{ p.title }}</h2>
+    <p class="dz-sub">Przepis: uzupełnij metadane planera (kategoria, przechowywanie, mrożenie).</p>
+    <form method="post" action="zatwierdz-przepis" class="dz-form">
+      <input type="hidden" name="recipe_id" value="{{ p.id }}">
+      <label>Kategoria
+        <select name="category" required>{% for k, v in meal_labels.items() %}<option value="{{ k }}"{{ ' selected' if p.meal_category == k }}>{{ v }}</option>{% endfor %}</select></label>
+      <label>Przechowywanie (dni)
+        <input type="number" name="storage_days" min="1" max="14" required value="{{ p.storage_days or 3 }}" inputmode="numeric"></label>
+      <label class="dz-check"><input type="checkbox" name="freezable" value="1"{{ ' checked' if p.freezable }}>Nadaje się do mrożenia</label>
+      <div class="dz-row">
+        <button class="dz-btn" type="submit">Zatwierdź</button>
       </div>
     </form>
   </li>

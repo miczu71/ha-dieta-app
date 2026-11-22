@@ -19,8 +19,10 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from .. import nutrition
+from ..pipeline import CrawlRunner, default_crawl_runner
 from ..settings import Settings
 from ..store import PERSON_IDS, Profile, Store
+from .catalog import make_catalog_router
 from .chart import weight_chart
 from .kupujemy import SyncRunner, default_runner, make_router, seconds_until
 
@@ -84,25 +86,36 @@ def build_card(store: Store, settings: Settings, person_id: int) -> Card:
     return card
 
 
-async def _nightly(settings: Settings, runner: SyncRunner) -> None:
-    """Odświeża snapshot zakupów codziennie o `refresh_time`; błąd jednego przebiegu nie zatrzymuje pętli."""
+async def _nightly(settings: Settings, runner: SyncRunner, crawl_runner: CrawlRunner) -> None:
+    """Codziennie o `refresh_time`: sync zakupów, potem crawl katalogu; błąd kroku nie zatrzymuje pętli."""
     while True:
         await asyncio.sleep(seconds_until(datetime.now(), settings.refresh_time))
+        if settings.zakupy_url and settings.zakupy_token:
+            try:
+                await asyncio.to_thread(runner)
+            except Exception as exc:  # noqa: BLE001 — pętla tła ma przeżyć; logujemy tylko typ (bez tokenów)
+                log.warning("nocny sync zakończony błędem: %s", type(exc).__name__)
         try:
-            await asyncio.to_thread(runner)
-        except Exception as exc:  # noqa: BLE001 — pętla tła ma przeżyć; logujemy tylko typ (bez treści z tokenami)
-            log.warning("nocny sync zakończony błędem: %s", type(exc).__name__)
+            await asyncio.to_thread(crawl_runner, None)
+        except Exception as exc:  # noqa: BLE001
+            log.warning("nocny crawl katalogu zakończony błędem: %s", type(exc).__name__)
 
 
-def create_app(settings: Settings, *, sync_runner: SyncRunner | None = None) -> FastAPI:
+def create_app(
+    settings: Settings,
+    *,
+    sync_runner: SyncRunner | None = None,
+    crawl_runner: CrawlRunner | None = None,
+) -> FastAPI:
     store = Store(settings.db_path)
     runner = sync_runner or default_runner(settings, store)
+    crawler = crawl_runner or default_crawl_runner(settings, store)
 
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
         task = None
-        if sync_runner is None and settings.zakupy_url and settings.zakupy_token:
-            task = asyncio.create_task(_nightly(settings, runner))
+        if sync_runner is None and crawl_runner is None:
+            task = asyncio.create_task(_nightly(settings, runner, crawler))
         try:
             yield
         finally:
@@ -117,6 +130,7 @@ def create_app(settings: Settings, *, sync_runner: SyncRunner | None = None) -> 
     templates = Jinja2Templates(directory=str(WEB_DIR / "templates"))
     app.mount("/static", StaticFiles(directory=str(WEB_DIR / "static")), name="static")
     app.include_router(make_router(settings, store, templates, runner))
+    app.include_router(make_catalog_router(settings, store, templates, crawler))
 
     @app.middleware("http")
     async def no_store(request: Request, call_next):  # type: ignore[no-untyped-def]

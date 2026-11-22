@@ -72,7 +72,7 @@ def test_flags_filters_and_sort_by_familiarity(tmp_path: Path) -> None:
     store = Store(tmp_path / "d.db")
     low = store.upsert_recipe(_recipe("l", "A niska", names=("ryż", "tahini")), META)
     high = store.upsert_recipe(_recipe("h", "Z wysoka", names=("ryż",)), META)
-    store.upsert_recipe(_recipe("x", "Inna", names=("ryż",)), RecipeMeta("dinner", 2, False, "rule"))
+    inna = store.upsert_recipe(_recipe("x", "Inna", names=("ryż",)), RecipeMeta("dinner", 2, False, "rule"))
     for name in ("ryż", "tahini"):
         for raw in ("ryż", "tahini"):
             if raw == name:
@@ -81,9 +81,9 @@ def test_flags_filters_and_sort_by_familiarity(tmp_path: Path) -> None:
     rows = store.recipes(stats, frozenset())
     assert [r.id for r in rows][-1] == low
     assert [r.title for r in rows[:2]] == ["Inna", "Z wysoka"]
-    assert [r.id for r in store.recipes(stats, frozenset(), min_familiarity=0.7)] != [low]
+    assert [r.id for r in store.recipes(stats, frozenset(), min_familiarity=0.7)] == [r.id for r in rows[:2]]
     assert low not in [r.id for r in store.recipes(stats, frozenset(), min_familiarity=0.7)]
-    assert {r.id for r in store.recipes(stats, frozenset(), category="dinner")} != {high}
+    assert {r.id for r in store.recipes(stats, frozenset(), category="dinner")} == {inna}
     store.set_flag(high, "liked")
     assert [r.id for r in store.recipes(stats, frozenset(), liked_only=True)] == [high]
     store.set_flag(high, "dismissed")

@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% from "_flags.html" import flag_forms %}
+{% block content %}
+{% set fam = r.familiarity %}
+<p class="dz-sub"><a class="dz-link" href="../katalog">← Katalog</a></p>
+<section class="dz-card">
+  <div class="dz-recipe-head">
+    <h2 class="dz-heading">{{ r.title }}</h2>
+    {{ flag_forms(r, '../', '', true) }}
+  </div>
+  <p class="dz-item-meta">{{ source_labels.get(r.source, r.source) }}{% if r.meal_category %} · {{ meal_labels.get(r.meal_category, r.meal_category) }}{% endif %}{% if r.minutes %} · <span class="dz-num">{{ r.minutes }}</span> min{% endif %}{% if r.servings %} · <span class="dz-num">{{ '%g'|format(r.servings) }}</span> porcji{% endif %}</p>
+  {% if r.has_nutrition %}
+  <div class="dz-macro" aria-hidden="true">
+    <i class="p" style="flex:{{ (r.protein or 0) * 4 + 0.01 }}"></i><i class="c" style="flex:{{ (r.carbs or 0) * 4 + 0.01 }}"></i><i class="f" style="flex:{{ (r.fat or 0) * 9 + 0.01 }}"></i>
+  </div>
+  <p class="dz-leg">
+    <span><b>{{ '%.0f'|format(r.kcal) }}</b> kcal</span>
+    <span><s class="p"></s>Białko <b>{{ '%.0f'|format(r.protein or 0) }} g</b></span>
+    <span><s class="c"></s>Węglowodany <b>{{ '%.0f'|format(r.carbs or 0) }} g</b></span>
+    <span><s class="f"></s>Tłuszcz <b>{{ '%.0f'|format(r.fat or 0) }} g</b></span>
+    <span class="dz-item-meta">na porcję</span>
+  </p>
+  {% else %}<p><span class="dz-chip">brak kcal</span></p>{% endif %}
+  <div class="dz-know">
+    <span class="bar" aria-hidden="true"><i style="width:{{ (fam.ratio * 100)|round|int }}%"></i></span>
+    <span class="dz-item-meta">znajomość <b class="dz-num">{{ fam.known }}/{{ fam.total }}</b></span>
+  </div>
+  {% if r.url %}<p class="dz-sub"><a class="dz-link" href="{{ r.url }}" rel="noopener noreferrer" target="_blank">Otwórz przepis w źródle</a></p>{% endif %}
+</section>
+<h2 class="dz-eyebrow">Składniki</h2>
+<ul class="dz-list">
+{% for i in items %}
+  <li class="dz-item">
+    <div class="dz-item-main"><span>{{ i.text }}</span></div>
+    {% if i.state == 'home' %}<span class="dz-chip dz-chip--home">w domu</span>
+    {% elif i.state == 'known' %}<span class="dz-chip dz-chip--plain">znane</span>
+    {% elif i.state == 'missing' %}<span class="dz-chip">brak</span>
+    {% elif i.state == 'basic' %}<span class="dz-item-meta">podstawowy</span>
+    {% else %}<span class="dz-item-meta">nieznany</span>{% endif %}
+  </li>
+{% else %}<li class="dz-sub">Brak listy składników.</li>
+{% endfor %}
+</ul>
+{% endblock %}

@@ -162,3 +162,26 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font-sans)
 .dz-item-meta{color:var(--muted);font-size:13px}
 .dz-pending{display:block}
 .dz-chip--home{background:transparent;color:var(--accent);border:1px solid var(--accent)}
+
+/* E3: Katalog */
+.dz-eyebrow--flush{margin-top:0}
+.dz-full{flex-basis:100%;margin:0}
+.dz-filters{display:grid;gap:var(--space-3);grid-template-columns:repeat(auto-fit,minmax(150px,1fr));align-items:end;margin-top:var(--space-4)}
+.dz-card .dz-check{flex-direction:row;align-items:center;gap:var(--space-2);font:600 14px/20px var(--font-sans);color:var(--ink)}
+.dz-card input[type=checkbox]{width:18px;height:18px;accent-color:var(--accent)}
+.dz-recipes{list-style:none;margin:0;padding:0;display:grid;gap:var(--space-3);grid-template-columns:1fr}
+@media (min-width:860px){.dz-recipes{grid-template-columns:1fr 1fr}}
+.dz-recipe{display:flex;flex-direction:column;gap:var(--space-2);min-width:0}
+.dz-recipe.is-dismissed{opacity:.6}
+.dz-recipe p{margin:0}
+.dz-recipe-head{display:flex;gap:var(--space-2);justify-content:space-between;align-items:flex-start}
+.dz-recipe-title{font:700 17px/22px var(--font-display);margin:0;min-width:0;overflow-wrap:anywhere}
+.dz-recipe-title a{color:var(--ink);text-decoration:none}
+.dz-recipe-title a:hover{text-decoration:underline}
+.dz-flags{display:flex;gap:var(--space-1);flex:none}
+.dz-flags form{margin:0}
+.dz-icon-btn{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:var(--radius-md);border:1px solid var(--line);background:transparent;color:var(--muted);cursor:pointer;font-size:18px}
+.dz-icon-btn.is-on{color:var(--accent);border-color:var(--accent)}
+.dz-icon-btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.dz-btn[disabled]{opacity:.5;cursor:default}
+.dz-card textarea,.dz-card input[type=number]{max-width:100%}

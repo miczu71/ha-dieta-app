@@ -32,3 +32,9 @@ Dieta to planer posiłków wielodniowych: gotujesz raz, jeść będziesz kilka d
 Nawigacja `.dz-nav` (zakładki Profile / Co kupujemy, chip z liczbą pozycji do zatwierdzenia), lista `.dz-list` z wierszami `.dz-item`
 (składnik, znacznik `.dz-chip--home` „prawdopodobnie w domu”, meta w DM Mono) i kolejka `.dz-pending` w kartach z formularzem
 zatwierdzania. Adresy są względne: szablony dostają `root` ("" albo "../"), więc działają pod prefiksem Ingress.
+
+## E3: Katalog
+Zakładka `.dz-nav` „Katalog”. Karta przepisu `.dz-recipe` (tytuł, serce i „nie proponuj” jako `.dz-icon-btn` z SVG, źródło/kategoria/czas w `.dz-item-meta`,
+makro w `.dz-leg` na porcję, `.dz-know` z paskiem znajomości, „brakuje: …”). Plakietka „brak kcal” to `.dz-chip`. Odrzucone mają `.is-dismissed`
+(przyciemnione, tylko z filtrem „Pokaż odrzucone”). Filtry w `.dz-filters` (siatka auto-fit, bez przewijania poziomego na 390 px); szczegóły przepisu: składniki
+z plakietkami „w domu” (`.dz-chip--home`), „znane” (`.dz-chip--plain`), „brak” (`.dz-chip`). Tylko tokeny, bez literałów kolorów.

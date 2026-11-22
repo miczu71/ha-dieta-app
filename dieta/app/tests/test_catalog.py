@@ -168,6 +168,21 @@ def test_enrich_meta_ai_fills_and_junk_goes_to_pending(tmp_path: Path) -> None:
     assert len(asked) == 1  # śmieci nie są pytane ponownie
 
 
+def test_enrich_meta_llm_failure_keeps_items_for_retry(tmp_path: Path) -> None:
+    store = Store(tmp_path / "d.db")
+    rid = store.upsert_recipe(_recipe("a", "Dobry"), RecipeMeta(None, None, None, "pending"))
+    calls: list[int] = []
+
+    def down(titles: list[str]) -> list[dict[str, object]] | None:
+        calls.append(1)
+        return None
+
+    assert enrich_meta(store, down) == 0
+    assert store.get_meta(f"recipe_meta_asked:{rid}") is None
+    ok = lambda titles: [{"i": 0, "kategoria": "dinner", "dni": 3, "mrozenie": True}]  # noqa: E731
+    assert enrich_meta(store, ok) == 1
+
+
 def test_enrich_meta_without_ask_is_noop(tmp_path: Path) -> None:
     store = Store(tmp_path / "d.db")
     store.upsert_recipe(_recipe("a"), RecipeMeta(None, None, None, "pending"))

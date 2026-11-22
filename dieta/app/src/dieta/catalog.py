@@ -187,8 +187,10 @@ def enrich_meta(store: Store, ask: AskFn | None) -> int:
         reply = ask([p.title for p in batch])
         if reply is None:
             reply = ask([p.title for p in batch])
+        if reply is None:
+            continue  # awaria LLM: bez recipe_meta_asked, pozycje wrócą przy następnym przebiegu
         by_index: dict[int, dict[str, object]] = {}
-        for item in reply or []:
+        for item in reply:
             index = item.get("i") if isinstance(item, dict) else None
             if isinstance(index, int) and not isinstance(index, bool):
                 by_index[index] = item

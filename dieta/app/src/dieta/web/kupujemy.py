@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import threading
 from collections.abc import Callable
+from dataclasses import replace
 from datetime import date, datetime, timedelta
 from typing import cast
 
@@ -15,8 +16,8 @@ from fastapi.templating import Jinja2Templates
 
 from ..dictionary import Durability, make_llm_ask
 from ..settings import Settings
-from ..store import MappingRow, Store
-from ..sync import stats, sync
+from ..store import MEAL_CATEGORIES, MappingRow, PendingRecipeMeta, Store
+from ..sync import map_recipe_ingredients, stats, sync
 from ..zakupy_client import fetch_purchases
 
 log = logging.getLogger(__name__)
@@ -27,7 +28,15 @@ DURABILITY_LABELS: dict[str, str] = {
     "dry": "suche i puszki (miesiąc)",
     "frozen": "mrożonki (kilka miesięcy)",
 }
+MEAL_LABELS: dict[str, str] = {
+    "breakfast": "śniadanie",
+    "lunch": "obiad",
+    "dinner": "kolacja",
+    "snack": "przekąska",
+    "dessert": "deser",
+}
 TOP_LIMIT = 40
+ING_PREFIX = "ing:"
 SyncRunner = Callable[[], int]
 
 
@@ -61,13 +70,29 @@ def default_runner(settings: Settings, store: Store) -> SyncRunner:
 
 
 def review_queue(store: Store) -> list[MappingRow]:
-    """Do decyzji: mapowania `pending` oraz zmapowane składniki bez trwałości."""
-    return [
-        row
-        for row in store.mappings()
-        if row.name is not None
-        and (row.status == "pending" or (row.status in ("rule", "seed", "ai") and row.durability is None))
-    ]
+    """Do decyzji: mapowania `pending` oraz zmapowane składniki bez trwałości.
+
+    Składniki przepisów (kod ``ing:<nazwa>``) nie mają zakupu, więc nazwę biorą z ``source_name``
+    i trafiają tu tylko jako ``pending``.
+    """
+    queue: list[MappingRow] = []
+    for row in store.mappings():
+        recipe_ing = row.code.startswith(ING_PREFIX)
+        if row.name is None and recipe_ing and row.source_name:
+            row = replace(row, name=row.source_name)
+        # brak trwałości składnika przepisu nie blokuje znajomości — do kolejki tylko `pending`
+        no_durability = not recipe_ing and row.status in ("rule", "seed", "ai") and row.durability is None
+        if row.name is not None and (row.status == "pending" or no_durability):
+            queue.append(row)
+    return queue
+
+
+def recipe_queue(store: Store) -> list[PendingRecipeMeta]:
+    return store.pending_recipe_meta()
+
+
+def queue_size(store: Store) -> int:
+    return len(review_queue(store)) + len(recipe_queue(store))
 
 
 def make_router(
@@ -85,7 +110,7 @@ def make_router(
             "version": request.app.state.version,
             "durability_labels": DURABILITY_LABELS,
             "configured": bool(settings.zakupy_url and settings.zakupy_token),
-            "queue_size": len(review_queue(store)),
+            "queue_size": queue_size(store),
             "last_sync_at": store.get_meta("last_sync_at"),
             "last_sync_error": store.get_meta("last_sync_error") or "",
         }
@@ -127,6 +152,8 @@ def make_router(
             section="kupujemy",
             root="../",
             queue=review_queue(store),
+            recipe_queue=recipe_queue(store),
+            meal_labels=MEAL_LABELS,
             error=error,
         )
 
@@ -149,6 +176,22 @@ def make_router(
             store.approve(code, name, cast(Durability, durability))
         else:
             return back("zatwierdz", error="dane")
+        if code.startswith(ING_PREFIX):
+            await run_in_threadpool(map_recipe_ingredients, store, None)  # powiąż z przepisami
+        return back("zatwierdz")
+
+    @router.post("/kupujemy/zatwierdz-przepis")
+    async def decide_recipe(
+        recipe_id: int = Form(...),
+        category: str = Form(...),
+        storage_days: int = Form(...),
+        freezable: str = Form(""),
+    ) -> Response:
+        if recipe_id not in {p.id for p in recipe_queue(store)}:
+            return back("zatwierdz", error="nieznany")
+        if category not in MEAL_CATEGORIES or not 1 <= storage_days <= 14:
+            return back("zatwierdz", error="dane")
+        store.approve_recipe_meta(recipe_id, category, storage_days, freezable == "1")
         return back("zatwierdz")
 
     return router
