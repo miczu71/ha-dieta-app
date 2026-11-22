@@ -214,3 +214,12 @@ Commity: `1967692` W1 konektory (Respo, Lidl, Policzona), `bb09e19` W2 (migracja
 Weryfikacja: 137 testów, ruff/mypy czyste; verifier W1 po REJECT (kcal partii Policzonej → podział przez porcje / None), W2 i W3 APPROVE; Playwright 390 px jasny i 1280 px ciemny bez przewijania poziomego.
 Nieblokujące do raportu wydania: fetcher bez allowlisty hostów po redirectach, `HTTPException` nie łapany jako `FetchError`, brak testów locka runnera / `_nightly` / limitu 5 MB; Policzona rozpoznaje tylko frazę partii „z N g … będzie mieć N kcal”.
 Pomiar znajomości (Policzona, odsetek ≥70/60/50%) — wymaga żywego crawla z tokenem Zakupów, po instalacji 0.1.0. Dalej: simplify → code-review → release 0.1.0.
+
+## Wydanie 0.1.0 — 2026-11-22
+Tag `v0.1.0` (non-draft), CI zielone (test + docker amd64/arm64), 159 testów, ruff/mypy czyste. Przed wydaniem: simplify, code-review, silent-failure-hunter, pr-test-analyzer, security review; blokujące naprawione (awaria LLM → pending, skip bez TTL, pusta sitemapa, testy _nightly/lock/5 MB/redirect). pubguard: flagi tylko w fixturach HTML stron źródłowych; usunięty numer telefonu firmy z 2 fixtur.
+Dług (nieblokujące): `_map_new` przy awarii LLM nadal pisze pending; allowlista hostów po redirectach (www.); scheduler poza lifespan; typ wpisu zamiast prefiksu `ing:`; wspólna kaskada mapowania; kolumna has_nutrition wyliczalna; cache znajomości.
+Czeka na usera: rejestracja repo w sklepie HA, instalacja, `zakupy_token` (`! secret-run`) i `zakupy_url=http://f0987e0f-lidl:8099`; potem pomiar znajomości (Policzona: ≥70/60/50
+## Wydanie 0.1.0 — 2026-11-22
+Tag `v0.1.0` (non-draft), CI zielone (test + docker amd64/arm64), 159 testów, ruff/mypy czyste. Przed wydaniem: simplify, code-review, silent-failure-hunter, pr-test-analyzer, security review; blokujące naprawione (awaria LLM → pending, skip bez TTL, pusta sitemapa, testy _nightly/lock/5 MB/redirect). pubguard: flagi tylko w fixturach HTML stron źródłowych; usunięty numer telefonu firmy z 2 fixtur.
+Dług (nieblokujące): `_map_new` przy awarii LLM nadal pisze pending; SameHostRedirect odrzuca zmianę subdomeny (www.); scheduler poza lifespan; `ing:` jako prefiks w `mapping`; zduplikowana kaskada mapowania; kolumna has_nutrition wyliczalna.
+Czeka na usera: rejestracja repo w sklepie HA i instalacja, `zakupy_token` (`! secret-run`) i `zakupy_url=http://f0987e0f-lidl:8099`; potem pomiar znajomości (Policzona: ≥70/60/50%) na żywym crawlu. Następny: E4 planer (wywiad `grill-me`).
