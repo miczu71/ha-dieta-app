@@ -129,6 +129,10 @@ def crawl(
     """
     name = source.name
     error_key = f"last_crawl_error:{name}"
+    cooldown_key = f"crawl_cooldown:{name}"
+    if store.get_meta(cooldown_key) == today.isoformat():
+        store.set_meta(error_key, "wstrzymane do jutra po HTTP 429 (serwis ogranicza tempo)")
+        return CrawlResult(0, 0, 0, 0, False)
     store.set_meta(error_key, "")
     try:
         urls = source.list_urls(fetch=fetch)
@@ -178,6 +182,7 @@ def crawl(
                 rate_limited += 1
                 if rate_limited >= RATE_LIMIT_STOP:
                     store.set_meta(error_key, f"ograniczenie tempa (HTTP 429), przerwano: {url}"[:300])
+                    store.set_meta(cooldown_key, today.isoformat())  # ponowna próba najwcześniej jutro
                     break
                 continue
             rate_limited = 0

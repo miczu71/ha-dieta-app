@@ -213,8 +213,12 @@ def test_crawl_stops_after_consecutive_429_and_refunds_limit(tmp_path: Path) -> 
     assert "429" in (store.get_meta("last_crawl_error:respo") or "")
     assert store.meta_keys("crawl_skip:respo:") == set()  # 429 nie jest trwałym pominięciem
     assert store.get_meta("crawl_used:respo") == f"{TODAY.isoformat()}:1"  # 429 nie zjada dziennego limitu
-    again = crawl(store, source, fetch=_fetch_429(ok=set(urls)), today=TODAY, limit=50)
-    assert again.added == 19
+    same_day = _fetch_429(ok=set(urls))
+    paused = crawl(store, source, fetch=same_day, today=TODAY, limit=50)
+    assert (paused.added, same_day.calls) == (0, [])  # type: ignore[attr-defined]  # cooldown do następnego dnia
+    assert "wstrzymane" in (store.get_meta("last_crawl_error:respo") or "")
+    next_day = crawl(store, source, fetch=_fetch_429(ok=set(urls)), today=date(2026, 11, 23), limit=50)
+    assert next_day.added == 19
 
 
 def test_crawl_isolated_429_does_not_stop(tmp_path: Path) -> None:
