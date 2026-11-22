@@ -193,3 +193,9 @@ Domowa tylko składniki. Przepisy.pl, Cookpad, Codziennie Fit pominięte. Cookid
 
 ## E1 ZAKOŃCZONY 2026-11-22
 Commity: `c33a6c3` szkielet, `4d42329` styl, `67fff5a` W1, `6dc000b` W2, `3a66b3f` W3. 38 testów, ruff/mypy czyste, docker build + smoke OK, CI zielone, Playwright 390/1280 px (oba motywy). Bez wydania (0.1.0 po E3). Następny: E2.
+
+## E2 KOD ZAKOŃCZONY 2026-11-22 (wydanie Zakupów 1.10.0 przed nami)
+Commity: Dieta `ba930ef` plan, `d30a009` W2 (klient, snapshot, słownik, profil), `f879da4` W3 (ekran Co kupujemy + kolejka, nocny sync); Zakupy `df9f1b6` W1 (`GET /api/v1/purchases`, token Bearer).
+Weryfikacja: Dieta 88 testów, ruff/mypy czyste; Zakupy 862 testy (pełny zestaw), ruff/mypy czyste; verifier W1/W3 APPROVE, W2 po REJECT (seed ignorowany przez .gitignore → seed w `dieta/seed/` i bez wydatków/dat); Playwright 390 px jasny i 1280 px ciemny bez przewijania poziomego.
+Do zrobienia przed E3: wydanie Zakupów 1.10.0 (`simplify` → `code-review` → `release`), potem user ustawia ten sam token w `api_token` (Zakupy) i `zakupy_token` + `zakupy_url=http://f0987e0f-lidl:8099` (Dieta) i sprawdzamy sync na żywo. Dieta bez wydania (0.1.0 po E3).
+Otwarte (nieblokujące): seed bez trwałości → składnik trafia do kolejki „bez trwałości”; lista reguł `dictionary.py` (~24 słów) do przejrzenia; brak testu `_nightly`; build obrazu Dockera z `dieta/seed/*.json` niesprawdzony (CI przy pushu).
