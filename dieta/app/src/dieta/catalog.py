@@ -19,6 +19,7 @@ _log = logging.getLogger(__name__)
 
 MAX_STORAGE_DAYS = 14
 SKIP_TTL_DAYS = 30  # po tylu dniach strona „nie-przepis” jest pobierana ponownie
+RATE_LIMIT_STOP = 3  # tyle kolejnych HTTP 429 (po backoffie fetchera) przerywa przebieg źródła
 
 _CATEGORY_HINTS: dict[str, str] = {
     "breakfast": "breakfast",
@@ -148,7 +149,7 @@ def crawl(
         if _skip_active(store.get_meta(key), today)
     }
     used = _used_today(store, name, today)
-    added = skipped = errors = already = 0
+    added = skipped = errors = already = rate_limited = 0
     limit_reached = False
     for url in urls:
         if url in known or url in skipped_urls:
@@ -167,9 +168,19 @@ def crawl(
                 continue
             store.upsert_recipe(recipe, meta_from_rules(recipe))
             added += 1
+            rate_limited = 0
         except Exception as exc:
             errors += 1
             store.set_meta(error_key, f"{url}: {type(exc).__name__}: {exc}"[:300])
+            if isinstance(exc, FetchError) and exc.status == 429:
+                used -= 1  # zapytanie odrzucone przez serwis nie zjada dziennego limitu
+                store.set_meta(f"crawl_used:{name}", f"{today.isoformat()}:{used}")
+                rate_limited += 1
+                if rate_limited >= RATE_LIMIT_STOP:
+                    store.set_meta(error_key, f"ograniczenie tempa (HTTP 429), przerwano: {url}"[:300])
+                    break
+                continue
+            rate_limited = 0
             if isinstance(exc, FetchError) and exc.permanent:
                 store.set_meta(skip_prefix + url, f"{today.isoformat()} {exc}"[:200])
     _record_counts(store, name, errors, skipped)

@@ -1,7 +1,8 @@
 from datetime import date
 from pathlib import Path
 
-from dieta.catalog import classify_meal, crawl, enrich_meta
+from dieta.catalog import RATE_LIMIT_STOP, classify_meal, crawl, enrich_meta
+from dieta.fetcher import FetchError
 from dieta.sources.base import RawIngredient, Recipe
 from dieta.store import RecipeMeta, Store
 
@@ -186,3 +187,39 @@ def test_enrich_meta_without_ask_is_noop(tmp_path: Path) -> None:
     store.upsert_recipe(_recipe("a"), RecipeMeta(None, None, None, "pending"))
     assert enrich_meta(store, None) == 0
     assert len(store.pending_recipe_meta()) == 1
+
+
+def _fetch_429(ok: set[str]):  # type: ignore[no-untyped-def]
+    calls: list[str] = []
+
+    def fetch(url: str) -> str:
+        calls.append(url)
+        if url in ok:
+            return "<html/>"
+        raise FetchError("HTTPError 429", status=429)
+
+    fetch.calls = calls  # type: ignore[attr-defined]
+    return fetch
+
+
+def test_crawl_stops_after_consecutive_429_and_refunds_limit(tmp_path: Path) -> None:
+    store = Store(tmp_path / "d.db")
+    urls = [f"u{i}" for i in range(20)]
+    source = FakeSource(urls)
+    fetch = _fetch_429(ok={"u0"})
+    result = crawl(store, source, fetch=fetch, today=TODAY, limit=50)
+    assert result.added == 1
+    assert len(fetch.calls) == 1 + RATE_LIMIT_STOP  # type: ignore[attr-defined]
+    assert "429" in (store.get_meta("last_crawl_error:respo") or "")
+    assert store.meta_keys("crawl_skip:respo:") == set()  # 429 nie jest trwałym pominięciem
+    assert store.get_meta("crawl_used:respo") == f"{TODAY.isoformat()}:1"  # 429 nie zjada dziennego limitu
+    again = crawl(store, source, fetch=_fetch_429(ok=set(urls)), today=TODAY, limit=50)
+    assert again.added == 19
+
+
+def test_crawl_isolated_429_does_not_stop(tmp_path: Path) -> None:
+    store = Store(tmp_path / "d.db")
+    source = FakeSource(["u1", "u2", "u3", "u4"])
+    fetch = _fetch_429(ok={"u1", "u3", "u4"})
+    result = crawl(store, source, fetch=fetch, today=TODAY, limit=50)
+    assert (result.added, result.errors) == (3, 1)

@@ -21,6 +21,9 @@ USER_AGENT = "dieta-addon/0.1"
 TIMEOUT_S = 20
 MIN_INTERVAL_S = 1.0
 MAX_BYTES = 5_000_000
+BACKOFF_S = (10.0, 30.0)  # odczekanie przed ponowieniem po HTTP 429 (gdy brak Retry-After)
+MAX_RETRY_AFTER_S = 60.0
+MAX_INTERVAL_S = 8.0  # po 429 odstęp między zapytaniami rośnie ×2 do tego limitu (do końca przebiegu)
 
 Opener = Callable[[urllib.request.Request], Any]
 
@@ -41,6 +44,14 @@ class FetchError(Exception):
         """Błąd trwały (4xx poza 429, blokada robots) — nie ma sensu ponawiać co noc."""
         client_error = self.status is not None and 400 <= self.status < 500 and self.status != 429
         return client_error or self.blocked
+
+
+class _RateLimited(Exception):
+    """Wewnętrzny sygnał HTTP 429 (``delay`` = Retry-After w sekundach, gdy podany)."""
+
+    def __init__(self, delay: float | None):
+        super().__init__("429")
+        self.delay = delay
 
 
 class SameHostRedirect(urllib.request.HTTPRedirectHandler):
@@ -76,23 +87,43 @@ def make_fetch(
 
     open_fn: Opener = opener or default_open
 
-    def get(url: str) -> str:
-        parts = urllib.parse.urlsplit(url)
-        if parts.scheme not in ("http", "https") or not parts.netloc:
-            raise FetchError("niedozwolony adres")
-        wait = min_interval - (clock() - last[0])
+    interval = [min_interval]
+
+    def retry_after(exc: urllib.error.HTTPError) -> float | None:
+        try:
+            return min(float(exc.headers.get("Retry-After", "")), MAX_RETRY_AFTER_S)
+        except (AttributeError, TypeError, ValueError):
+            return None
+
+    def get_once(url: str) -> tuple[bytes, str]:
+        wait = interval[0] - (clock() - last[0])
         if wait > 0:
             sleep(wait)
         last[0] = clock()
         try:
             req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
             with closing(open_fn(req)) as resp:
-                raw = resp.read(MAX_BYTES + 1)
-                charset = resp.headers.get_content_charset() or "utf-8"
+                return resp.read(MAX_BYTES + 1), resp.headers.get_content_charset() or "utf-8"
         except urllib.error.HTTPError as exc:
+            if exc.code == 429:
+                interval[0] = min(interval[0] * 2, MAX_INTERVAL_S)
+                raise _RateLimited(retry_after(exc)) from None
             raise FetchError(f"HTTPError {exc.code}", status=exc.code) from None
         except (urllib.error.URLError, OSError, ValueError) as exc:
             raise FetchError(f"{type(exc).__name__}") from None
+
+    def get(url: str) -> str:
+        parts = urllib.parse.urlsplit(url)
+        if parts.scheme not in ("http", "https") or not parts.netloc:
+            raise FetchError("niedozwolony adres")
+        for attempt in range(len(BACKOFF_S) + 1):
+            try:
+                raw, charset = get_once(url)
+                break
+            except _RateLimited as limited:
+                if attempt == len(BACKOFF_S):
+                    raise FetchError("HTTPError 429", status=429) from None
+                sleep(limited.delay or BACKOFF_S[attempt])
         if len(raw) > MAX_BYTES:
             raise FetchError("odpowiedź zbyt duża")
         try:
