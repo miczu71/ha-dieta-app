@@ -199,3 +199,8 @@ Commity: Dieta `ba930ef` plan, `d30a009` W2 (klient, snapshot, słownik, profil)
 Weryfikacja: Dieta 88 testów, ruff/mypy czyste; Zakupy 862 testy (pełny zestaw), ruff/mypy czyste; verifier W1/W3 APPROVE, W2 po REJECT (seed ignorowany przez .gitignore → seed w `dieta/seed/` i bez wydatków/dat); Playwright 390 px jasny i 1280 px ciemny bez przewijania poziomego.
 Do zrobienia przed E3: wydanie Zakupów 1.10.0 (`simplify` → `code-review` → `release`), potem user ustawia ten sam token w `api_token` (Zakupy) i `zakupy_token` + `zakupy_url=http://f0987e0f-lidl:8099` (Dieta) i sprawdzamy sync na żywo. Dieta bez wydania (0.1.0 po E3).
 Otwarte (nieblokujące): seed bez trwałości → składnik trafia do kolejki „bez trwałości”; lista reguł `dictionary.py` (~24 słów) do przejrzenia; brak testu `_nightly`; build obrazu Dockera z `dieta/seed/*.json` niesprawdzony (CI przy pushu).
+
+## Wydanie Zakupów 1.10.0 — 2026-11-22
+Wydane (non-draft, tag `v1.10.0`, commit `e720540`), zainstalowane przez Supervisor, kontener działa. Przed wydaniem: simplify, code-review, silent-failure-hunter, pr-test-analyzer, security review (bez blokujących; poprawione: `spend` po rabacie, strip `api_token`, log odrzuconych prób, testy granic okna). Pełny zestaw: 865 testów. Pubguard: 0 flag.
+Na żywo (przez proxy Ingress, `api_token` puste): `/api/v1/purchases` → 503 „API wyłączone”, inna trasa spoza Ingressu → 403 — zgodnie z projektem.
+Czeka na usera: ten sam długi losowy token (≥32 znaki) w `api_token` (Zakupy) i `zakupy_token` w Diecie, `zakupy_url=http://f0987e0f-lidl:8099`; potem test 200 i sync. Dalej: E3 (wywiad `grill-me`).
