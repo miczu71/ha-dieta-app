@@ -190,3 +190,6 @@ Własna tożsamość, niezależna od Zakupów. Porównanie: https://claude.ai/ar
 Raport: `docs/PLAN_E0.md` (RAPORT KOŃCOWY), pomiar `docs/POMIAR_znajomosc.md`. Źródła na E3: Centrum Respo, przepisy.lidl.pl, Aniagotuje (JSON-LD),
 Policzona Szama i Healthy Omnomnom (parser HTML), YT Policzonej Szamy przez RSS (pełna historia = Data API, później). Kwestia Smaku/Smaker/Kuchnia
 Domowa tylko składniki. Przepisy.pl, Cookpad, Codziennie Fit pominięte. Cookidoo opcjonalne (sonda czeka na login). Następny: E1 (wywiad zakończony 2026-11-22, plan w `~/.claude/plans/zaczynajmy-z-roadmapa-diety-*.md`).
+
+## E1 ZAKOŃCZONY 2026-11-22
+Commity: `c33a6c3` szkielet, `4d42329` styl, `67fff5a` W1, `6dc000b` W2, `3a66b3f` W3. 38 testów, ruff/mypy czyste, docker build + smoke OK, CI zielone, Playwright 390/1280 px (oba motywy). Bez wydania (0.1.0 po E3). Następny: E2.
