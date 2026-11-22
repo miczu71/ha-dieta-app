@@ -1,0 +1,1563 @@
+[
+{
+"name": "Chleb tost. pszenny1",
+"n": 6,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "chleb tostowy pszenny"
+},
+{
+"name": "Piramidki smaku",
+"n": 3,
+"cat": "food",
+"klasa": "slodycze_przekaski",
+"skladnik": ""
+},
+{
+"name": "Camembert 120g",
+"n": 5,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "ser camembert"
+},
+{
+"name": "Twaróg klinek półtł.",
+"n": 8,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "twaróg klinek półtłusty"
+},
+{
+"name": "Filety z makreli,sos",
+"n": 5,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "filety z makreli w sosie"
+},
+{
+"name": "Filety z makreli",
+"n": 3,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "filety z makreli"
+},
+{
+"name": "Ser gouda 400g",
+"n": 7,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "ser gouda"
+},
+{
+"name": "Almette Serek pusz.1",
+"n": 3,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "serek topiony almette"
+},
+{
+"name": "Łosoś wędzony 100g",
+"n": 5,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "łosoś wędzony"
+},
+{
+"name": "Pstrąg tęczowy filet",
+"n": 5,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "filet z pstrąga tęczowego"
+},
+{
+"name": "Dr.Oetker Galaretka",
+"n": 5,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "galaretka dr. oetker"
+},
+{
+"name": "Ser edam 250g",
+"n": 5,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "ser edam"
+},
+{
+"name": "Mleko UHT 1,5%",
+"n": 12,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "mleko uht 1,5%"
+},
+{
+"name": "Lody na pat.w czek.",
+"n": 3,
+"cat": "food",
+"klasa": "slodycze_przekaski",
+"skladnik": ""
+},
+{
+"name": "Bułka kajzerka 1",
+"n": 5,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "bułka kajzerka"
+},
+{
+"name": "Ser sałatkowy 200g",
+"n": 13,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "ser sałatkowy"
+},
+{
+"name": "Ryż biały 1kg",
+"n": 3,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "ryż biały"
+},
+{
+"name": "Drożdże Babuni",
+"n": 4,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "drożdże"
+},
+{
+"name": "Jogurt grecki 10%",
+"n": 8,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "jogurt grecki 10%"
+},
+{
+"name": "Doritos Nacho Chipsy",
+"n": 17,
+"cat": "food",
+"klasa": "slodycze_przekaski",
+"skladnik": ""
+},
+{
+"name": "Twaróg klinek chudy",
+"n": 4,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "twaróg klinek chudy"
+},
+{
+"name": "Snickers Duo baton",
+"n": 3,
+"cat": "food",
+"klasa": "slodycze_przekaski",
+"skladnik": ""
+},
+{
+"name": "Budweiser piwo",
+"n": 3,
+"cat": "food",
+"klasa": "alkohol",
+"skladnik": ""
+},
+{
+"name": "Mozzarella light",
+"n": 11,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "mozzarella light"
+},
+{
+"name": "Czekolada gorzka 74%",
+"n": 26,
+"cat": "food",
+"klasa": "slodycze_przekaski",
+"skladnik": ""
+},
+{
+"name": "Lody familijne1000ml",
+"n": 7,
+"cat": "food",
+"klasa": "slodycze_przekaski",
+"skladnik": ""
+},
+{
+"name": "Lody Premium",
+"n": 3,
+"cat": "food",
+"klasa": "slodycze_przekaski",
+"skladnik": ""
+},
+{
+"name": "Pistacje kalifor.",
+"n": 5,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "pistacje"
+},
+{
+"name": "Fasola b. Cannellini",
+"n": 3,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "fasola cannellini"
+},
+{
+"name": "Pomidory krojone",
+"n": 3,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "pomidory krojone"
+},
+{
+"name": "Tortilla pełnoziar.",
+"n": 3,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "tortilla pełnoziarnista"
+},
+{
+"name": "Banany luz",
+"n": 26,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "banany"
+},
+{
+"name": "Mandarynki luz",
+"n": 7,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "mandarynki"
+},
+{
+"name": "Pomarańcze deser.luz",
+"n": 12,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "pomarańcze"
+},
+{
+"name": "Cytryny 500g",
+"n": 5,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "cytryny"
+},
+{
+"name": "Jabłka Golden deli.",
+"n": 7,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "jabłka golden delicious"
+},
+{
+"name": "Jabłka czerwone luz",
+"n": 3,
+"cat": "?",
+"klasa": "skladnik",
+"skladnik": "jabłka czerwone"
+},
+{
+"name": "Gruszka Konferen.luz",
+"n": 10,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "gruszki conference"
+},
+{
+"name": "Gruszki deserowe",
+"n": 4,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "gruszki deserowe"
+},
+{
+"name": "Jabłka Pinova luz",
+"n": 16,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "jabłka pinova"
+},
+{
+"name": "Czereśnie, luz",
+"n": 8,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "czereśnie"
+},
+{
+"name": "Nektarynki luz",
+"n": 4,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "nektarynki"
+},
+{
+"name": "Śliwki polskie luz",
+"n": 3,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "śliwki"
+},
+{
+"name": "Winogrona jas.bezp.",
+"n": 7,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "winogrona białe bezpestkowe"
+},
+{
+"name": "Winogrono j.bezp.500",
+"n": 7,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "winogrona białe bezpestkowe"
+},
+{
+"name": "Awokado zielone szt.",
+"n": 9,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "awokado"
+},
+{
+"name": "Awokado Hass 2szt.",
+"n": 4,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "awokado hass"
+},
+{
+"name": "Kaki szt.",
+"n": 3,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "kaki"
+},
+{
+"name": "Kiwi Gold szt.",
+"n": 9,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "kiwi gold"
+},
+{
+"name": "Awokado Hass szt.",
+"n": 8,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "awokado hass"
+},
+{
+"name": "Bataty luz",
+"n": 3,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "bataty"
+},
+{
+"name": "Jeżyny 125g",
+"n": 9,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "jeżyny"
+},
+{
+"name": "Borówka amery.400g",
+"n": 3,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "borówka amerykańska"
+},
+{
+"name": "Jabłka Red Delicio.",
+"n": 3,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "jabłka red delicious"
+},
+{
+"name": "Sałata lodowa szt.",
+"n": 3,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "sałata lodowa"
+},
+{
+"name": "Sałata rzymska szt.",
+"n": 4,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "sałata rzymska"
+},
+{
+"name": "Ogórki zielo.PLszt.",
+"n": 5,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "ogórki zielone"
+},
+{
+"name": "Rzodkiewki pęczek",
+"n": 4,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "rzodkiewki"
+},
+{
+"name": "Szparagi zielon.500g",
+"n": 3,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "szparagi zielone"
+},
+{
+"name": "Włoszczyzna pęczek",
+"n": 9,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "włoszczyzna"
+},
+{
+"name": "Cukinia luz",
+"n": 9,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "cukinia"
+},
+{
+"name": "Papryka mix 500g",
+"n": 4,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "papryka mix"
+},
+{
+"name": "Papryka czerwona luz",
+"n": 18,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "papryka czerwona"
+},
+{
+"name": "Kalarepa szt.",
+"n": 6,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "kalarepa"
+},
+{
+"name": "Marchew luz",
+"n": 3,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "marchew"
+},
+{
+"name": "Marchew z Kaszub 1kg",
+"n": 6,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "marchew"
+},
+{
+"name": "Seler naciowy szt.",
+"n": 3,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "seler naciowy"
+},
+{
+"name": "Kukurydza 2szt.",
+"n": 3,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "kukurydza"
+},
+{
+"name": "Brokuły 500g",
+"n": 9,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "brokuły"
+},
+{
+"name": "Pieczarki 500g",
+"n": 14,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "pieczarki"
+},
+{
+"name": "Koperek pęczek",
+"n": 3,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "koperek"
+},
+{
+"name": "Zielenina mix pęczek",
+"n": 4,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "zielenina mix"
+},
+{
+"name": "Ziemn.wczesn.PL luz",
+"n": 9,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "ziemniaki wczesne"
+},
+{
+"name": "Ziemniaki jadalne PL",
+"n": 3,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "ziemniaki jadalne"
+},
+{
+"name": "Cebula żółta luz",
+"n": 10,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "cebula żółta"
+},
+{
+"name": "Cebula czerwona luz",
+"n": 8,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "cebula czerwona"
+},
+{
+"name": "Ogórki grunt. PL luz",
+"n": 3,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "ogórki gruntowe"
+},
+{
+"name": "Pomidory mal. PL luz",
+"n": 5,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "pomidory małe"
+},
+{
+"name": "Bio Ogórki szt.",
+"n": 3,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "ogórki"
+},
+{
+"name": "Bio Buraki goto.500g",
+"n": 3,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "buraki gotowane"
+},
+{
+"name": "Ayran Jogurt Pitny",
+"n": 7,
+"cat": "food",
+"klasa": "napoj",
+"skladnik": ""
+},
+{
+"name": "Ryż Basmati",
+"n": 4,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "ryż basmati"
+},
+{
+"name": "HighProtein Pudding3",
+"n": 4,
+"cat": "food",
+"klasa": "gotowe",
+"skladnik": ""
+},
+{
+"name": "Fasola czerw. Kidney",
+"n": 3,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "fasola czerwona kidney"
+},
+{
+"name": "LodyFamilijne1000ml",
+"n": 4,
+"cat": "food",
+"klasa": "slodycze_przekaski",
+"skladnik": ""
+},
+{
+"name": "Bagietka duża",
+"n": 34,
+"cat": "food",
+"klasa": "gotowe",
+"skladnik": ""
+},
+{
+"name": "Hummus z dodat. 175g",
+"n": 5,
+"cat": "food",
+"klasa": "gotowe",
+"skladnik": ""
+},
+{
+"name": "Lody na patyku",
+"n": 3,
+"cat": "food",
+"klasa": "slodycze_przekaski",
+"skladnik": ""
+},
+{
+"name": "Napój Coca-Cola",
+"n": 3,
+"cat": "food",
+"klasa": "napoj",
+"skladnik": ""
+},
+{
+"name": "Tymbark Shot.",
+"n": 9,
+"cat": "food",
+"klasa": "napoj",
+"skladnik": ""
+},
+{
+"name": "Rosół,bulion,kostka",
+"n": 3,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "bulion kostka rosołowa"
+},
+{
+"name": "Łowicz Dżem 100%",
+"n": 3,
+"cat": "food",
+"klasa": "gotowe",
+"skladnik": ""
+},
+{
+"name": "Frankfurterki",
+"n": 3,
+"cat": "food",
+"klasa": "gotowe",
+"skladnik": ""
+},
+{
+"name": "Jogurt natur. 200g",
+"n": 5,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "jogurt naturalny"
+},
+{
+"name": "Twaróg kostka półtł.",
+"n": 4,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "twaróg półtłusty"
+},
+{
+"name": "Vifon Zupa błyskaw.1",
+"n": 4,
+"cat": "food",
+"klasa": "gotowe",
+"skladnik": ""
+},
+{
+"name": "Twarożek Grani",
+"n": 6,
+"cat": "food",
+"klasa": "slodycze_przekaski",
+"skladnik": ""
+},
+{
+"name": "Szprot wędz. WINTER",
+"n": 10,
+"cat": "food",
+"klasa": "gotowe",
+"skladnik": ""
+},
+{
+"name": "Karkówka wieprzowa",
+"n": 4,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "karkówka wieprzowa"
+},
+{
+"name": "Filet z kurczak.św.",
+"n": 3,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "piers z kurczaka"
+},
+{
+"name": "Uda z kurczaka",
+"n": 6,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "uda z kurczaka"
+},
+{
+"name": "Karmi 0%Classic piwo",
+"n": 6,
+"cat": "food",
+"klasa": "alkohol",
+"skladnik": ""
+},
+{
+"name": "Burger wołowy 220g",
+"n": 3,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "burger wołowy"
+},
+{
+"name": "Makaron Vermicelli",
+"n": 3,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "makaron vermicelli"
+},
+{
+"name": "Żeberka wieprzowe",
+"n": 3,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "żeberka wieprzowe"
+},
+{
+"name": "Piątnica Śmietana18%",
+"n": 4,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "śmietana 18%"
+},
+{
+"name": "Łomża 0% piwo",
+"n": 8,
+"cat": "food",
+"klasa": "alkohol",
+"skladnik": ""
+},
+{
+"name": "Bułka mleczna",
+"n": 3,
+"cat": "food",
+"klasa": "gotowe",
+"skladnik": ""
+},
+{
+"name": "Jaja ściółkowe L",
+"n": 6,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "jajka"
+},
+{
+"name": "Sokołów Tatar wołowy",
+"n": 7,
+"cat": "food",
+"klasa": "gotowe",
+"skladnik": ""
+},
+{
+"name": "Miłosław piwo 0%",
+"n": 3,
+"cat": "food",
+"klasa": "alkohol",
+"skladnik": ""
+},
+{
+"name": "Mięso z nogi,kurczak",
+"n": 3,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "mięso z nogi kurczaka"
+},
+{
+"name": "WiniaryMajonez lekki",
+"n": 5,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "majonez"
+},
+{
+"name": "Musztarda",
+"n": 3,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "musztarda"
+},
+{
+"name": "BIO Vegangurt owoc.",
+"n": 3,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "jogurt roślinny owocowy"
+},
+{
+"name": "Masło z pol.mlecz.",
+"n": 4,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "masło"
+},
+{
+"name": "Filet z indyka XXL",
+"n": 4,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "filet z indyka"
+},
+{
+"name": "Parówki z szynki XXL",
+"n": 9,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "parówki"
+},
+{
+"name": "Mąka pełnoziarnista",
+"n": 3,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "mąka pełnoziarnista"
+},
+{
+"name": "Dżem truskawkowy",
+"n": 3,
+"cat": "food",
+"klasa": "slodycze_przekaski",
+"skladnik": ""
+},
+{
+"name": "Kurczak Bies.Podroby",
+"n": 4,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "podroby z kurczaka"
+},
+{
+"name": "Pielmieni woł-wieprz",
+"n": 5,
+"cat": "food",
+"klasa": "gotowe",
+"skladnik": ""
+},
+{
+"name": "Dżem 400g",
+"n": 3,
+"cat": "food",
+"klasa": "slodycze_przekaski",
+"skladnik": ""
+},
+{
+"name": "Chipsy wielozbożowe",
+"n": 4,
+"cat": "food",
+"klasa": "slodycze_przekaski",
+"skladnik": ""
+},
+{
+"name": "Bio napój owsiany 2",
+"n": 4,
+"cat": "food",
+"klasa": "napoj",
+"skladnik": ""
+},
+{
+"name": "Zielone Fermy Filet",
+"n": 8,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "filet z kurczaka"
+},
+{
+"name": "Podroby z kurczaka",
+"n": 6,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "podroby z kurczaka"
+},
+{
+"name": "Tofu naturalne,wędz1",
+"n": 4,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "tofu wędzone"
+},
+{
+"name": "Rurki z krem.wanil.2",
+"n": 4,
+"cat": "food",
+"klasa": "slodycze_przekaski",
+"skladnik": ""
+},
+{
+"name": "HP Serek wiejski",
+"n": 30,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "twaróg chudy (serek wiejski)"
+},
+{
+"name": "Mąka luksusowa 550",
+"n": 8,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "mąka pszenna typ 550"
+},
+{
+"name": "Loopeas Chrupki",
+"n": 13,
+"cat": "food",
+"klasa": "slodycze_przekaski",
+"skladnik": ""
+},
+{
+"name": "Łaciaty Jogurt Prot+",
+"n": 5,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "jogurt naturalny wysokobiałkowy"
+},
+{
+"name": "Polędwica łososiowa",
+"n": 3,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "polędwica z łososia"
+},
+{
+"name": "Szynka wołowa",
+"n": 4,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "szynka wołowa"
+},
+{
+"name": "Piątnica Skyr pitny2",
+"n": 3,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "skyr pitny"
+},
+{
+"name": "Pączek nadz.wieloow.",
+"n": 10,
+"cat": "food",
+"klasa": "slodycze_przekaski",
+"skladnik": ""
+},
+{
+"name": "Bułka Brioche z sez.",
+"n": 3,
+"cat": "food",
+"klasa": "gotowe",
+"skladnik": ""
+},
+{
+"name": "Bajgiel z makiem100g",
+"n": 17,
+"cat": "food",
+"klasa": "gotowe",
+"skladnik": ""
+},
+{
+"name": "Ł. Protein+ Twarożek",
+"n": 6,
+"cat": "food",
+"klasa": "slodycze_przekaski",
+"skladnik": ""
+},
+{
+"name": "Skyr pitny b. cukru",
+"n": 25,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "skyr pitny bez cukru"
+},
+{
+"name": "TymbarkMusly granola",
+"n": 3,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "granola"
+},
+{
+"name": "Grycan Lody familij.",
+"n": 4,
+"cat": "food",
+"klasa": "slodycze_przekaski",
+"skladnik": ""
+},
+{
+"name": "Ł.Piwo 0% agrest 20%",
+"n": 3,
+"cat": "food",
+"klasa": "napoj",
+"skladnik": ""
+},
+{
+"name": "Loopeas HP chrupki",
+"n": 9,
+"cat": "food",
+"klasa": "slodycze_przekaski",
+"skladnik": ""
+},
+{
+"name": "Oliwki bez pestek",
+"n": 3,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "oliwki bez pestek"
+},
+{
+"name": "Jamón serrano szynka",
+"n": 3,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "szynka serrano (jamón)"
+},
+{
+"name": "Pierś z indyka plas.",
+"n": 15,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "pierś z indyka w plasterkach"
+},
+{
+"name": "PaprykaOstraKamis16g",
+"n": 3,
+"cat": "?",
+"klasa": "skladnik",
+"skladnik": "papryka ostra"
+},
+{
+"name": "SerMozWiórkiDel 300g",
+"n": 12,
+"cat": "?",
+"klasa": "skladnik",
+"skladnik": "ser mozzarella wiórki"
+},
+{
+"name": "MąkPizzGustoBel1kg",
+"n": 8,
+"cat": "?",
+"klasa": "skladnik",
+"skladnik": "mąka pszenna do pizzy"
+},
+{
+"name": "BurrataGustoBe125g",
+"n": 6,
+"cat": "?",
+"klasa": "skladnik",
+"skladnik": "burrata"
+},
+{
+"name": "PomidGusBello400g",
+"n": 3,
+"cat": "?",
+"klasa": "skladnik",
+"skladnik": "pomidory z puszki"
+},
+{
+"name": "PomidGusBello400g",
+"n": 3,
+"cat": "?",
+"klasa": "skladnik",
+"skladnik": "pomidory z puszki"
+},
+{
+"name": "SpianataGustoBell90g",
+"n": 5,
+"cat": "?",
+"klasa": "skladnik",
+"skladnik": "salami spianata"
+},
+{
+"name": "Bagietka duża",
+"n": 3,
+"cat": "?",
+"klasa": "gotowe",
+"skladnik": ""
+},
+{
+"name": "Pomidory krojone",
+"n": 4,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "pomidory krojone z puszki"
+},
+{
+"name": "Czekolada m.z orzech",
+"n": 4,
+"cat": "?",
+"klasa": "slodycze_przekaski",
+"skladnik": ""
+},
+{
+"name": "Ziemniaki Wlkp.2,5kg",
+"n": 5,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "ziemniaki"
+},
+{
+"name": "Czekolada gorzka 74%",
+"n": 3,
+"cat": "food",
+"klasa": "slodycze_przekaski",
+"skladnik": ""
+},
+{
+"name": "Ser sałatkowy 200g",
+"n": 3,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "ser sałatkowy"
+},
+{
+"name": "Salami włoskie 100g",
+"n": 4,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "salami włoskie"
+},
+{
+"name": "Serek puszysty 1",
+"n": 3,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "serek topiony"
+},
+{
+"name": "Mandarynki 1kg",
+"n": 3,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "mandarynki"
+},
+{
+"name": "Brokuły 500g",
+"n": 3,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "brokuły"
+},
+{
+"name": "Pieczarki 500g",
+"n": 9,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "pieczarki"
+},
+{
+"name": "Seler naciowy szt.",
+"n": 4,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "seler naciowy"
+},
+{
+"name": "Sałata rzymsk.mini",
+"n": 3,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "sałata rzymska"
+},
+{
+"name": "Szczypiorek pęczek",
+"n": 3,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "szczypiorek"
+},
+{
+"name": "Jabłka Pinova luz",
+"n": 11,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "jabłka"
+},
+{
+"name": "Gruszka Konferen.luz",
+"n": 3,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "gruszki"
+},
+{
+"name": "Cebula dymka pęczek",
+"n": 4,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "cebula dymka"
+},
+{
+"name": "Chleb tost. pszenny1",
+"n": 4,
+"cat": "food",
+"klasa": "gotowe",
+"skladnik": ""
+},
+{
+"name": "Włoszczyzna pęczek",
+"n": 5,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "włoszczyzna"
+},
+{
+"name": "Szprot wędz. WINTER",
+"n": 7,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "szprotki wędzone"
+},
+{
+"name": "Twarożek Grani",
+"n": 12,
+"cat": "food",
+"klasa": "slodycze_przekaski",
+"skladnik": ""
+},
+{
+"name": "Pierś z ind/kurcz.",
+"n": 9,
+"cat": "?",
+"klasa": "skladnik",
+"skladnik": "piers z indyka lub kurczaka"
+},
+{
+"name": "Jogurt natur. 200g",
+"n": 4,
+"cat": "?",
+"klasa": "skladnik",
+"skladnik": "jogurt naturalny"
+},
+{
+"name": "Twaróg klinek półtł.",
+"n": 3,
+"cat": "?",
+"klasa": "skladnik",
+"skladnik": "twaróg półtłusty"
+},
+{
+"name": "Ser gouda 400g",
+"n": 7,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "ser gouda"
+},
+{
+"name": "Boczek wędz.,słupki",
+"n": 3,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "boczek wędzony"
+},
+{
+"name": "Borówka amery.400g",
+"n": 3,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "borówka amerykańska"
+},
+{
+"name": "Burrata z Włoch",
+"n": 3,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "burrata"
+},
+{
+"name": "Burger wołowy 220g",
+"n": 3,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "burger wołowy"
+},
+{
+"name": "Płatki owsiane XXLg.",
+"n": 3,
+"cat": "?",
+"klasa": "skladnik",
+"skladnik": "płatki owsiane"
+},
+{
+"name": "Ser sałatkowy XXL",
+"n": 3,
+"cat": "?",
+"klasa": "skladnik",
+"skladnik": "ser sałatkowy"
+},
+{
+"name": "Dżem 100% z trusk. 1",
+"n": 4,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "dżem truskawkowy"
+},
+{
+"name": "Parówki z fil.indyka",
+"n": 4,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "parówki z indyka"
+},
+{
+"name": "Fasola czerw. Kidney",
+"n": 4,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "fasola czerwona kidney"
+},
+{
+"name": "Mąka luksusowa 550",
+"n": 6,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "mąka pszenna luksusowa 550"
+},
+{
+"name": "Popcorn maślany XXL",
+"n": 5,
+"cat": "food",
+"klasa": "slodycze_przekaski",
+"skladnik": ""
+},
+{
+"name": "Parówki z szynki XXL",
+"n": 3,
+"cat": "?",
+"klasa": "skladnik",
+"skladnik": "parówki z szynki"
+},
+{
+"name": "HighProtein Pudding3",
+"n": 4,
+"cat": "food",
+"klasa": "gotowe",
+"skladnik": ""
+},
+{
+"name": "Pure Parówki kurczak",
+"n": 3,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "parówki z kurczaka"
+},
+{
+"name": "Banany luz",
+"n": 9,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "banany"
+},
+{
+"name": "Jameson whiskey 0,7l",
+"n": 3,
+"cat": "?",
+"klasa": "alkohol",
+"skladnik": ""
+},
+{
+"name": "Kiwi szt.",
+"n": 4,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "kiwi"
+},
+{
+"name": "Awokado zielone szt.",
+"n": 3,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "awokado"
+},
+{
+"name": "Papryka czerwona luz",
+"n": 8,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "papryka czerwona"
+},
+{
+"name": "Kalarepa szt.",
+"n": 3,
+"cat": "?",
+"klasa": "skladnik",
+"skladnik": "kalarepa"
+},
+{
+"name": "Pringles Chipsy",
+"n": 4,
+"cat": "food",
+"klasa": "slodycze_przekaski",
+"skladnik": ""
+},
+{
+"name": "Mandarynki luz",
+"n": 5,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "mandarynki"
+},
+{
+"name": "Pomarańcze deser.luz",
+"n": 7,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "pomarańcze"
+},
+{
+"name": "Bagietka duża",
+"n": 13,
+"cat": "?",
+"klasa": "gotowe",
+"skladnik": ""
+},
+{
+"name": "Doritos Nacho Chipsy",
+"n": 4,
+"cat": "food",
+"klasa": "slodycze_przekaski",
+"skladnik": ""
+},
+{
+"name": "L.Chipsy zie.ceb130g",
+"n": 6,
+"cat": "food",
+"klasa": "slodycze_przekaski",
+"skladnik": ""
+},
+{
+"name": "TYMBARK MUSly z owoc",
+"n": 3,
+"cat": "?",
+"klasa": "slodycze_przekaski",
+"skladnik": ""
+},
+{
+"name": "HP Serek wiejski",
+"n": 17,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "serek wiejski"
+},
+{
+"name": "Łomża 0% piwo",
+"n": 4,
+"cat": "food",
+"klasa": "napoj",
+"skladnik": ""
+},
+{
+"name": "Sokołów Tatar wołowy",
+"n": 8,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "tatar wołowy"
+},
+{
+"name": "Kefir naturalny 1kg",
+"n": 3,
+"cat": "food",
+"klasa": "napoj",
+"skladnik": ""
+},
+{
+"name": "Jogurt grecki 10%",
+"n": 4,
+"cat": "?",
+"klasa": "skladnik",
+"skladnik": "jogurt grecki"
+},
+{
+"name": "Mleko UHT 1,5%",
+"n": 5,
+"cat": "?",
+"klasa": "skladnik",
+"skladnik": "mleko"
+},
+{
+"name": "Vifon Zupa błyskaw.1",
+"n": 3,
+"cat": "food",
+"klasa": "gotowe",
+"skladnik": ""
+},
+{
+"name": "Piątnica Skyr pitny1",
+"n": 5,
+"cat": "?",
+"klasa": "napoj",
+"skladnik": ""
+},
+{
+"name": "Skyr pitny b. cukru",
+"n": 5,
+"cat": "?",
+"klasa": "napoj",
+"skladnik": ""
+},
+{
+"name": "Skyr pitny b. cukru",
+"n": 4,
+"cat": "?",
+"klasa": "napoj",
+"skladnik": ""
+},
+{
+"name": "Crunchips 130 g",
+"n": 3,
+"cat": "food",
+"klasa": "slodycze_przekaski",
+"skladnik": ""
+},
+{
+"name": "Pączek nadz.wieloow.",
+"n": 4,
+"cat": "?",
+"klasa": "slodycze_przekaski",
+"skladnik": ""
+},
+{
+"name": "Pomelo żółte, luz",
+"n": 3,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "pomelo"
+},
+{
+"name": "Prince Polo mleczne",
+"n": 3,
+"cat": "food",
+"klasa": "slodycze_przekaski",
+"skladnik": ""
+},
+{
+"name": "Mionetto 0% wino",
+"n": 3,
+"cat": "food",
+"klasa": "napoj",
+"skladnik": ""
+},
+{
+"name": "Awokado Hass szt.",
+"n": 3,
+"cat": "food",
+"klasa": "skladnik",
+"skladnik": "awokado"
+}
+]

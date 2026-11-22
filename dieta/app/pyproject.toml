@@ -29,6 +29,7 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 "dieta.web" = ["templates/*.html", "static/*.css", "static/*.js", "static/*.svg", "static/fonts/*"]
+"dieta.seed" = ["*.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

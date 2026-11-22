@@ -8,3 +8,30 @@ configuration:
   person_2_name:
     name: Person 2 name
     description: Same, for the second person.
+  zakupy_url:
+    name: Zakupy address
+    description: Address of the Zakupy add-on, e.g. http://f0987e0f-lidl:8099 (Supervisor network hostname).
+  zakupy_token:
+    name: Zakupy API token
+    description: The same token as the api_token option of the Zakupy add-on. Empty = sync disabled.
+  llm_url:
+    name: LLM address (optional)
+    description: Base URL of an OpenAI-compatible server used to map product names to ingredients. Empty = no AI.
+  llm_key:
+    name: LLM key (optional)
+    description: Key for the LLM server from llm_url.
+  refresh_time:
+    name: Nightly refresh time
+    description: HH:MM format, e.g. 03:30.
+  shelf_fresh_days:
+    name: Days — fresh
+    description: Days after the last purchase during which a fresh ingredient counts as probably at home.
+  shelf_chilled_days:
+    name: Days — chilled
+    description: Same, for chilled ingredients.
+  shelf_dry_days:
+    name: Days — dry
+    description: Same, for dry goods.
+  shelf_frozen_days:
+    name: Days — frozen
+    description: Same, for frozen goods.

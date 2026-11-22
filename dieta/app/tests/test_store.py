@@ -105,7 +105,7 @@ def test_migration_from_empty_file_sets_user_version(tmp_path: Path) -> None:
     assert not path.exists()
     Store(path)
     with sqlite3.connect(path) as conn:
-        assert conn.execute("PRAGMA user_version").fetchone()[0] == 1
+        assert conn.execute("PRAGMA user_version").fetchone()[0] == 2
         tables = {row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
     assert {"profile", "weight"} <= tables
 
@@ -120,7 +120,7 @@ def test_reopen_keeps_data_and_does_not_remigrate(tmp_path: Path) -> None:
     assert second.profile(1) == _profile()
     assert second.latest_weight(1) == 82.2
     with sqlite3.connect(path) as conn:
-        assert conn.execute("PRAGMA user_version").fetchone()[0] == 1
+        assert conn.execute("PRAGMA user_version").fetchone()[0] == 2
 
 
 def test_creates_missing_parent_directories(tmp_path: Path) -> None:

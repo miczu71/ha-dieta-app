@@ -8,3 +8,30 @@ configuration:
   person_2_name:
     name: Imię osoby 2
     description: Jak wyżej, dla drugiej osoby.
+  zakupy_url:
+    name: Adres Zakupów
+    description: Adres add-onu Zakupy, np. http://f0987e0f-lidl:8099 (hostname w sieci Supervisora).
+  zakupy_token:
+    name: Token API Zakupów
+    description: Ten sam token co w opcji api_token add-onu Zakupy. Puste = synchronizacja wyłączona.
+  llm_url:
+    name: Adres LLM (opcjonalnie)
+    description: Bazowy adres serwera zgodnego z OpenAI do mapowania nazw produktów na składniki. Puste = bez AI.
+  llm_key:
+    name: Klucz LLM (opcjonalnie)
+    description: Klucz do serwera LLM z opcji llm_url.
+  refresh_time:
+    name: Godzina nocnego odświeżania
+    description: Format HH:MM, np. 03:30.
+  shelf_fresh_days:
+    name: Dni — świeże
+    description: Ile dni po ostatnim zakupie składnik świeży uznajemy za prawdopodobnie w domu.
+  shelf_chilled_days:
+    name: Dni — chłodnia
+    description: Jak wyżej, dla składników z chłodni.
+  shelf_dry_days:
+    name: Dni — suche
+    description: Jak wyżej, dla produktów suchych.
+  shelf_frozen_days:
+    name: Dni — mrożonki
+    description: Jak wyżej, dla mrożonek.

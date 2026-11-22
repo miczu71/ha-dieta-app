@@ -18,7 +18,25 @@ options:
   log_level: info
   person_1_name: ""
   person_2_name: ""
+  zakupy_url: ""
+  zakupy_token: ""
+  llm_url: ""
+  llm_key: ""
+  refresh_time: "03:30"
+  shelf_fresh_days: 4
+  shelf_chilled_days: 10
+  shelf_dry_days: 30
+  shelf_frozen_days: 60
 schema:
   log_level: "list(debug|info|warning|error)"
   person_1_name: "str?"
   person_2_name: "str?"
+  zakupy_url: "str?"
+  zakupy_token: "password?"
+  llm_url: "str?"
+  llm_key: "password?"
+  refresh_time: "match(^([01][0-9]|2[0-3]):[0-5][0-9]$)"
+  shelf_fresh_days: "int(1,365)"
+  shelf_chilled_days: "int(1,365)"
+  shelf_dry_days: "int(1,365)"
+  shelf_frozen_days: "int(1,365)"
