@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import logging
 import threading
+import time
 from collections.abc import Callable
 from datetime import date
 
@@ -51,9 +52,28 @@ def run_catalog(
         factory = SOURCE_FACTORIES.get(name)
         if factory is None:
             continue
-        results[name] = crawl(store, factory(), fetch=fetch, today=today, limit=settings.crawl_daily_limit)
-    map_recipe_ingredients(store, ask_ingredients)
-    enrich_meta(store, ask_meta)
+        log.info("Katalog: start crawla %s", name)
+        started = time.monotonic()
+        result = crawl(store, factory(), fetch=fetch, today=today, limit=settings.crawl_daily_limit)
+        results[name] = result
+        log.info(
+            "Katalog: koniec crawla %s po %.0f s: +%d, błędy %d, pominięte %d, znane %d, limit=%s, błąd: %s",
+            name,
+            time.monotonic() - started,
+            result.added,
+            result.errors,
+            result.skipped,
+            result.already_known,
+            result.limit_reached,
+            (store.get_meta(f"last_crawl_error:{name}") or "brak")[:120],
+        )
+    started = time.monotonic()
+    log.info("Katalog: start mapowania składników (LLM=%s)", ask_ingredients is not None)
+    linked = map_recipe_ingredients(store, ask_ingredients)
+    log.info("Katalog: mapowanie składników: %d powiązań w %.0f s", linked, time.monotonic() - started)
+    started = time.monotonic()
+    enriched = enrich_meta(store, ask_meta)
+    log.info("Katalog: metadane AI: %d w %.0f s", enriched, time.monotonic() - started)
     return results
 
 
