@@ -27,6 +27,12 @@ options:
   shelf_chilled_days: 10
   shelf_dry_days: 30
   shelf_frozen_days: 60
+  crawl_daily_limit: 150
+  familiar_threshold: 70
+  sources:
+    - respo
+    - lidl
+    - policzona
 schema:
   log_level: "list(debug|info|warning|error)"
   person_1_name: "str?"
@@ -40,3 +46,7 @@ schema:
   shelf_chilled_days: "int(1,365)"
   shelf_dry_days: "int(1,365)"
   shelf_frozen_days: "int(1,365)"
+  crawl_daily_limit: "int(1,1000)"
+  familiar_threshold: "int(0,100)"
+  sources:
+    - "list(respo|lidl|policzona)"

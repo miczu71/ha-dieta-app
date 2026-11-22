@@ -11,6 +11,7 @@ from pathlib import Path
 from dieta.dictionary import Durability
 
 DEFAULT_REFRESH_TIME = "03:30"
+KNOWN_SOURCES = ("respo", "lidl", "policzona")
 _REFRESH_RE = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$")
 
 
@@ -30,6 +31,9 @@ class Settings:
     shelf_chilled_days: int = 10
     shelf_dry_days: int = 30
     shelf_frozen_days: int = 60
+    crawl_daily_limit: int = 150
+    familiar_threshold: int = 70
+    sources: tuple[str, ...] = KNOWN_SOURCES
 
     @property
     def db_path(self) -> Path:
@@ -62,6 +66,20 @@ def _days(options: dict[str, object], key: str, default: int) -> int:
     return value if 1 <= value <= 365 else default
 
 
+def _bounded(options: dict[str, object], key: str, default: int, low: int, high: int) -> int:
+    try:
+        value = int(str(options.get(key, default)))
+    except ValueError:
+        return default
+    return value if low <= value <= high else default
+
+
+def _sources(value: object) -> tuple[str, ...]:
+    if not isinstance(value, list):
+        return KNOWN_SOURCES
+    return tuple(dict.fromkeys(str(v) for v in value if str(v) in KNOWN_SOURCES))
+
+
 def load_settings() -> Settings:
     options_path = Path(os.environ.get("DIETA_OPTIONS_PATH", "/data/options.json"))
     options: dict[str, object] = {}
@@ -84,4 +102,7 @@ def load_settings() -> Settings:
         shelf_chilled_days=_days(options, "shelf_chilled_days", 10),
         shelf_dry_days=_days(options, "shelf_dry_days", 30),
         shelf_frozen_days=_days(options, "shelf_frozen_days", 60),
+        crawl_daily_limit=_bounded(options, "crawl_daily_limit", 150, 1, 1000),
+        familiar_threshold=_bounded(options, "familiar_threshold", 70, 0, 100),
+        sources=_sources(options.get("sources")),
     )

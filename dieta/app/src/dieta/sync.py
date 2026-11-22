@@ -115,3 +115,57 @@ def stats(store: Store, settings: Settings, today: date) -> list[IngredientStat]
         if row.status in ("rule", "seed", "ai", "approved") and row.ingredient is not None:
             mapping[row.code] = (row.ingredient, row.durability)
     return build_stats(store.purchases(), mapping, today, settings.shelf_days)
+
+
+def map_recipe_ingredients(store: Store, ask: AskFn | None) -> int:
+    """Mapuje składniki przepisów na słownik: seed → reguły → AI (paczki 25) → pending.
+
+    Wynik zapisany w ``mapping`` pod kodem ``ing:<nazwa>`` (nie pytamy ponownie); powiązanie trafia do
+    ``recipe_ingredient.ingredient_id``. Wątpliwe i ``excluded`` zostają nieznane (``NULL``). Ręczne wpisy
+    ``approved``/``excluded`` nie są nadpisywane. Zwraca liczbę powiązanych nazw.
+    """
+    seed = load_seed(SEED_PATH)
+    existing = {row.code: row for row in store.mappings()}
+    linked = 0
+    unresolved: list[str] = []
+    for raw in store.unlinked_ingredient_names():
+        name = normalize_name(raw)
+        code = f"ing:{name}"
+        row = existing.get(code)
+        if row is not None:
+            if row.ingredient is not None and row.status in ("rule", "seed", "ai", "approved"):
+                store.link_recipe_ingredient(raw, row.ingredient, row.durability)
+                linked += 1
+            continue
+        entry = seed.get(name)
+        if entry is not None and entry.klasa == "skladnik" and entry.skladnik:
+            durability = _resolve(store, entry.skladnik, None)
+            store.set_mapping(code, "seed", entry.skladnik, durability, name)
+            store.link_recipe_ingredient(raw, entry.skladnik, durability)
+            linked += 1
+            continue
+        ingredient, rule_durability = classify_rules(name)
+        if ingredient is not None:
+            durability = _resolve(store, ingredient, rule_durability)
+            store.set_mapping(code, "rule", ingredient, durability, name)
+            store.link_recipe_ingredient(raw, ingredient, durability)
+            linked += 1
+            continue
+        unresolved.append(raw)
+
+    if not unresolved or ask is None:
+        return linked  # bez LLM nic nie zapisujemy jako pending — spróbujemy po jego skonfigurowaniu
+    names = list(dict.fromkeys(normalize_name(r) for r in unresolved))
+    results = {r.name: r for r in map_with_llm(names, ask=ask)}
+    for raw in unresolved:
+        name = normalize_name(raw)
+        result = results[name]
+        code = f"ing:{name}"
+        durability = _resolve(store, result.ingredient, result.durability) if result.ingredient else None
+        if result.ingredient is None:
+            store.set_mapping(code, "pending", None, None, name)
+            continue
+        store.set_mapping(code, "ai", result.ingredient, durability, name)
+        store.link_recipe_ingredient(raw, result.ingredient, durability)
+        linked += 1
+    return linked

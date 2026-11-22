@@ -35,3 +35,12 @@ configuration:
   shelf_frozen_days:
     name: Days — frozen
     description: Same, for frozen goods.
+  crawl_daily_limit:
+    name: Daily limit of new recipes
+    description: How many new recipe pages to fetch per day from a single source (at most 1 request per second).
+  familiar_threshold:
+    name: Familiarity threshold (%)
+    description: Share of known ingredients from which a recipe counts as "familiar" (default catalog and planner filter).
+  sources:
+    name: Recipe sources
+    description: Enabled catalog sources (respo, lidl, policzona).

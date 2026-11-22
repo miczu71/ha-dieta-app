@@ -155,7 +155,9 @@ def map_with_llm(names: list[str], *, ask: AskFn) -> list[LlmMapping]:
     return results
 
 
-def make_llm_ask(url: str, key: str) -> Callable[[list[str]], list[dict[str, object]] | None]:
+def make_llm_ask(
+    url: str, key: str, prompt: str = PROMPT
+) -> Callable[[list[str]], list[dict[str, object]] | None]:
     """Zwraca `ask(names)` wołające {url}/v1/chat/completions.
 
     Błąd → None; treść i nagłówki nie trafiają do logu.
@@ -167,7 +169,7 @@ def make_llm_ask(url: str, key: str) -> Callable[[list[str]], list[dict[str, obj
             "model": LLM_MODEL,
             "temperature": 0,
             "messages": [
-                {"role": "system", "content": PROMPT},
+                {"role": "system", "content": prompt},
                 {"role": "user", "content": "\n".join(f"{i}. {n}" for i, n in enumerate(names))},
             ],
         }

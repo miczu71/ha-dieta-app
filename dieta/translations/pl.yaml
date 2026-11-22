@@ -35,3 +35,12 @@ configuration:
   shelf_frozen_days:
     name: Dni — mrożonki
     description: Jak wyżej, dla mrożonek.
+  crawl_daily_limit:
+    name: Dzienny limit nowych przepisów
+    description: Ile nowych stron przepisów pobrać dziennie z jednego źródła (≤ 1 zapytanie na sekundę).
+  familiar_threshold:
+    name: Próg znajomości (%)
+    description: Od jakiego odsetka znanych składników przepis uznajemy za „znajomy" (domyślny filtr katalogu i planera).
+  sources:
+    name: Źródła przepisów
+    description: Włączone źródła katalogu (respo, lidl, policzona).
