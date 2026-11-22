@@ -1,0 +1,119 @@
+/* Dieta — styl „Pojemniki”. Tokeny z design-system/tokens.json; kod add-onu jest źródłem prawdy. */
+:root {
+  --bg: #f3f7f5;
+  --surface: #ffffff;
+  --ink: #16231e;
+  --muted: #566660;
+  --line: #d3e0da;
+  --accent: #2f7d5b;
+  --on-accent: #ffffff;
+  --macro-protein: #2f7d5b;
+  --macro-carb: #a87608;
+  --macro-fat: #e2693f;
+  --promo-bg: #fde8d9;
+  --promo-ink: #9a3c14;
+  --day-1: #e2553b;
+  --day-2: #b9820f;
+  --day-3: #3f8a33;
+  --day-4: #7a5bc0;
+  --day-5: #c9601a;
+  --day-6: #2c91b8;
+  --day-7: #c24b8a;
+  --shadow-box: 0 2px 0 #d3e0da;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --radius-sm: 4px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --radius-pill: 999px;
+  --font-sans: Outfit, system-ui, sans-serif;
+  --font-display: Outfit, system-ui, sans-serif;
+  --font-mono: "DM Mono", ui-monospace, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1715;
+    --surface: #18231f;
+    --ink: #e6f0ec;
+    --muted: #8fa59c;
+    --line: #26362f;
+    --accent: #5cc79a;
+    --on-accent: #0b1a14;
+    --macro-protein: #5cc79a;
+    --macro-carb: #e8b84a;
+    --macro-fat: #ef8a64;
+    --promo-bg: #3a2418;
+    --promo-ink: #f3a77f;
+    --day-1: #ef7a62;
+    --day-2: #efbd55;
+    --day-3: #7cc86c;
+    --day-4: #a48be0;
+    --day-5: #f09a58;
+    --day-6: #5cb6da;
+    --day-7: #de78ae;
+    --shadow-box: 0 2px 0 #26362f;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1715;
+  --surface: #18231f;
+  --ink: #e6f0ec;
+  --muted: #8fa59c;
+  --line: #26362f;
+  --accent: #5cc79a;
+  --on-accent: #0b1a14;
+  --macro-protein: #5cc79a;
+  --macro-carb: #e8b84a;
+  --macro-fat: #ef8a64;
+  --promo-bg: #3a2418;
+  --promo-ink: #f3a77f;
+  --day-1: #ef7a62;
+  --day-2: #efbd55;
+  --day-3: #7cc86c;
+  --day-4: #a48be0;
+  --day-5: #f09a58;
+  --day-6: #5cb6da;
+  --day-7: #de78ae;
+  --shadow-box: 0 2px 0 #26362f;
+  color-scheme: dark;
+}
+.dz{font:400 15px/22px var(--font-sans);color:var(--ink)}
+.dz *{box-sizing:border-box}
+.dz-eyebrow{font:600 12px/16px var(--font-sans);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.dz-num{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+.dz-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-lg);padding:var(--space-4)}
+.dz-btn{font:700 14px/20px var(--font-sans);display:inline-flex;gap:var(--space-2);align-items:center;padding:9px 14px;border-radius:var(--radius-md);border:1px solid var(--accent);background:var(--accent);color:var(--on-accent);cursor:pointer}
+.dz-btn--ghost{background:transparent;color:var(--accent)}
+.dz-btn:focus-visible,.dz-chip:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.dz-chip{display:inline-flex;gap:5px;align-items:center;font:600 12.5px/18px var(--font-sans);padding:3px 10px;border-radius:var(--radius-pill);background:var(--promo-bg);color:var(--promo-ink)}
+.dz-chip--plain{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.dz-i{width:1em;height:1em;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;vertical-align:-.12em}
+.dz-macro{display:flex;height:10px;gap:var(--space-1);margin:10px 0 6px}
+.dz-macro i{display:block;border-radius:var(--radius-sm)}
+.dz-macro .p{background:var(--macro-protein)}.dz-macro .c{background:var(--macro-carb)}.dz-macro .f{background:var(--macro-fat)}
+.dz-leg{display:flex;gap:12px;flex-wrap:wrap;font-size:13px}
+.dz-leg b{font:500 13px var(--font-mono)}
+.dz-leg s{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px;text-decoration:none}
+.dz-leg .p{background:var(--macro-protein)}.dz-leg .c{background:var(--macro-carb)}.dz-leg .f{background:var(--macro-fat)}
+.dz-box{border:1px solid var(--line);border-radius:var(--radius-md);overflow:hidden;background:var(--surface);box-shadow:var(--shadow-box);min-width:0}
+.dz-box .lid{height:14px;background:var(--dc)}
+.dz-box .in{padding:6px 6px 8px;text-align:center;display:flex;flex-direction:column}
+.dz-box .d{font:700 13px/18px var(--font-display)}
+.dz-box .k{font:400 11.5px/16px var(--font-mono);color:var(--muted)}
+.dz-boxes{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--space-2)}
+.dz-day{display:grid;grid-template-columns:34px 1fr auto;gap:var(--space-2);align-items:center;padding:8px 0;border-top:1px solid var(--line)}
+.dz-day .dn{font:700 13px var(--font-display);color:var(--muted)}
+.dz-day .t{font-size:12px;color:var(--muted)}
+.dz-day .meal{font-weight:600;font-size:14px;display:inline-flex;gap:6px;align-items:center}
+.dz-day .lid{display:inline-block;width:10px;height:10px;border-radius:var(--radius-sm);background:var(--dc);flex:none}
+.dz-day .kc{font:400 12.5px var(--font-mono);text-align:right;white-space:nowrap}
+.dz-day .kc span{display:block}
+.dz-know{display:flex;align-items:center;gap:10px}
+.dz-know .bar{flex:1;height:8px;border-radius:var(--radius-pill);background:var(--line);overflow:hidden}
+.dz-know .bar i{display:block;height:100%;background:var(--accent)}
