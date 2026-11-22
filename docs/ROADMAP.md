@@ -223,3 +223,9 @@ Czeka na usera: rejestracja repo w sklepie HA, instalacja, `zakupy_token` (`! se
 Tag `v0.1.0` (non-draft), CI zielone (test + docker amd64/arm64), 159 testów, ruff/mypy czyste. Przed wydaniem: simplify, code-review, silent-failure-hunter, pr-test-analyzer, security review; blokujące naprawione (awaria LLM → pending, skip bez TTL, pusta sitemapa, testy _nightly/lock/5 MB/redirect). pubguard: flagi tylko w fixturach HTML stron źródłowych; usunięty numer telefonu firmy z 2 fixtur.
 Dług (nieblokujące): `_map_new` przy awarii LLM nadal pisze pending; SameHostRedirect odrzuca zmianę subdomeny (www.); scheduler poza lifespan; `ing:` jako prefiks w `mapping`; zduplikowana kaskada mapowania; kolumna has_nutrition wyliczalna.
 Czeka na usera: rejestracja repo w sklepie HA i instalacja, `zakupy_token` (`! secret-run`) i `zakupy_url=http://f0987e0f-lidl:8099`; potem pomiar znajomości (Policzona: ≥70/60/50%) na żywym crawlu. Następny: E4 planer (wywiad `grill-me`).
+
+## Instalacja 0.1.0 i pierwszy crawl — 2026-11-22
+Zainstalowane (Supervisor, `b969c720_dieta`), `zakupy_url`/`zakupy_token` i `llm_url`/`llm_key` (freellmapi, `auto:text`) ustawione skryptem `secret-run` (WebSocket `supervisor/api`, bez wypisywania wartości). Sync zakupów: 133 składniki.
+Pierwszy crawl (bez LLM w trakcie): Respo 150, Lidl 149 (1× IncompleteRead), Policzona 2 przepisy + 43× HTTP 429. Katalog 301 przepisów, 79 z plakietką „brak kcal”.
+**Pomiar znajomości — NIEMIARODAJNY:** ≥70% = 0, ≥60% = 2, ≥50% = 7 (z 301). Składniki przepisów leżały w `pending` (567 do zatwierdzenia), więc liczą się jako nieznane. Powtórzyć po zmapowaniu składników z LLM i po pełnym crawlu Policzonej.
+**Błąd do poprawki (0.1.1):** fetcher nie robi backoffu na 429 — Policzona (limit tempa) odrzuca ~95% zapytań przy 1 req/s. Potrzebne: respektowanie `Retry-After`/wykładniczy backoff i przerwanie przebiegu źródła po kilku 429 z rzędu (bez trwałego skip, 429 jest już traktowane jako przejściowe).
