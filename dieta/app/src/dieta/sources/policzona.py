@@ -6,15 +6,24 @@ lista „nazwa – ilość”, wartości odżywcze z tekstu artykułu.
 
 from __future__ import annotations
 
+import html
+import logging
 import re
+import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
 from html.parser import HTMLParser
 
 from dieta.sources.base import Fetch, RawIngredient, Recipe
 from dieta.sources.jsonld import parse_ingredient, recipe_urls, sitemap_locs, split_amount_unit
 
+_log = logging.getLogger(__name__)
+
+FEED_URL = "https://policzona-szama.pl/blogs/przepisy.atom"  # kanał Atom z pełną treścią artykułów
 SITEMAP_URL = "https://policzona-szama.pl/sitemap_articles_1.xml"
 URL_MARKER = "/blogs/przepisy/"
+MAX_FEED_PAGES = 40
+ATOM = "{http://www.w3.org/2005/Atom}"
+_IMG_SRC_RE = re.compile(r"<img\b[^>]*?\bsrc=[\"']([^\"']+)[\"']", re.I)
 MAX_INGREDIENTS = 40
 NUM_WORDS = {
     "jedna": 1, "dwie": 2, "dwa": 2, "trzy": 3, "cztery": 4, "pięć": 5, "sześć": 6, "siedem": 7, "osiem": 8,
@@ -144,11 +153,74 @@ def _first_number(pattern: re.Pattern[str], text: str) -> float | None:
     return _number(found.group(1)) if found else None
 
 
+def _synthetic_page(title: str, content: str) -> str:
+    """Strona HTML złożona z wpisu Atom: ten sam kształt (h1, og:image, div.article), co czyta `parse`."""
+    escaped = html.escape(title)
+    image = _IMG_SRC_RE.search(content)
+    og_image = f'<meta property="og:image" content="{html.escape(image.group(1))}">' if image else ""
+    return (
+        f"<html><head><title>{escaped}</title>{og_image}</head>"
+        f'<body><h1>{escaped}</h1><div class="article">{content}</div></body></html>'
+    )
+
+
+def _feed_entries(xml: str) -> list[tuple[str, str]]:
+    """(URL artykułu, strona HTML) z wpisów kanału; wpisy bez linku do przepisu pomijane."""
+    root = ET.fromstring(xml)
+    pages: list[tuple[str, str]] = []
+    for entry in root.iter(f"{ATOM}entry"):
+        url = next(
+            (
+                link.get("href", "")
+                for link in entry.findall(f"{ATOM}link")
+                if URL_MARKER in link.get("href", "")
+            ),
+            "",
+        )
+        if url:
+            body = _synthetic_page(entry.findtext(f"{ATOM}title", ""), entry.findtext(f"{ATOM}content", ""))
+            pages.append((url, body))
+    return pages
+
+
 class PolicznaSource:
     name = "policzona"
 
+    def __init__(self) -> None:
+        self._pages: dict[str, str] = {}  # strony złożone z kanału Atom (bez zapytania do serwisu)
+
+    def prefetched(self, url: str) -> str | None:
+        """Strona z kanału Atom dla URL-a; None, gdy URL nie pochodzi z kanału."""
+        return self._pages.get(url)
+
     def list_urls(self, *, fetch: Fetch) -> list[str]:
-        return recipe_urls(sitemap_locs(fetch(SITEMAP_URL)), URL_MARKER)
+        feed = self._feed_urls(fetch)
+        sitemap = self._sitemap_urls(fetch)
+        return list(dict.fromkeys([*feed, *sitemap]))
+
+    def _feed_urls(self, fetch: Fetch) -> list[str]:
+        """URL-e z kanału Atom; kończy na stronie bez nowych URL-i (pusta, bez wpisów lub powtórzona)."""
+        seen: dict[str, None] = {}
+        for page in range(1, MAX_FEED_PAGES + 1):
+            try:
+                entries = _feed_entries(fetch(f"{FEED_URL}?page={page}"))
+            except Exception as exc:
+                _log.warning("Policzona: kanał Atom, strona %d: %s", page, type(exc).__name__)
+                break
+            new = [(url, body) for url, body in entries if url not in seen]
+            if not new:
+                break
+            for url, body in new:
+                seen[url] = None
+                self._pages[url] = body
+        return list(seen)
+
+    def _sitemap_urls(self, fetch: Fetch) -> list[str]:
+        try:
+            return recipe_urls(sitemap_locs(fetch(SITEMAP_URL)), URL_MARKER)
+        except Exception as exc:
+            _log.warning("Policzona: sitemapa artykułów: %s", type(exc).__name__)
+            return []
 
     def parse(self, url: str, html: str) -> Recipe | None:
         page = _read_page(html)

@@ -266,7 +266,9 @@ def test_policzona_list_urls_z_sitemapy_artykulow() -> None:
         "https://policzona-szama.pl/blogs/przepisy/domowy-kebab",
         "https://policzona-szama.pl/blogs/przepisy/szarpana-wieprzowina",
     ]
-    assert fetch.requested == [sitemap]
+    # Kanał Atom jest próbowany najpierw (tu fałszywy fetch go nie ma → błąd tolerowany), sitemapa zawsze.
+    assert fetch.requested[-1] == sitemap
+    assert fetch.requested.count(sitemap) == 1
 
 
 # --- Microdata: Ania Gotuje ---------------------------------------------------------------------------
