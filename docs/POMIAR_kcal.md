@@ -31,3 +31,15 @@ Tylko tabela (bez LLM): pokrycie ≥ 0,85 w 46% przepisów, mediana 21,9%.
 Wciąż NO-GO (cel: ≤15% / ≥80% / auto ≥80%). Poprawa niewielka (auto 59→62%).
 Pozostałe `pending` (216): 149 z pokryciem < 0,85 (pokrycie 0,7–0,85: mediana błędu 34%, w ±30% 39% — realnie słabe), 67 z pokryciem ≥ 0,85 i **medianą błędu 8,6%**, zablokowane regułą „brak składnika pending”.
 Hipoteza do sprawdzenia: zniesienie blokady „składnik pending” przy pokryciu ≥ 0,85 daje ok. +12 pp `auto` (≈74%); reszta wymaga lepszego pokrycia (OFF, seed) lub niższego progu.
+
+## Przebieg 3 (2026-11-23, po W4 + zniesiona blokada „składnik pending” przy pokryciu ≥ 0,85)
+| zbiór | n | mediana \|błędu\| | w ±30% |
+|---|---|---|---|
+| wszystkie z szacunkiem | 562 | 16,2% | 68% |
+| tylko `auto` | 413 (73%) | 11,5% | 80% |
+OFF: wszystkie zapytania `FetchError` (API zwraca HTTP 503, robots.txt OK) → w pomiarze tylko tabela + LLM; wpływ OFF niezmierzony.
+
+## Decyzja usera (2026-11-23): wydać 0.1.5 z obecną metodą
+- Kontrakt GO niespełniony w całości (auto 73% < 80%, wszystkie: 16,2% / 68%); spełniony dla przepisów `auto` (11,5% / 80%).
+- Do planera wchodzą wyłącznie `auto`/`approved`; reszta w kolejce „Do sprawdzenia”.
+- Do zrobienia po wydaniu: pomiar z działającym OFF (gdy API wróci), diagnoza 149 przepisów z pokryciem < 0,85, źródło „policzona” (błąd ~45%, porcje bez liczby).
