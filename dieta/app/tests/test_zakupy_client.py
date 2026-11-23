@@ -15,7 +15,6 @@ from dieta.zakupy_client import (
     fetch_catalog,
     fetch_purchases,
     fetch_shelf,
-    fetch_shelf_absent,
     fetch_shelf_full,
     post_shelf_request,
 )
@@ -294,8 +293,5 @@ def test_fetch_shelf_full_returns_items_and_absent() -> None:
     items, absent = fetch_shelf_full("http://z:8099", TOKEN, opener=_Recorder(json.dumps(payload).encode()))
     assert [i.ean for i in items] == ["5900001", "5900003"]
     assert absent == ["5900009"]
-    assert fetch_shelf_absent("http://z:8099", TOKEN, opener=_Recorder(json.dumps(payload).encode())) == [
-        "5900009"
-    ]
     no_absent = _Recorder(json.dumps(SHELF_PAYLOAD).encode())
     assert fetch_shelf_full("http://z:8099", TOKEN, opener=no_absent)[1] == []

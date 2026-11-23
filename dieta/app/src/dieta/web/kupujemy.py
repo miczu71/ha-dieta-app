@@ -32,7 +32,7 @@ from ..store import (
     Store,
 )
 from ..sync import map_recipe_ingredients, stats, sync, sync_catalog, sync_shelf
-from ..zakupy_client import fetch_purchases, fetch_shelf_absent
+from ..zakupy_client import fetch_purchases
 
 log = logging.getLogger(__name__)
 
@@ -84,7 +84,7 @@ def default_runner(settings: Settings, store: Store) -> SyncRunner:
             )
             if not force:
                 sync_shelf_queue(store, settings, date.today())  # nocą zlecamy odczyt cen w Zakupach
-            sync_shelf(store, settings, date.today(), fetch_absent=fetch_shelf_absent)
+            sync_shelf(store, settings, date.today())
         return count
 
     return run

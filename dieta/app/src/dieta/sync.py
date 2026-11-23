@@ -31,13 +31,12 @@ from dieta.zakupy_client import (
     ShelfItem,
     ZakupyError,
     fetch_catalog,
-    fetch_shelf,
+    fetch_shelf_full,
 )
 
 FetchFn = Callable[[str, str], list[Purchase]]
 CatalogFetchFn = Callable[[str, str], list[CatalogItem]]
-ShelfFetchFn = Callable[[str, str], list[ShelfItem]]
-AbsentFetchFn = Callable[[str, str], list[str]]
+ShelfFetchFn = Callable[[str, str], tuple[list[ShelfItem], list[str]]]
 CATALOG_REFRESH_DAYS = 7
 MISSING_CONFIG = "Brak adresu albo tokena Zakupów w opcjach Diety."
 
@@ -200,12 +199,11 @@ def sync_shelf(
     settings: Settings,
     today: date,
     *,
-    fetch: ShelfFetchFn = fetch_shelf,
-    fetch_absent: AbsentFetchFn | None = None,
+    fetch: ShelfFetchFn = fetch_shelf_full,
 ) -> int:
     """Pobiera cache cen Biedronki z Zakupów (tani GET) i upsertuje snapshot.
 
-    Z ``fetch_absent`` zapisuje też listę EAN „brak w Biedronce” do ``meta.shelf_absent_json``.
+    Jeden GET: zapisuje też listę EAN „brak w Biedronce” do ``meta.shelf_absent_json``.
     Zwraca liczbę wierszy; 0 przy błędzie (``meta.shelf_sync_error``, bez wyjątku).
     """
     url, token = settings.zakupy_url, settings.zakupy_token
@@ -213,14 +211,12 @@ def sync_shelf(
         store.set_meta("shelf_sync_error", MISSING_CONFIG)
         return 0
     try:
-        items = fetch(url, token)
-        absent = fetch_absent(url, token) if fetch_absent is not None else None
+        items, absent = fetch(url, token)
     except ZakupyError as exc:
         store.set_meta("shelf_sync_error", str(exc))
         return 0
     store.upsert_shelf_items(items)
-    if absent is not None:
-        store.set_meta("shelf_absent_json", json.dumps(sorted(set(absent))))
+    store.set_meta("shelf_absent_json", json.dumps(sorted(set(absent))))
     store.set_meta("shelf_sync_at", today.isoformat())
     store.set_meta("shelf_sync_error", "")
     return len(items)

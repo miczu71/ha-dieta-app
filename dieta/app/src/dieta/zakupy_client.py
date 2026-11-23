@@ -241,11 +241,6 @@ def fetch_shelf(base_url: str, token: str, *, opener: Opener | None = None) -> l
     return fetch_shelf_full(base_url, token, opener=opener)[0]
 
 
-def fetch_shelf_absent(base_url: str, token: str, *, opener: Opener | None = None) -> list[str]:
-    """EAN-y „brak w Biedronce” (pole `absent` z `/api/v1/shelf`)."""
-    return fetch_shelf_full(base_url, token, opener=opener)[1]
-
-
 def post_shelf_request(
     base_url: str, token: str, eans: list[str], *, opener: Opener | None = None
 ) -> ShelfRequestResult:

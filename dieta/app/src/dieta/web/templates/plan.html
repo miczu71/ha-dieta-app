@@ -2,14 +2,6 @@
 {% macro por(x) %}{{ ('%.1f' % x).replace('.', ',') }}{% endmacro %}
 {% macro money(x) %}{{ ('%.2f' % x).replace('.', ',') }} zł{% endmacro %}
 {% macro pct(x) %}{{ (x * 100) | round | int }}%{% endmacro %}
-{% macro split(cov) %}{# te same etykiety co SOURCE_LABEL w web/lista.py #}
-{% set ns = namespace(parts=[]) %}
-{% set paragony = cov.get('receipt', 0) + cov.get('receipt_old', 0) %}
-{% if paragony > 0 %}{% set ns.parts = ns.parts + ['paragony ' ~ pct(paragony)] %}{% endif %}
-{% for key, label in [('shelf', 'Biedronka'), ('promo', 'promocja'), ('frisco', 'szacunek')] %}
-{% if cov.get(key, 0) > 0 %}{% set ns.parts = ns.parts + [label ~ ' ' ~ pct(cov.get(key, 0))] %}{% endif %}
-{% endfor %}
-{{ ns.parts | join(' · ') }}{% endmacro %}
 {% macro swap_btns(zakres, ident, label) %}
 <form method="post" action="plan/wymien" class="dz-swap">
   <input type="hidden" name="tydzien" value="{{ v.week_start.isoformat() }}">
@@ -37,8 +29,7 @@
 <section class="dz-card dz-cost" aria-label="Koszt planu">
   {% if cost.total > 0 %}
   <p class="dz-num">Koszt tygodnia dla domu: <b>{{ money(cost.total) }}</b> · pokrycie cen {{ pct(cost.coverage) }}</p>
-  {% set parts = split(cost.coverage_by_source) | trim %}
-  {% if parts %}<p class="dz-sub dz-num">w tym: {{ parts }}</p>{% endif %}
+  {% if cost_split %}<p class="dz-sub dz-num">w tym: {{ cost_split }}</p>{% endif %}
   {% else %}
   <p class="dz-sub">Brak cen z Zakupów.</p>
   {% endif %}

@@ -76,7 +76,7 @@ def _short_date(value: str | None) -> str | None:
         return None
 
 
-def _split(cov: dict[str, float]) -> str:
+def split_coverage(cov: dict[str, float]) -> str:
     """„paragony 40% · Biedronka 20% · szacunek 15%” — tylko źródła z masą; receipt i receipt_old razem."""
     parts: list[str] = []
     paragony = cov.get("receipt", 0.0) + cov.get("receipt_old", 0.0)
@@ -164,7 +164,7 @@ def make_lista_router(settings: Settings, store: Store, templates: Jinja2Templat
             "unpriced": [row(ln, states) for ln in lst.unpriced],
             "show_todo": bool(settings.todo_entity) and lst.notice in SHOWN_NOTICES,
             "notice_text": notice_text,
-            "split": _split(lst.coverage_by_source),
+            "split": split_coverage(lst.coverage_by_source),
         }
         return templates.TemplateResponse(request, "lista.html", context)
 

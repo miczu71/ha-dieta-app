@@ -118,7 +118,6 @@ class Factor:
 class FriscoPrice:
     price100: float  # zł za 100 g, po współczynniku (przybliżona cena „z paragonu")
     n_products: int
-    regular100: float | None = None  # katalog nie niesie ceny regularnej — rezerwa na E6b.3
 
 
 def frisco_price100(item: CatalogItem) -> float | None:

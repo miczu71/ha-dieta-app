@@ -20,6 +20,7 @@ from ..settings import Settings
 from ..shopping import plan_cost
 from ..store import Store
 from .kupujemy import queue_size
+from .lista import split_coverage
 
 log = logging.getLogger(__name__)
 
@@ -90,6 +91,7 @@ def make_plan_router(settings: Settings, store: Store, templates: Jinja2Template
                 "warnings": [x[:MAX_WARNING_CHARS] for x in warnings[:MAX_WARNINGS]],
                 "modes": MODES,
                 "cost": cost,
+                "cost_split": split_coverage(cost.coverage_by_source) if cost is not None else "",
                 "session_costs": {s.session_id: s for s in cost.sessions} if cost is not None else {},
             },
         )

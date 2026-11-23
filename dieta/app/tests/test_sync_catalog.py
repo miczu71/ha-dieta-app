@@ -190,9 +190,9 @@ def _packed(code: str, name: str, price: float) -> Purchase:
                     unit_price=price, is_weight=False)  # fmt: skip
 
 
-def _shelf(url: str, token: str) -> list[ShelfItem]:
-    return [ShelfItem("5900000000002", "Pomidory", 1.0, "Kilogram", 6.0, None, None, None, False, False,
-                      "2026-11-23T03:00:00")]  # fmt: skip
+def _shelf(url: str, token: str) -> tuple[list[ShelfItem], list[str]]:
+    return ([ShelfItem("5900000000002", "Pomidory", 1.0, "Kilogram", 6.0, None, None, None, False, False,
+                      "2026-11-23T03:00:00")], [])  # fmt: skip
 
 
 def test_sync_shelf_stores_rows_and_meta(tmp_path: Path) -> None:
@@ -205,7 +205,7 @@ def test_sync_shelf_stores_rows_and_meta(tmp_path: Path) -> None:
 def test_sync_shelf_error_goes_to_meta_without_raising(tmp_path: Path) -> None:
     store = _store(tmp_path)
 
-    def boom(url: str, token: str) -> list[ShelfItem]:
+    def boom(url: str, token: str) -> tuple[list[ShelfItem], list[str]]:
         raise ZakupyError("Brak połączenia z Zakupami.")
 
     assert sync_shelf(store, _settings(tmp_path), TODAY, fetch=boom) == 0
@@ -216,13 +216,9 @@ def test_sync_shelf_error_goes_to_meta_without_raising(tmp_path: Path) -> None:
 
 def test_sync_shelf_writes_absent_list_to_meta(tmp_path: Path) -> None:
     store = _store(tmp_path)
-    absent = lambda url, token: ["5900009", "5900008"]  # noqa: E731
-    assert sync_shelf(store, _settings(tmp_path), TODAY, fetch=_shelf, fetch_absent=absent) == 1
+
+    def fetch(url: str, token: str) -> tuple[list[ShelfItem], list[str]]:
+        return _shelf(url, token)[0], ["5900009", "5900008"]
+
+    assert sync_shelf(store, _settings(tmp_path), TODAY, fetch=fetch) == 1
     assert json.loads(store.get_meta("shelf_absent_json") or "") == ["5900008", "5900009"]
-
-
-def test_sync_shelf_without_absent_fetcher_keeps_meta(tmp_path: Path) -> None:
-    store = _store(tmp_path)
-    store.set_meta("shelf_absent_json", '["5900001"]')
-    assert sync_shelf(store, _settings(tmp_path), TODAY, fetch=_shelf) == 1
-    assert store.get_meta("shelf_absent_json") == '["5900001"]'
