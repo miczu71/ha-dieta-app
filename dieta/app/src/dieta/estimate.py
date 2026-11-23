@@ -24,6 +24,7 @@ DEFAULT_MEASURES = SEED_DIR / "measures.json"
 NOMINAL_MASS_G = 50.0
 ASSUMED_WEIGHT = 0.5
 SERVING_G = 400.0
+COVERAGE_OK = 0.85
 
 Method = Literal["exact", "measure", "piece", "none"]
 
@@ -142,7 +143,7 @@ def to_grams(
     unit_g: Mapping[str, float] | None,
 ) -> tuple[float | None, Method]:
     """Ilość w gramach i sposób przeliczenia; (None, "none") gdy się nie da."""
-    if amount is None:
+    if amount is None or amount <= 0:
         return None, "none"
     u = unit.strip().lower() if unit else None
     if u:

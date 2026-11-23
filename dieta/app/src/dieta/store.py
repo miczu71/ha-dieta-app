@@ -23,6 +23,8 @@ PERSON_IDS = (1, 2)
 MappingStatus = Literal["rule", "seed", "ai", "pending", "approved", "excluded"]
 MetaStatus = Literal["rule", "ai", "pending", "approved"]
 RecipeFlag = Literal["liked", "dismissed"]
+EstStatus = Literal["auto", "pending", "approved"]
+NutritionSource = Literal["table", "off", "llm", "manual"]
 MEAL_CATEGORIES = ("breakfast", "lunch", "dinner", "snack", "dessert")
 
 _PROFILE_COLUMNS = (
@@ -131,6 +133,30 @@ _MIGRATIONS: list[str] = [
         dismissed INTEGER NOT NULL DEFAULT 0
     );
     """,
+    # v4 (E3c): szacunek kcal ze składników. Tylko dodaje tabelę i kolumny (stary kod je ignoruje).
+    """
+    CREATE TABLE ingredient_nutrition (
+        ingredient_id INTEGER PRIMARY KEY REFERENCES ingredient(id),
+        kcal REAL,
+        protein REAL,
+        carbs REAL,
+        fat REAL,
+        piece_g REAL,
+        source TEXT CHECK(source IN ('table','off','llm','manual')),
+        confidence TEXT CHECK(confidence IN ('high','low')),
+        status TEXT CHECK(status IN ('auto','pending','approved')),
+        updated_at TEXT
+    );
+    ALTER TABLE recipe ADD COLUMN kcal_source TEXT CHECK(kcal_source IN ('source','estimate'));
+    ALTER TABLE recipe ADD COLUMN kcal_100g REAL;
+    ALTER TABLE recipe ADD COLUMN est_coverage REAL;
+    ALTER TABLE recipe ADD COLUMN est_status TEXT CHECK(est_status IN ('auto','pending','approved'));
+    ALTER TABLE recipe ADD COLUMN servings_estimated INTEGER;
+    ALTER TABLE recipe ADD COLUMN est_unknown_json TEXT;
+    ALTER TABLE recipe ADD COLUMN est_assumed INTEGER;
+    ALTER TABLE recipe_ingredient ADD COLUMN grams_assumed REAL;
+    UPDATE recipe SET kcal_source = 'source' WHERE has_nutrition = 1;
+    """,
 ]
 
 
@@ -190,6 +216,54 @@ class RecipeRow:
     liked: bool
     dismissed: bool
     familiarity: Familiarity
+    kcal_source: Literal["source", "estimate"] | None = None
+    kcal_100g: float | None = None
+    est_coverage: float | None = None
+    est_status: EstStatus | None = None
+    servings_estimated: bool = False
+    est_unknown: tuple[str, ...] = ()
+    est_assumed: int = 0
+
+
+@dataclass(frozen=True)
+class IngredientNutrition:
+    """Wartości na 100 g składnika słownika (E3c)."""
+
+    ingredient_id: int
+    name: str
+    kcal: float | None
+    protein: float | None
+    carbs: float | None
+    fat: float | None
+    piece_g: float | None
+    source: NutritionSource | None
+    confidence: Literal["high", "low"] | None
+    status: EstStatus | None
+    updated_at: str | None
+
+
+@dataclass(frozen=True)
+class RecipeLine:
+    """Linia przepisu do estymacji; ``ingredient_name`` = nazwa słownika (None, gdy niepowiązana)."""
+
+    recipe_id: int
+    pos: int
+    text: str
+    amount: float | None
+    unit: str | None
+    name: str
+    ingredient_id: int | None
+    ingredient_name: str | None
+    grams_assumed: float | None
+    recipe_title: str = ""
+
+
+@dataclass(frozen=True)
+class RecipeToEstimate:
+    id: int
+    title: str
+    servings: float | None
+    kcal_100g: float | None
 
 
 @dataclass(frozen=True)
@@ -204,7 +278,9 @@ class PendingRecipeMeta:
 _RECIPE_COLUMNS = (
     "r.id, r.source, r.url, r.title, r.image, r.servings, r.kcal, r.protein, r.carbs, r.fat, r.minutes, "
     "r.tags_json, r.meal_category, r.storage_days, r.freezable, r.has_nutrition, r.meta_status, "
-    "COALESCE(f.liked, 0), COALESCE(f.dismissed, 0)"
+    "COALESCE(f.liked, 0), COALESCE(f.dismissed, 0), "
+    "r.kcal_source, r.kcal_100g, r.est_coverage, r.est_status, r.servings_estimated, r.est_unknown_json, "
+    "r.est_assumed"
 )
 
 
@@ -490,16 +566,18 @@ class Store:
             stamp,
         )
         freezable = None if meta.freezable is None else int(meta.freezable)
+        kcal_source = "source" if recipe.kcal is not None else None
         with closing(self._connect()) as conn, conn:
             row = conn.execute(
-                "SELECT id, meta_status FROM recipe WHERE source = ? AND source_id = ?",
+                "SELECT id, meta_status, est_status FROM recipe WHERE source = ? AND source_id = ?",
                 (recipe.source, recipe.source_id),
             ).fetchone()
             if row is None:
                 cur = conn.execute(
                     "INSERT INTO recipe (title, url, image, servings, kcal, protein, carbs, fat, minutes, "
                     "tags_json, has_nutrition, fetched_at, source, source_id, meal_category, storage_days, "
-                    "freezable, meta_status) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                    "freezable, meta_status, kcal_source, kcal_100g) "
+                    "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                     (
                         *values,
                         recipe.source,
@@ -508,16 +586,38 @@ class Store:
                         meta.storage_days,
                         freezable,
                         meta.status,
+                        kcal_source,
+                        recipe.kcal_100g,
                     ),
                 )
                 recipe_id = int(cur.lastrowid or 0)
             else:
                 recipe_id = int(row[0])
-                conn.execute(
-                    "UPDATE recipe SET title=?, url=?, image=?, servings=?, kcal=?, protein=?, carbs=?, "
-                    "fat=?, minutes=?, tags_json=?, has_nutrition=?, fetched_at=? WHERE id=?",
-                    (*values, recipe_id),
-                )
+                if recipe.kcal is None and row[2] == "approved":
+                    # zatwierdzony szacunek przeżywa ponowny crawl bez kcal ze źródła
+                    conn.execute(
+                        "UPDATE recipe SET title=?, url=?, image=?, servings=?, minutes=?, tags_json=?, "
+                        "fetched_at=?, kcal_100g=? WHERE id=?",
+                        (
+                            recipe.title,
+                            recipe.url,
+                            recipe.image,
+                            recipe.servings,
+                            recipe.minutes,
+                            values[9],
+                            stamp,
+                            recipe.kcal_100g,
+                            recipe_id,
+                        ),
+                    )
+                else:
+                    conn.execute(
+                        "UPDATE recipe SET title=?, url=?, image=?, servings=?, kcal=?, protein=?, carbs=?, "
+                        "fat=?, minutes=?, tags_json=?, has_nutrition=?, fetched_at=?, kcal_source=?, "
+                        "kcal_100g=?, est_coverage=NULL, est_status=NULL, servings_estimated=NULL, "
+                        "est_unknown_json=NULL, est_assumed=NULL WHERE id=?",
+                        (*values, kcal_source, recipe.kcal_100g, recipe_id),
+                    )
                 if row[1] != "approved":
                     conn.execute(
                         "UPDATE recipe SET meal_category=?, storage_days=?, freezable=?, meta_status=? "
@@ -612,6 +712,13 @@ class Store:
                     liked=bool(r[17]),
                     dismissed=bool(r[18]),
                     familiarity=familiarity(by_recipe.get(r[0], []), stats, basics=basics),
+                    kcal_source=cast("Literal['source', 'estimate'] | None", r[19]),
+                    kcal_100g=r[20],
+                    est_coverage=r[21],
+                    est_status=cast("EstStatus | None", r[22]),
+                    servings_estimated=bool(r[23]),
+                    est_unknown=tuple(json.loads(r[24])) if r[24] else (),
+                    est_assumed=int(r[25] or 0),
                 )
             )
         return result
@@ -693,4 +800,167 @@ class Store:
                 "UPDATE recipe SET meal_category=?, storage_days=?, freezable=?, meta_status='approved' "
                 "WHERE id = ?",
                 (category, storage_days, int(freezable), recipe_id),
+            )
+
+    # --- Szacunek kcal ze składników (migracja v4, E3c) ---
+
+    def save_ingredient_nutrition(
+        self,
+        ingredient_id: int,
+        *,
+        kcal: float | None,
+        protein: float | None,
+        carbs: float | None,
+        fat: float | None,
+        piece_g: float | None,
+        source: NutritionSource,
+        confidence: Literal["high", "low"],
+        status: EstStatus,
+        updated_at: str | None = None,
+    ) -> None:
+        """Upsert wartości składnika; wpis ``approved`` nie jest nadpisywany przez automat."""
+        stamp = updated_at or datetime.now().isoformat(timespec="seconds")
+        with closing(self._connect()) as conn, conn:
+            conn.execute(
+                "INSERT INTO ingredient_nutrition (ingredient_id, kcal, protein, carbs, fat, piece_g, "
+                "source, confidence, status, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?) "
+                "ON CONFLICT(ingredient_id) DO UPDATE SET kcal=excluded.kcal, protein=excluded.protein, "
+                "carbs=excluded.carbs, fat=excluded.fat, piece_g=excluded.piece_g, source=excluded.source, "
+                "confidence=excluded.confidence, status=excluded.status, updated_at=excluded.updated_at "
+                "WHERE ingredient_nutrition.status IS NOT 'approved' OR excluded.source = 'manual'",
+                (ingredient_id, kcal, protein, carbs, fat, piece_g, source, confidence, status, stamp),
+            )
+
+    def _nutrition_rows(self, where: str = "") -> list[IngredientNutrition]:
+        with closing(self._connect()) as conn:
+            rows = conn.execute(
+                "SELECT n.ingredient_id, i.name, n.kcal, n.protein, n.carbs, n.fat, n.piece_g, n.source, "
+                "n.confidence, n.status, n.updated_at FROM ingredient_nutrition n "
+                f"JOIN ingredient i ON i.id = n.ingredient_id {where} ORDER BY i.name"
+            ).fetchall()
+        return [
+            IngredientNutrition(
+                ingredient_id=r[0],
+                name=r[1],
+                kcal=r[2],
+                protein=r[3],
+                carbs=r[4],
+                fat=r[5],
+                piece_g=r[6],
+                source=cast("NutritionSource | None", r[7]),
+                confidence=cast("Literal['high', 'low'] | None", r[8]),
+                status=cast("EstStatus | None", r[9]),
+                updated_at=r[10],
+            )
+            for r in rows
+        ]
+
+    def ingredient_nutrition(self) -> dict[int, IngredientNutrition]:
+        """Wszystkie wpisy po ``ingredient_id``."""
+        return {n.ingredient_id: n for n in self._nutrition_rows()}
+
+    def pending_ingredient_nutrition(self) -> list[IngredientNutrition]:
+        return self._nutrition_rows("WHERE n.status = 'pending'")
+
+    def ingredients_needing_nutrition(self) -> list[tuple[int, str]]:
+        """(id, nazwa) składników bez wpisu, użytych w przepisach bez kcal ze źródła i niezatwierdzonych."""
+        with closing(self._connect()) as conn:
+            rows = conn.execute(
+                "SELECT DISTINCT i.id, i.name FROM recipe_ingredient ri "
+                "JOIN recipe r ON r.id = ri.recipe_id "
+                "JOIN ingredient i ON i.id = ri.ingredient_id "
+                "LEFT JOIN ingredient_nutrition n ON n.ingredient_id = i.id "
+                "WHERE n.ingredient_id IS NULL AND r.kcal_source IS NOT 'source' "
+                "AND r.est_status IS NOT 'approved' ORDER BY i.name"
+            ).fetchall()
+        return [(int(r[0]), str(r[1])) for r in rows]
+
+    def recipes_to_estimate(self) -> list[RecipeToEstimate]:
+        """Przepisy bez kcal ze źródła i bez ręcznie zatwierdzonego szacunku."""
+        with closing(self._connect()) as conn:
+            rows = conn.execute(
+                "SELECT id, title, servings, kcal_100g FROM recipe "
+                "WHERE kcal_source IS NOT 'source' AND est_status IS NOT 'approved' ORDER BY id"
+            ).fetchall()
+        return [RecipeToEstimate(r[0], r[1], r[2], r[3]) for r in rows]
+
+    def recipe_lines(self, recipe_id: int) -> list[RecipeLine]:
+        with closing(self._connect()) as conn:
+            rows = conn.execute(
+                "SELECT ri.recipe_id, ri.pos, ri.text, ri.amount, ri.unit, ri.name, ri.ingredient_id, "
+                "i.name, ri.grams_assumed, r.title FROM recipe_ingredient ri "
+                "JOIN recipe r ON r.id = ri.recipe_id "
+                "LEFT JOIN ingredient i ON i.id = ri.ingredient_id "
+                "WHERE ri.recipe_id = ? ORDER BY ri.pos",
+                (recipe_id,),
+            ).fetchall()
+        return [RecipeLine(*r) for r in rows]
+
+    def lines_without_amount(self) -> list[RecipeLine]:
+        """Linie bez ilości i bez ``grams_assumed`` w przepisach do estymacji."""
+        with closing(self._connect()) as conn:
+            rows = conn.execute(
+                "SELECT ri.recipe_id, ri.pos, ri.text, ri.amount, ri.unit, ri.name, ri.ingredient_id, "
+                "i.name, ri.grams_assumed, r.title FROM recipe_ingredient ri "
+                "JOIN recipe r ON r.id = ri.recipe_id "
+                "LEFT JOIN ingredient i ON i.id = ri.ingredient_id "
+                "WHERE ri.amount IS NULL AND ri.grams_assumed IS NULL "
+                "AND r.kcal_source IS NOT 'source' AND r.est_status IS NOT 'approved' "
+                "ORDER BY ri.recipe_id, ri.pos"
+            ).fetchall()
+        return [RecipeLine(*r) for r in rows]
+
+    def set_grams_assumed(self, recipe_id: int, pos: int, grams: float) -> None:
+        with closing(self._connect()) as conn, conn:
+            conn.execute(
+                "UPDATE recipe_ingredient SET grams_assumed = ? WHERE recipe_id = ? AND pos = ?",
+                (grams, recipe_id, pos),
+            )
+
+    def save_recipe_estimate(
+        self,
+        recipe_id: int,
+        *,
+        kcal: float | None,
+        protein: float | None,
+        carbs: float | None,
+        fat: float | None,
+        servings_estimated: bool,
+        coverage: float,
+        status: EstStatus,
+        unknown: Iterable[str],
+        assumed: int,
+    ) -> bool:
+        """Zapis szacunku (kcal_source='estimate'); ``has_nutrition`` = 1 tylko dla auto/approved.
+
+        Nie rusza przepisów z kcal ze źródła ani zatwierdzonych ręcznie; zwraca, czy zapisano.
+        """
+        with closing(self._connect()) as conn, conn:
+            cur = conn.execute(
+                "UPDATE recipe SET kcal=?, protein=?, carbs=?, fat=?, kcal_source='estimate', "
+                "est_coverage=?, est_status=?, servings_estimated=?, est_unknown_json=?, est_assumed=?, "
+                "has_nutrition=? WHERE id=? AND kcal_source IS NOT 'source' AND est_status IS NOT 'approved'",
+                (
+                    kcal,
+                    protein,
+                    carbs,
+                    fat,
+                    coverage,
+                    status,
+                    int(servings_estimated),
+                    json.dumps(list(unknown), ensure_ascii=False),
+                    assumed,
+                    int(status in ("auto", "approved")),
+                    recipe_id,
+                ),
+            )
+        return cur.rowcount > 0
+
+    def set_recipe_estimate_status(self, recipe_id: int, status: EstStatus) -> None:
+        """Zmiana statusu szacunku (np. zatwierdzenie); ``has_nutrition`` podąża za statusem."""
+        with closing(self._connect()) as conn, conn:
+            conn.execute(
+                "UPDATE recipe SET est_status=?, has_nutrition=? "
+                "WHERE id=? AND kcal_source = 'estimate' AND kcal IS NOT NULL",
+                (status, int(status in ("auto", "approved")), recipe_id),
             )

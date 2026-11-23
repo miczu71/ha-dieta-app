@@ -9,19 +9,43 @@ import logging
 import threading
 import time
 from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import date
 
 from dieta.catalog import META_PROMPT, CrawlResult, crawl, enrich_meta
 from dieta.dictionary import AskFn, llm_ask_from
+from dieta.estimate import (
+    COVERAGE_OK,
+    Line,
+    Measures,
+    NutritionSeed,
+    Per100,
+    estimate_recipe,
+    is_free,
+    load_measures,
+    load_nutrition_seed,
+)
 from dieta.fetcher import make_fetch
+from dieta.nutrition_lookup import (
+    GRAMS_PROMPT,
+    NUTRITION_PROMPT,
+    OFF_INTERVAL_S,
+    NutritionValue,
+    OffClient,
+    fill_ingredient_nutrition,
+    lookup_assumed_grams,
+    make_off_fetch,
+)
 from dieta.settings import Settings
 from dieta.sources.aniagotuje import AniagotujeSource
 from dieta.sources.base import Fetch, RecipeSource
 from dieta.sources.lidl import LidlSource
 from dieta.sources.policzona import PolicznaSource
 from dieta.sources.respo import RespoSource
-from dieta.store import Store
+from dieta.store import IngredientNutrition, Store
 from dieta.sync import map_recipe_ingredients
+
+KCAL_100G_TOLERANCE = 0.25
 
 log = logging.getLogger(__name__)
 
@@ -51,8 +75,11 @@ def run_catalog(
     ask_ingredients: AskFn | None,
     ask_meta: AskFn | None,
     today: date,
+    ask_nutrition: AskFn | None = None,
+    ask_grams: AskFn | None = None,
+    fetch_off: Fetch | None = None,
 ) -> dict[str, CrawlResult]:
-    """Crawl ``source`` (albo wszystkich włączonych), potem mapowanie składników i metadane AI."""
+    """Crawl ``source`` (albo wszystkich włączonych), potem mapowanie, metadane AI i szacunek kcal."""
     names = [source] if source is not None else list(settings.sources)
     results: dict[str, CrawlResult] = {}
     for name in names:
@@ -81,7 +108,171 @@ def run_catalog(
     started = time.monotonic()
     enriched = enrich_meta(store, ask_meta)
     log.info("Katalog: metadane AI: %d w %.0f s", enriched, time.monotonic() - started)
+    started = time.monotonic()
+    stats = estimate_nutrition(store, ask_nutrition, fetch_off, ask_grams=ask_grams)
+    log.info(
+        "Katalog: szacunek kcal: %d przepisów (auto %d, do sprawdzenia %d, błędy %d); składniki: "
+        "tabela %d, OFF %d, LLM %d, bez wpisu %d; linie z ilością domyślną: %d; %.0f s",
+        stats.recipes,
+        stats.auto,
+        stats.pending,
+        stats.errors,
+        stats.table,
+        stats.off,
+        stats.llm,
+        stats.failed,
+        stats.grams,
+        time.monotonic() - started,
+    )
     return results
+
+
+@dataclass
+class EstimateStats:
+    recipes: int = 0
+    auto: int = 0
+    pending: int = 0
+    errors: int = 0
+    table: int = 0
+    off: int = 0
+    llm: int = 0
+    failed: int = 0
+    grams: int = 0
+
+
+def _per100(name: str, n: IngredientNutrition, seed: NutritionSeed) -> Per100 | None:
+    if n.kcal is None or n.protein is None or n.carbs is None or n.fat is None:
+        return None
+    base = seed.find(name)
+    extra = base[1] if base is not None else None
+    return Per100(
+        kcal=n.kcal,
+        protein=n.protein,
+        carbs=n.carbs,
+        fat=n.fat,
+        piece_g=n.piece_g if n.piece_g is not None else (extra.piece_g if extra else None),
+        density_g_ml=extra.density_g_ml if extra else None,
+        unit_g=extra.unit_g if extra else {},
+    )
+
+
+def estimate_nutrition(
+    store: Store,
+    ask: AskFn | None,
+    fetch: Fetch | None,
+    *,
+    measures: Measures | None = None,
+    ask_grams: AskFn | None = None,
+    seed: NutritionSeed | None = None,
+    off_interval: float = OFF_INTERVAL_S,
+    sleep: Callable[[float], None] = time.sleep,
+    clock: Callable[[], float] = time.monotonic,
+) -> EstimateStats:
+    """Szacunek kcal/makro dla przepisów bez kcal ze źródła (nie rusza ``kcal_source='source'``).
+
+    ``ask`` = LLM dla wartości składników, ``ask_grams`` = LLM dla linii bez ilości, ``fetch`` = pobieranie
+    z Open Food Facts (None = bez OFF). Bez LLM: tabela + OFF; składniki bez wpisu zostają nieznane
+    (brak cichych zer). Wyjątek w jednym przepisie nie przerywa kroku.
+    """
+    stats = EstimateStats()
+    measures = measures or load_measures()
+    seed = seed or load_nutrition_seed()
+
+    ingredients = [(i, n) for i, n in store.ingredients_needing_nutrition() if not is_free(n, measures)]
+    off = OffClient(fetch, interval=off_interval, sleep=sleep, clock=clock) if fetch is not None else None
+
+    def save(ingredient_id: int, v: NutritionValue) -> None:
+        store.save_ingredient_nutrition(
+            ingredient_id,
+            kcal=v.kcal,
+            protein=v.protein,
+            carbs=v.carbs,
+            fat=v.fat,
+            piece_g=v.piece_g,
+            source=v.source,
+            confidence=v.confidence,
+            status=v.status,
+        )
+
+    try:
+        counts = fill_ingredient_nutrition(ingredients, seed, off, ask, save)
+        stats.table, stats.off, stats.llm, stats.failed = counts.table, counts.off, counts.llm, counts.failed
+    except Exception:
+        log.warning("Szacunek kcal: uzupełnianie składników przerwane", exc_info=True)
+
+    if ask_grams is not None:
+        try:
+            lines = [
+                ln
+                for ln in store.lines_without_amount()
+                if not is_free(ln.ingredient_name or ln.name, measures)
+            ]
+            answers = lookup_assumed_grams([(ln.text, ln.recipe_title) for ln in lines], ask_grams)
+            for index, grams in answers.items():
+                store.set_grams_assumed(lines[index].recipe_id, lines[index].pos, grams)
+                stats.grams += 1
+        except Exception:
+            log.warning("Szacunek kcal: ilości domyślne przerwane", exc_info=True)
+
+    nutrition = store.ingredient_nutrition()
+    per100: dict[int, Per100] = {}
+    for ingredient_id, row in nutrition.items():
+        per = _per100(row.name, row, seed)
+        if per is not None:
+            per100[ingredient_id] = per
+    for recipe in store.recipes_to_estimate():
+        try:
+            stored = store.recipe_lines(recipe.id)
+            if not stored:
+                continue
+            est_lines = [
+                Line(
+                    name=ln.ingredient_name or ln.name,
+                    amount=ln.amount,
+                    unit=ln.unit,
+                    ingredient_id=ln.ingredient_id,
+                    grams_assumed=ln.grams_assumed,
+                )
+                for ln in stored
+            ]
+            est = estimate_recipe(est_lines, per100, recipe.servings, measures=measures)
+            pending_ingredient = any(
+                ln.ingredient_id is not None
+                and ln.ingredient_id in nutrition
+                and nutrition[ln.ingredient_id].status == "pending"
+                and not is_free(ln.ingredient_name or ln.name, measures)
+                for ln in stored
+            )
+            consistent = True
+            if recipe.kcal_100g:
+                if est.total_g <= 0:
+                    consistent = False
+                else:
+                    computed = est.kcal * est.servings / est.total_g * 100
+                    consistent = abs(computed - recipe.kcal_100g) / recipe.kcal_100g <= KCAL_100G_TOLERANCE
+            auto = est.coverage >= COVERAGE_OK and not pending_ingredient and consistent
+            has_values = est.known > 0
+            store.save_recipe_estimate(
+                recipe.id,
+                kcal=est.kcal if has_values else None,
+                protein=est.protein if has_values else None,
+                carbs=est.carbs if has_values else None,
+                fat=est.fat if has_values else None,
+                servings_estimated=est.servings_estimated,
+                coverage=est.coverage,
+                status="auto" if auto and has_values else "pending",
+                unknown=est.unknown_names,
+                assumed=est.assumed_lines,
+            )
+            stats.recipes += 1
+            if auto and has_values:
+                stats.auto += 1
+            else:
+                stats.pending += 1
+        except Exception:
+            stats.errors += 1
+            log.warning("Szacunek kcal: błąd przepisu %d (%s)", recipe.id, recipe.title, exc_info=True)
+    return stats
 
 
 def default_crawl_runner(settings: Settings, store: Store) -> CrawlRunner:
@@ -98,6 +289,9 @@ def default_crawl_runner(settings: Settings, store: Store) -> CrawlRunner:
                 ask_ingredients=llm_ask_from(settings),
                 ask_meta=llm_ask_from(settings, META_PROMPT),
                 today=date.today(),
+                ask_nutrition=llm_ask_from(settings, NUTRITION_PROMPT),
+                ask_grams=llm_ask_from(settings, GRAMS_PROMPT),
+                fetch_off=make_off_fetch(),
             )
 
     return run

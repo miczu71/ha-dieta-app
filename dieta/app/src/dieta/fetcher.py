@@ -76,6 +76,7 @@ def make_fetch(
     sleep: Callable[[float], None] = time.sleep,
     clock: Callable[[], float] = time.monotonic,
     min_interval: float = MIN_INTERVAL_S,
+    user_agent: str = USER_AGENT,
 ) -> Fetch:
     """Zwraca ``fetch(url) -> html``: dławiony do ``min_interval`` s między zapytaniami, z robots.txt."""
     last = [float("-inf")]
@@ -101,7 +102,7 @@ def make_fetch(
             sleep(wait)
         last[0] = clock()
         try:
-            req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+            req = urllib.request.Request(url, headers={"User-Agent": user_agent})
             with closing(open_fn(req)) as resp:
                 return resp.read(MAX_BYTES + 1), resp.headers.get_content_charset() or "utf-8"
         except urllib.error.HTTPError as exc:
@@ -148,7 +149,7 @@ def make_fetch(
         known = robots[host]
         if known is False:
             raise FetchError("robots niedostępny")
-        return known is None or known.can_fetch(USER_AGENT, url)  # type: ignore[union-attr]
+        return known is None or known.can_fetch(user_agent, url)  # type: ignore[union-attr]
 
     def fetch(url: str) -> str:
         parts = urllib.parse.urlsplit(url)

@@ -107,6 +107,16 @@ def test_no_amount_gives_none(measures: Measures) -> None:
     assert _grams(measures, None, None, piece_g=55) == (None, "none")
 
 
+def test_negative_amount_gives_none(measures: Measures) -> None:
+    assert _grams(measures, -5, "g") == (None, "none")
+    assert _grams(measures, -1, None, piece_g=55) == (None, "none")
+
+
+def test_zero_amount_gives_none(measures: Measures) -> None:
+    assert _grams(measures, 0, "g") == (None, "none")
+    assert _grams(measures, 0, "szt", piece_g=55) == (None, "none")
+
+
 def test_unknown_unit_gives_none(measures: Measures) -> None:
     # "pęczek" nie ma wagi w unit_g ani default_unit_g i nie jest szt
     assert _grams(measures, 1, "pęczek") == (None, "none")
