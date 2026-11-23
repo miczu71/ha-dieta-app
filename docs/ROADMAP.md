@@ -357,3 +357,8 @@ Decyzja usera: wspólny katalog cen w Zakupach (Frisco wczytywane tam). Następn
 
 ## E6b.1 PLAN GOTOWY 2026-11-23 (`docs/PLAN_E6b_1.md`)
 Log Zakupów (36 h): bez błędów `shelf`/429 — limit nie dotyka produkcji. Plan etapu z sekcją Wykonawca (sonnet-worker, jedna paczka, schemat v16 `catalog_products`/`catalog_obs`, ingest paragonów + Frisco, `/api/v1/catalog`). Następny krok: `wt new` w repo Zakupów → sonnet-worker → verifier → commit → stage-end.
+
+## E6b.1 ZROBIONE 2026-11-23 (Zakupy, commit `73ccd56`, niewydane) → następny E6b.2
+Schemat v16 (`catalog_products`, `catalog_obs` tylko dopisywane, kopia `.pre-catalog`), ingest paragonów (Biedronka po EAN `b:<ean>`, Lidl po `lidl_art`) i tygodniowy feed Frisco (nd 03:00, `POST /api/v1/catalog/frisco/refresh`), `GET /api/v1/catalog?since&source&history`, `GET /api/v1/shelf?store=` (cache `shelf_prices` + produkt z katalogu po EAN). Weryfikacja: worker pełny `pytest` 888 passed, ruff/mypy czyste; verifier REJECT (shelf pusty) → poprawka → ACCEPT (test_catalog 16 passed). Wersja Zakupów zostaje 1.11.0.
+Do sprawdzenia przed wydaniem (NIEBLOKUJĄCE verifiera): `catalog_products(eans=)` filtruje w Pythonie po całym katalogu; `json.load` feedu 52 MB w pamięci (pomiar na hoście HA); ingest Frisco w wątku na współdzielonym połączeniu sqlite (wiele commitów) — rozważyć jedną transakcję/partie; backfill paragonów synchronicznie w lifespan (czas na dużej historii); krok 4 planu (migracja + backfill na kopii żywej bazy) NIE wykonany — zrobić na początku E6b.2 albo przed wydaniem; treść NOTICE Frisco do przeczytania przez usera.
+Następny: E6b.2 (Dieta: mapowanie Frisco→składnik reguły + AI `auto:text` + kolejka, współczynnik 0,75, migracja v8) — najpierw `docs/PLAN_E6b_2.md` z Wykonawcą.
