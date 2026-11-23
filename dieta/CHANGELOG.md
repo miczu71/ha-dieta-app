@@ -1,5 +1,12 @@
 # Dziennik zmian
 
+## 0.2.0 (2026-11-23)
+- Plan tygodnia (E4): sesje gotowania na kilka dni, wspólne dania ze skalowaniem porcji, wymiana sesji lub dnia, cofnij, zatwierdzenie; opcje slotów (`slot_*_pct`) i planera.
+- Realizacja (E5): ekran „Dziś” — odhaczanie per osoba i posiłek: zjedzone / pominięte / zamiennik (nazwa, kcal, makro opcjonalnie), cofnięcie, okno edycji dziś i 7 dni wstecz, tylko zatwierdzony plan. Ekran „Bilans” — kcal i makro dziennie i tygodniowo na osobę, posiłki „bez odpowiedzi” nie liczą się, licznik zostałych porcji z sesji wielodniowych.
+- Poranny push z planem dnia na `notify.<usługa>`: opcje `push_notify` (domyślnie `family`, pusta = wyłączony) i `push_time` (07:00); do 3 prób co 10 min przy błędzie, bez nadrabiania po restarcie. Wymaga uprawnienia `homeassistant_api` (dodane) i **restartu add-onu po aktualizacji**; sprawdź, że usługa `notify.family` istnieje albo zmień opcję.
+- Migracja bazy v6 (tabela `meal_log`): **po aktualizacji nie wracaj do 0.1.5** — starsza wersja nie zna schematu v6.
+- Znane: link w powiadomieniu (ścieżka panelu) niesprawdzony na żywo; odchylenie tygodnia w Bilansie liczy cel wszystkich dni do dziś, także bez odpowiedzi.
+
 ## 0.1.5 (2026-11-23)
 - Szacunek kcal i makro na porcję dla przepisów bez wartości ze źródła (m.in. cała Ania Gotuje): wartości na 100 g składnika z wbudowanej tabeli, potem Open Food Facts, potem AI; ilości w miarach domowych i sztukach przeliczane na gramy, linie bez ilości szacuje AI (waga 0,5 w pokryciu). Przepisy z kcal ze źródła pozostają bez zmian.
 - Przepis z pokryciem masy ≥ 85% (i zgodny z kcal/100 g ze strony Ani, ±25%) dostaje status „szacunek” i wchodzi do planera; pozostałe są „niepełnym szacunkiem” w kolejce do sprawdzenia. W Katalogu: „~420 kcal (szacunek)”, pokrycie, nieznane składniki, „porcje szacowane”, filtr kcal.
