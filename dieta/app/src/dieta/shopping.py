@@ -28,7 +28,7 @@ from dieta.estimate import (
 from dieta.match import DEFAULT_BASICS
 from dieta.pricing import IngredientPrice, ingredient_prices
 from dieta.settings import Settings
-from dieta.store import PlanMeal, PlanSession, Store
+from dieta.store import PlanMeal, PlanSession, RecipeLine, Store
 from dieta.sync import stats
 
 Notice = Literal["ok", "no_plan", "not_approved", "past_week", "no_prices"]
@@ -93,7 +93,7 @@ class _SessionMasses:
 
 
 @dataclass(frozen=True)
-class _Context:
+class Context:
     measures: Measures
     per100: dict[int, Per100]
     prices: dict[str, IngredientPrice]
@@ -109,7 +109,7 @@ def _seed() -> NutritionSeed:
     return load_nutrition_seed()
 
 
-def _context(store: Store) -> _Context:
+def build_context(store: Store) -> Context:
     seed = _seed()
     per100: dict[int, Per100] = {}
     piece_by_name: dict[str, float] = {}
@@ -133,11 +133,30 @@ def _context(store: Store) -> _Context:
         for m in store.mappings()
         if m.status in PRICED_MAPPING_STATUSES and m.ingredient is not None
     }
-    return _Context(_measures(), per100, ingredient_prices(store.purchases(), mapping, piece_by_name))
+    return Context(_measures(), per100, ingredient_prices(store.purchases(), mapping, piece_by_name))
+
+
+def line_grams(ln: RecipeLine, ctx: Context) -> tuple[int, str, float | None] | None:
+    """(id składnika, nazwa, gramy) linii albo None, gdy się nie liczy (bez składnika, woda, szum)."""
+    name = ln.ingredient_name or ln.name
+    if ln.ingredient_id is None or is_free(name, ctx.measures):
+        return None
+    if ln.amount is None and is_noise(name, ln.text, ctx.measures):
+        return None
+    per = ctx.per100.get(ln.ingredient_id)
+    grams, _ = to_grams(
+        ln.amount,
+        ln.unit,
+        measures=ctx.measures,
+        piece_g=per.piece_g if per else None,
+        density_g_ml=per.density_g_ml if per else None,
+        unit_g=per.unit_g if per else None,
+    )
+    return ln.ingredient_id, name, ln.grams_assumed if grams is None else grams
 
 
 def _session_masses(
-    store: Store, ctx: _Context, session: PlanSession, meals: list[PlanMeal]
+    store: Store, ctx: Context, session: PlanSession, meals: list[PlanMeal]
 ) -> _SessionMasses | None:
     recipe = store.recipe(session.recipe_id, {}, DEFAULT_BASICS)
     if recipe is None:
@@ -163,28 +182,15 @@ def _session_masses(
     scale = portions / servings
     masses: list[_Mass] = []
     for ln in stored:
-        name = ln.ingredient_name or ln.name
-        if ln.ingredient_id is None or is_free(name, ctx.measures):
-            continue
-        if ln.amount is None and is_noise(name, ln.text, ctx.measures):
-            continue
-        per = ctx.per100.get(ln.ingredient_id)
-        grams, _ = to_grams(
-            ln.amount,
-            ln.unit,
-            measures=ctx.measures,
-            piece_g=per.piece_g if per else None,
-            density_g_ml=per.density_g_ml if per else None,
-            unit_g=per.unit_g if per else None,
-        )
-        if grams is None:
-            grams = ln.grams_assumed
-        masses.append(_Mass(ln.ingredient_id, name, None if grams is None else grams * scale))
+        got = line_grams(ln, ctx)
+        if got is not None:
+            ingredient_id, name, grams = got
+            masses.append(_Mass(ingredient_id, name, None if grams is None else grams * scale))
     return _SessionMasses(session, recipe.title, portions, tuple(masses))
 
 
 def _all_masses(
-    store: Store, ctx: _Context, plan_id: int, min_start_day: int | None = None
+    store: Store, ctx: Context, plan_id: int, min_start_day: int | None = None
 ) -> list[_SessionMasses]:
     meals = store.plan_meals(plan_id)
     result: list[_SessionMasses] = []
@@ -218,7 +224,7 @@ def plan_cost(store: Store, settings: Settings, week_start: date) -> PlanCost:
     plan = store.plan(week_start)
     if plan is None:
         return PlanCost(0.0, 0.0, ())
-    ctx = _context(store)
+    ctx = build_context(store)
     sessions: list[SessionCost] = []
     every: list[_Mass] = []
     for item in _all_masses(store, ctx, plan.id):
@@ -255,7 +261,7 @@ def shopping_list(store: Store, settings: Settings, week_start: date, today: dat
     if today >= week_start + timedelta(days=WEEK_DAYS):
         return _empty(week_start, "past_week")
 
-    ctx = _context(store)
+    ctx = build_context(store)
     min_start_day = max(0, (today - week_start).days)
     merged: dict[int, tuple[str, float | None]] = {}
     for item in _all_masses(store, ctx, plan.id, min_start_day):

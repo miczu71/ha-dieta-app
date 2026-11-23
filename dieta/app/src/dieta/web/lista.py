@@ -143,8 +143,8 @@ def make_lista_router(settings: Settings, store: Store, templates: Jinja2Templat
         if not lines:
             return go(week, "todo_empty")
         outcome = "ok"
+        description = f"Dieta, tydzień od {key}"
         for line in lines:
-            description = f"Dieta, tydzień od {key}"
             result = send_items(settings, [(_item_text(line), description)])
             if result != "ok":
                 outcome = result

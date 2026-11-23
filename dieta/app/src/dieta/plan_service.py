@@ -13,11 +13,10 @@ from dataclasses import asdict, dataclass
 from datetime import date, timedelta
 
 from . import planner
-from .estimate import is_free, is_noise, to_grams
 from .match import DEFAULT_BASICS
 from .profile import IngredientStat
 from .settings import WEEKDAYS, Settings
-from .shopping import _Context, _context
+from .shopping import Context, build_context, line_grams
 from .store import PERSON_IDS, NewPlanMeal, NewPlanSession, PlanRow, RecipeRow, Store
 from .sync import stats
 from .targets import person_targets
@@ -136,27 +135,13 @@ def _main_ingredient(store: Store, recipe_id: int) -> str | None:
     return None
 
 
-def _home_ratio(store: Store, ctx: _Context, home: frozenset[str], recipe_id: int) -> float:
+def _home_ratio(store: Store, ctx: Context, home: frozenset[str], recipe_id: int) -> float:
     """Udział masy linii „w domu” w masie wszystkich linii przepisu z masą; bez mas — udział liczby linii."""
     lines: list[tuple[bool, float | None]] = []
     for ln in store.recipe_lines(recipe_id):
-        name = ln.ingredient_name or ln.name
-        if ln.ingredient_id is None or is_free(name, ctx.measures):
-            continue
-        if ln.amount is None and is_noise(name, ln.text, ctx.measures):
-            continue
-        per = ctx.per100.get(ln.ingredient_id)
-        grams, _ = to_grams(
-            ln.amount,
-            ln.unit,
-            measures=ctx.measures,
-            piece_g=per.piece_g if per else None,
-            density_g_ml=per.density_g_ml if per else None,
-            unit_g=per.unit_g if per else None,
-        )
-        if grams is None:
-            grams = ln.grams_assumed
-        lines.append((name in home, grams))
+        got = line_grams(ln, ctx)
+        if got is not None:
+            lines.append((got[1] in home, got[2]))
     if not lines:
         return 0.0
     massed = [(h, g) for h, g in lines if g is not None and g > 0]
@@ -165,10 +150,7 @@ def _home_ratio(store: Store, ctx: _Context, home: frozenset[str], recipe_id: in
     return sum(1 for h, _ in lines if h) / len(lines)
 
 
-def _candidate(
-    store: Store, r: RecipeRow, ctx: _Context, stat_map: Mapping[str, IngredientStat]
-) -> planner.Candidate:
-    home = frozenset(n for n, s in stat_map.items() if s.at_home)
+def _candidate(store: Store, r: RecipeRow, home_of: Callable[[int], float]) -> planner.Candidate:
     return planner.Candidate(
         id=r.id,
         title=r.title,
@@ -183,8 +165,19 @@ def _candidate(
         liked=r.liked,
         main_ingredient=_main_ingredient(store, r.id),
         dismissed=r.dismissed,
-        home_ratio=_home_ratio(store, ctx, home, r.id),
+        home_ratio=home_of(r.id),
     )
+
+
+def _home_ratio_fn(
+    store: Store, settings: Settings, stat_map: Mapping[str, IngredientStat]
+) -> Callable[[int], float]:
+    """Udział „w domu” liczony tylko w trybie „taniej” (planner czyta go wyłącznie wtedy)."""
+    if not settings.cheaper_mode:
+        return lambda _rid: 0.0
+    ctx = build_context(store)
+    home = frozenset(n for n, s in stat_map.items() if s.at_home)
+    return lambda rid: _home_ratio(store, ctx, home, rid)
 
 
 def _stat_map(store: Store, settings: Settings) -> dict[str, IngredientStat]:
@@ -196,22 +189,22 @@ def candidates_for(
 ) -> dict[int, planner.Candidate]:
     """Kandydaci tylko dla podanych przepisów (bilans/odhaczanie), bez ładowania całego katalogu."""
     stat_map = _stat_map(store, settings)
-    ctx = _context(store)
+    home_of = _home_ratio_fn(store, settings, stat_map)
     rows = {rid: store.recipe(rid, stat_map, DEFAULT_BASICS) for rid in set(recipe_ids)}
-    return {rid: _candidate(store, row, ctx, stat_map) for rid, row in rows.items() if row is not None}
+    return {rid: _candidate(store, row, home_of) for rid, row in rows.items() if row is not None}
 
 
 def build_pool(store: Store, settings: Settings, extra_ids: Iterable[int] = ()) -> Pool:
     """Pula do planera. ``extra_ids`` (przepisy już w planie) dołączane zawsze, nawet gdy odrzucone,
     żeby wymiana i bilans nie padały na przepisie, który później odrzucono w katalogu."""
     stat_map = _stat_map(store, settings)
-    ctx = _context(store)
+    home_of = _home_ratio_fn(store, settings, stat_map)
     items: list[planner.Candidate] = []
     estimated: set[int] = set()
     for r in store.recipes(stat_map, DEFAULT_BASICS):
         if r.meal_category not in CATEGORY_SLOTS or not _kcal_ok(r):
             continue
-        items.append(_candidate(store, r, ctx, stat_map))
+        items.append(_candidate(store, r, home_of))
         if r.kcal_source == "estimate":
             estimated.add(r.id)
     known = {c.id for c in items}
@@ -219,7 +212,7 @@ def build_pool(store: Store, settings: Settings, extra_ids: Iterable[int] = ()) 
         row = store.recipe(recipe_id, stat_map, DEFAULT_BASICS)
         if row is None:
             continue
-        items.append(_candidate(store, row, ctx, stat_map))
+        items.append(_candidate(store, row, home_of))
         if row.kcal_source == "estimate":
             estimated.add(row.id)
     return Pool(items, frozenset(estimated))

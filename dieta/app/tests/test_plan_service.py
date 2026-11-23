@@ -1,3 +1,4 @@
+import dataclasses
 from datetime import date
 from pathlib import Path
 
@@ -229,7 +230,8 @@ def _link_with_home(store: Store, monkeypatch: pytest.MonkeyPatch, home: set[str
 
 
 def _ratio(store: Store, settings: Settings, rid: int) -> float:
-    return next(c for c in svc.build_pool(store, settings).items if c.id == rid).home_ratio
+    cheaper = dataclasses.replace(settings, cheaper_mode=True)  # home_ratio liczony tylko w trybie „taniej”
+    return next(c for c in svc.build_pool(store, cheaper).items if c.id == rid).home_ratio
 
 
 def test_home_ratio_by_mass(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
