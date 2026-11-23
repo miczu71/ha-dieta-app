@@ -1,8 +1,9 @@
 {% extends "base.html" %}
+{% from "_szacunek.html" import kcal_note, chips %}
 {% block content %}
-{% if error %}<p class="dz-err" role="alert">Nie zapisano: {{ 'podaj nazwę składnika i trwałość' if error == 'dane' else 'pozycji nie ma już w kolejce' }}.</p>{% endif %}
+{% if error %}<p class="dz-err" role="alert">Nie zapisano: {{ {'dane': 'podaj poprawne dane', 'odzywcze': 'kcal 0–900, białko, węgle i tłuszcz ≥ 0 na 100 g'}.get(error, 'pozycji nie ma już w kolejce') }}.</p>{% endif %}
 <p class="dz-sub"><a class="dz-link" href="../kupujemy">← Co kupujemy</a></p>
-{% if not queue and not recipe_queue %}<p class="dz-sub">Nic do zatwierdzenia.</p>{% endif %}
+{% if not queue and not recipe_queue and not ing_queue and not est_queue %}<p class="dz-sub">Nic do zatwierdzenia.</p>{% endif %}
 <ul class="dz-list">
 {% for q in queue %}
   <li class="dz-card dz-pending">
@@ -33,6 +34,38 @@
       <label class="dz-check"><input type="checkbox" name="freezable" value="1"{{ ' checked' if p.freezable }}>Nadaje się do mrożenia</label>
       <div class="dz-row">
         <button class="dz-btn" type="submit">Zatwierdź</button>
+      </div>
+    </form>
+  </li>
+{% endfor %}
+{% for n in ing_queue %}
+  <li class="dz-card dz-pending">
+    <h2 class="dz-heading">{{ n.name }}</h2>
+    <p class="dz-sub">Składnik bez pewnych wartości na 100 g{% if n.kcal is not none %} · automat: ~{{ '%.0f'|format(n.kcal) }} kcal{% endif %}.</p>
+    <form method="post" action="zatwierdz-skladnik" class="dz-form">
+      <input type="hidden" name="ingredient_id" value="{{ n.ingredient_id }}">
+      <label>kcal / 100 g<input type="number" name="kcal" min="0" max="900" step="any" required value="{{ '' if n.kcal is none else '%g'|format(n.kcal) }}" inputmode="decimal"></label>
+      <label>Białko / 100 g<input type="number" name="protein" min="0" step="any" required value="{{ '' if n.protein is none else '%g'|format(n.protein) }}" inputmode="decimal"></label>
+      <label>Węgle / 100 g<input type="number" name="carbs" min="0" step="any" required value="{{ '' if n.carbs is none else '%g'|format(n.carbs) }}" inputmode="decimal"></label>
+      <label>Tłuszcz / 100 g<input type="number" name="fat" min="0" step="any" required value="{{ '' if n.fat is none else '%g'|format(n.fat) }}" inputmode="decimal"></label>
+      <div class="dz-row">
+        <button class="dz-btn" type="submit">Zatwierdź</button>
+      </div>
+    </form>
+  </li>
+{% endfor %}
+{% for p in est_queue %}
+  <li class="dz-card dz-pending">
+    <h2 class="dz-heading">{{ p.title }}</h2>
+    <p class="dz-sub">Szacunek: {% if p.kcal is not none %}~{{ '%.0f'|format(p.kcal) }} kcal {{ kcal_note(p) }}{% else %}brak szacunku{% endif %}</p>
+    <p class="dz-item-meta">pokrycie {{ ((p.est_coverage or 0) * 100)|round|int }}%{% if p.est_unknown %} · nieznane składniki: {{ p.est_unknown|join(', ') }}{% endif %}</p>
+    {% if p.kcal_100g %}<p class="dz-item-meta">Ze strony: {{ '%.0f'|format(p.kcal_100g) }} kcal/100 g</p>{% endif %}
+    <p>{{ chips(p) }}</p>
+    <form method="post" action="zatwierdz-szacunek" class="dz-form">
+      <input type="hidden" name="recipe_id" value="{{ p.id }}">
+      <div class="dz-row">
+        {% if p.kcal is not none %}<button class="dz-btn" type="submit" name="action" value="approve">Zatwierdź szacunek</button>{% endif %}
+        <button class="dz-btn dz-btn--ghost" type="submit" name="action" value="dismiss">Odrzuć</button>
       </div>
     </form>
   </li>

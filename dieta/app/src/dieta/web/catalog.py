@@ -16,13 +16,25 @@ from ..match import DEFAULT_BASICS
 from ..pipeline import SOURCE_LABELS, CrawlRunner
 from ..profile import IngredientStat
 from ..settings import Settings
-from ..store import MEAL_CATEGORIES, Store
+from ..store import MEAL_CATEGORIES, RecipeRow, Store
 from ..sync import stats
 from .kupujemy import MEAL_LABELS, queue_size
 
 log = logging.getLogger(__name__)
 
 MISSING_SHOWN = 4
+KCAL_MODES = ("zrodlo", "szacunek", "niepelny")
+
+
+def _kcal_match(r: RecipeRow, mode: str) -> bool:
+    """Filtr „kcal”: ze źródła / szacunki auto+approved / niepełne szacunki (pending)."""
+    if mode == "zrodlo":
+        return r.kcal_source == "source"
+    if mode == "szacunek":
+        return r.kcal_source == "estimate" and r.est_status in ("auto", "approved")
+    if mode == "niepelny":
+        return r.est_status == "pending"
+    return True
 
 
 def make_catalog_router(
@@ -36,7 +48,7 @@ def make_catalog_router(
         return {s.ingredient: s for s in stats(store, settings, date.today())}
 
     def filters(
-        prog: str, kat: str, zrodlo: str, polubione: str, odrzucone: str
+        prog: str, kat: str, zrodlo: str, polubione: str, odrzucone: str, kcal: str = ""
     ) -> dict[str, str | int | bool]:
         try:
             threshold = int(prog)
@@ -48,6 +60,7 @@ def make_catalog_router(
             "zrodlo": zrodlo if zrodlo in SOURCE_LABELS else "",
             "polubione": polubione == "1",
             "odrzucone": odrzucone == "1",
+            "kcal": kcal if kcal in KCAL_MODES else "",
         }
 
     def query(f: dict[str, str | int | bool]) -> str:
@@ -74,8 +87,9 @@ def make_catalog_router(
         polubione: str = "",
         odrzucone: str = "",
         notice: str = "",
+        kcal: str = "",
     ) -> Response:
-        f = filters(prog, kat, zrodlo, polubione, odrzucone)
+        f = filters(prog, kat, zrodlo, polubione, odrzucone, kcal)
         rows = store.recipes(
             stat_map(),
             DEFAULT_BASICS,
@@ -85,6 +99,7 @@ def make_catalog_router(
             liked_only=bool(f["polubione"]),
             show_dismissed=bool(f["odrzucone"]),
         )
+        rows = [r for r in rows if _kcal_match(r, str(f["kcal"]))]
         sources = [
             {
                 "name": name,
@@ -121,7 +136,9 @@ def make_catalog_router(
         if to_detail:
             return RedirectResponse(f"../{recipe_id}", status_code=303)
         given = parse_qs(qs)
-        safe = filters(*(given.get(k, [""])[0] for k in ("prog", "kat", "zrodlo", "polubione", "odrzucone")))
+        safe = filters(
+            *(given.get(k, [""])[0] for k in ("prog", "kat", "zrodlo", "polubione", "odrzucone", "kcal"))
+        )
         return RedirectResponse(f"../../katalog?{query(safe)}", status_code=303)
 
     @router.post("/katalog/{recipe_id}/serce")

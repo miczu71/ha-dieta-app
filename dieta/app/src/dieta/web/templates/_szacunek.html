@@ -1,0 +1,2 @@
+{% macro kcal_note(r) %}{% if r.est_status == 'pending' %}(niepełny szacunek, pokrycie {{ ((r.est_coverage or 0) * 100)|round|int }}%){% else %}(szacunek){% endif %}{% endmacro %}
+{% macro chips(r) %}{% if r.servings_estimated %}<span class="dz-chip dz-chip--plain">porcje szacowane</span> {% endif %}{% if r.est_status == 'pending' %}<span class="dz-chip">niepełny szacunek</span> {% endif %}{% if r.est_assumed %}<span class="dz-chip dz-chip--plain">ilości zgadywane ({{ r.est_assumed }})</span>{% endif %}{% endmacro %}

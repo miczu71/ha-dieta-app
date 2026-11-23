@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from "_flags.html" import flag_forms %}
+{% from "_szacunek.html" import kcal_note, chips %}
 {% block content %}
 {% if notice == 'start' %}<p class="dz-ok" role="status">Pobieranie przepisów ruszyło w tle — odśwież stronę za chwilę.</p>{% endif %}
 {% if notice == 'trwa' %}<p class="dz-err" role="alert">Pobieranie już trwa.</p>{% endif %}
@@ -31,6 +32,8 @@
     <select name="kat"><option value="">wszystkie</option>{% for k, v in meal_labels.items() %}<option value="{{ k }}"{{ ' selected' if f.kat == k }}>{{ v }}</option>{% endfor %}</select></label>
   <label>Źródło
     <select name="zrodlo"><option value="">wszystkie</option>{% for k, v in source_labels.items() %}<option value="{{ k }}"{{ ' selected' if f.zrodlo == k }}>{{ v }}</option>{% endfor %}</select></label>
+  <label>Kcal
+    <select name="kcal"><option value="">wszystkie</option><option value="zrodlo"{{ ' selected' if f.kcal == 'zrodlo' }}>ze źródła</option><option value="szacunek"{{ ' selected' if f.kcal == 'szacunek' }}>szacunki</option><option value="niepelny"{{ ' selected' if f.kcal == 'niepelny' }}>niepełne szacunki</option></select></label>
   <label class="dz-check"><input type="checkbox" name="polubione" value="1"{{ ' checked' if f.polubione }}>Tylko polubione</label>
   <label class="dz-check"><input type="checkbox" name="odrzucone" value="1"{{ ' checked' if f.odrzucone }}>Pokaż odrzucone</label>
   <button class="dz-btn" type="submit">Filtruj</button>
@@ -47,7 +50,15 @@
       {{ flag_forms(r, '', qs, false) }}
     </div>
     <p class="dz-item-meta">{{ source_labels.get(r.source, r.source) }}{% if r.meal_category %} · {{ meal_labels.get(r.meal_category, r.meal_category) }}{% endif %}{% if r.minutes %} · <span class="dz-num">{{ r.minutes }}</span> min{% endif %}</p>
-    {% if r.has_nutrition %}
+    {% if r.kcal_source == 'estimate' and r.kcal is not none %}
+    <p class="dz-leg">
+      <span>~{{ '%.0f'|format(r.kcal) }} kcal {{ kcal_note(r) }}</span>
+      <span><s class="p"></s><b>{{ '%.0f'|format(r.protein or 0) }} g</b> B</span>
+      <span><s class="c"></s><b>{{ '%.0f'|format(r.carbs or 0) }} g</b> W</span>
+      <span><s class="f"></s><b>{{ '%.0f'|format(r.fat or 0) }} g</b> T</span>
+      <span class="dz-item-meta">na porcję {{ kcal_note(r) }}</span>
+    </p>
+    {% elif r.has_nutrition %}
     <p class="dz-leg">
       <span><b>{{ '%.0f'|format(r.kcal) }}</b> kcal</span>
       <span><s class="p"></s><b>{{ '%.0f'|format(r.protein or 0) }} g</b> B</span>
@@ -55,7 +66,9 @@
       <span><s class="f"></s><b>{{ '%.0f'|format(r.fat or 0) }} g</b> T</span>
       <span class="dz-item-meta">na porcję</span>
     </p>
+    {% elif r.kcal_source == 'estimate' %}<p><span class="dz-chip">brak szacunku</span></p>
     {% else %}<p><span class="dz-chip">brak kcal</span></p>{% endif %}
+    {% if r.kcal_source == 'estimate' %}<p>{{ chips(r) }}</p>{% endif %}
     <div class="dz-know">
       <span class="bar" aria-hidden="true"><i style="width:{{ (fam.ratio * 100)|round|int }}%"></i></span>
       <span class="dz-item-meta">znajomość <b class="dz-num">{{ fam.known }}/{{ fam.total }}</b></span>

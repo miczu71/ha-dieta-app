@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import math
 import threading
 from collections.abc import Callable
 from dataclasses import replace
@@ -15,8 +16,9 @@ from fastapi.responses import RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 
 from ..dictionary import Durability, llm_ask_from
+from ..pipeline import estimate_nutrition
 from ..settings import Settings
-from ..store import MEAL_CATEGORIES, MappingRow, PendingRecipeMeta, Store
+from ..store import MEAL_CATEGORIES, IngredientNutrition, MappingRow, PendingRecipeMeta, RecipeRow, Store
 from ..sync import map_recipe_ingredients, stats, sync
 from ..zakupy_client import fetch_purchases
 
@@ -86,8 +88,33 @@ def recipe_queue(store: Store) -> list[PendingRecipeMeta]:
     return store.pending_recipe_meta()
 
 
+def ingredient_queue(store: Store) -> list[IngredientNutrition]:
+    return store.pending_ingredient_nutrition()
+
+
+def estimate_queue(store: Store) -> list[RecipeRow]:
+    """Szacunki kcal o statusie `pending` (bez odrzuconych)."""
+    return [r for r in store.recipes({}, frozenset()) if r.est_status == "pending"]
+
+
 def queue_size(store: Store) -> int:
-    return len(review_queue(store)) + len(recipe_queue(store))
+    return (
+        len(review_queue(store))
+        + len(recipe_queue(store))
+        + len(ingredient_queue(store))
+        + len(estimate_queue(store))
+    )
+
+
+def _nutrition_values(*raw: str) -> tuple[float, ...] | None:
+    """kcal, białko, węgle, tłuszcz na 100 g: liczby skończone ≥ 0, kcal ≤ 900."""
+    try:
+        values = tuple(float(x.replace(",", ".")) for x in raw)
+    except ValueError:
+        return None
+    if any(not math.isfinite(v) or v < 0 for v in values) or values[0] > 900:
+        return None
+    return values
 
 
 def make_router(
@@ -148,6 +175,8 @@ def make_router(
             root="../",
             queue=review_queue(store),
             recipe_queue=recipe_queue(store),
+            ing_queue=ingredient_queue(store),
+            est_queue=estimate_queue(store),
             meal_labels=MEAL_LABELS,
             error=error,
         )
@@ -187,6 +216,47 @@ def make_router(
         if category not in MEAL_CATEGORIES or not 1 <= storage_days <= 14:
             return back("zatwierdz", error="dane")
         store.approve_recipe_meta(recipe_id, category, storage_days, freezable == "1")
+        return back("zatwierdz")
+
+    @router.post("/kupujemy/zatwierdz-skladnik")
+    async def decide_ingredient(
+        ingredient_id: int = Form(...),
+        kcal: str = Form(...),
+        protein: str = Form(...),
+        carbs: str = Form(...),
+        fat: str = Form(...),
+    ) -> Response:
+        current = store.ingredient_nutrition().get(ingredient_id)
+        if current is None or current.status != "pending":
+            return back("zatwierdz", error="nieznany")
+        values = _nutrition_values(kcal, protein, carbs, fat)
+        if values is None:
+            return back("zatwierdz", error="odzywcze")
+        store.save_ingredient_nutrition(
+            ingredient_id,
+            kcal=values[0],
+            protein=values[1],
+            carbs=values[2],
+            fat=values[3],
+            piece_g=current.piece_g,
+            source="manual",
+            confidence="high",
+            status="approved",
+        )
+        # przelicza przepisy bez kcal ze źródła (bez LLM i sieci: ask=None, fetch=None)
+        await run_in_threadpool(estimate_nutrition, store, None, None)
+        return back("zatwierdz")
+
+    @router.post("/kupujemy/zatwierdz-szacunek")
+    async def decide_estimate(recipe_id: int = Form(...), action: str = Form(...)) -> Response:
+        if recipe_id not in {r.id for r in estimate_queue(store)}:
+            return back("zatwierdz", error="nieznany")
+        if action == "approve":
+            store.set_recipe_estimate_status(recipe_id, "approved")
+        elif action == "dismiss":
+            store.set_flag(recipe_id, "dismissed", True)
+        else:
+            return back("zatwierdz", error="dane")
         return back("zatwierdz")
 
     return router
