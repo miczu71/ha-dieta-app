@@ -268,3 +268,55 @@ def test_swap_unknown_session_does_nothing(mode: str) -> None:
     plan = _gen()
     res = _swap_s(plan, "snack1", 0, mode)
     assert res.sessions == plan.sessions and res.warnings
+
+
+# --- tryb „taniej” (home_ratio) ---
+
+
+def _home_pool() -> tuple[Candidate, list[Candidate]]:
+    base = next(c for c in POOL if "lunch" in c.slot_affinity and (c.storage_days or 0) >= 4)
+    clones = [
+        replace(base, id=9001, title="Bez zapasów", home_ratio=0.0),
+        replace(base, id=9002, title="Z zapasów", home_ratio=1.0),
+        replace(base, id=9003, title="Z zapasów 2", home_ratio=0.9),
+    ]
+    return base, clones
+
+
+def _lunch_only() -> PlanConfig:
+    return PlanConfig(slot_pct={"breakfast": 0, "lunch": 100, "dinner": 0, "snack1": 0, "snack2": 0})
+
+
+def test_cheaper_off_ignores_home_ratio() -> None:
+    plain = [replace(c, home_ratio=0.0) for c in POOL]
+    homey = [replace(c, home_ratio=1.0 if c.id % 2 else 0.3) for c in POOL]
+    for seed in (1, 2, 3):
+        assert _key(_gen(plain, seed=seed)) == _key(_gen(homey, seed=seed))
+        assert _gen(plain, seed=seed).meals == _gen(homey, seed=seed).meals
+
+
+def test_cheaper_on_prefers_higher_home_ratio() -> None:
+    _, clones = _home_pool()
+    cfg = replace(_lunch_only(), cheaper=True)
+    for seed in range(1, 6):
+        plan = _gen(clones, config=cfg, seed=seed)
+        assert plan.sessions[0].recipe_id in (9002, 9003)
+        assert plan.sessions[0].recipe_id == 9002
+
+
+def test_cheaper_off_does_not_prefer_home_for_sure() -> None:
+    _, clones = _home_pool()
+    picks = {_gen(clones, config=_lunch_only(), seed=s).sessions[0].recipe_id for s in range(1, 30)}
+    assert 9001 in picks  # bez premii jitter decyduje, nie home_ratio
+
+
+def test_cheaper_swap_uses_home_bonus() -> None:
+    base, clones = _home_pool()
+    pool = [base, *clones]
+    cfg = replace(CFG, cheaper=True)
+    plan = _manual_plan(base, 0, 2)
+    for seed in range(1, 6):
+        s = swap_session(plan, pool, TARGETS, cfg, {}, seed, WEEK, "lunch", 0, "random")
+        assert s.sessions[0].recipe_id == 9002
+        d = swap_day(plan, pool, TARGETS, cfg, {}, seed, WEEK, "lunch", 1, "random")
+        assert next(m for m in d.meals if m.day == 1).recipe_id == 9002

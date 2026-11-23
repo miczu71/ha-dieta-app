@@ -47,6 +47,7 @@ W_FAMILIARITY = 3.0
 W_LIKED = 1.5
 W_PORTION_FIT = 2.0
 W_AFFINITY = 1.0
+W_HOME = 1.5  # tryb „taniej”: premia za udział składników już w domu
 P_REPEAT = math.inf  # twarde
 P_MAIN_DUP = 1.0
 P_MACRO = 1.0
@@ -81,6 +82,7 @@ class Candidate:
     liked: bool = False
     main_ingredient: str | None = None
     dismissed: bool = False
+    home_ratio: float = 0.0  # 0..1, udział masy składników „w domu”
 
 
 @dataclass(frozen=True)
@@ -105,6 +107,7 @@ class PlanConfig:
     session_days_max: int = 4
     discovery: int = 1
     familiar_threshold: float = 0.5
+    cheaper: bool = False
 
 
 @dataclass(frozen=True)
@@ -266,6 +269,8 @@ def _score(
     s = W_FAMILIARITY * cand.familiarity
     s += W_LIKED if cand.liked else 0.0
     s += W_AFFINITY * cand.slot_affinity.get(slot, 0.0)
+    if ctx.config.cheaper:
+        s += W_HOME * cand.home_ratio
     s += W_PORTION_FIT * (1 - min(1.0, abs(math.log(fit.raw)) / math.log(MAX_PORTION)))
     s -= W_PORTION_FIT * fit.err
     main = cand.main_ingredient

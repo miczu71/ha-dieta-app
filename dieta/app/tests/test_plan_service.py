@@ -1,6 +1,8 @@
 from datetime import date
 from pathlib import Path
 
+import pytest
+
 from dieta import plan_service as svc
 from dieta.settings import Settings
 from dieta.sources.base import RawIngredient, Recipe
@@ -212,3 +214,65 @@ def test_snapshot_records_status(tmp_path: Path) -> None:
     assert plan is not None
     snap = svc._snapshot(store, plan)
     assert '"status": "draft"' in snap
+
+
+def _link_with_home(store: Store, monkeypatch: pytest.MonkeyPatch, home: set[str]) -> None:
+    from dieta.profile import IngredientStat
+
+    for name in ("ryż", "kurczak"):
+        store.link_recipe_ingredient(name, name, "dry")  # type: ignore[arg-type]
+        store.upsert_ingredient(name, None)
+    stats = {
+        n: IngredientStat(n, 1, 1.0, date(2026, 11, 20), 1.0, n in home, None) for n in ("ryż", "kurczak")
+    }
+    monkeypatch.setattr(svc, "_stat_map", lambda store, settings: stats)
+
+
+def _ratio(store: Store, settings: Settings, rid: int) -> float:
+    return next(c for c in svc.build_pool(store, settings).items if c.id == rid).home_ratio
+
+
+def test_home_ratio_by_mass(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    store, settings, _ = _setup(tmp_path)
+    rid = store.upsert_recipe(
+        Recipe(
+            source="respo", source_id="mass", title="Masa", url="https://example.org/mass", image=None,
+            servings=2, kcal=400.0, protein=25, carbs=40, fat=12, minutes=30, tags=(), category_hint=None,
+            ingredients=(
+                RawIngredient("300 g ryż", 300, "g", "ryż"),
+                RawIngredient("100 g kurczak", 100, "g", "kurczak"),
+            ),
+        ),
+        RecipeMeta("lunch", 3, True, "rule"),
+    )  # fmt: skip
+    _link_with_home(store, monkeypatch, {"ryż"})
+    assert _ratio(store, settings, rid) == pytest.approx(0.75)
+
+
+def test_home_ratio_falls_back_to_line_count(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    store, settings, _ = _setup(tmp_path)
+    rid = store.upsert_recipe(
+        Recipe(
+            source="respo", source_id="cnt", title="Liczba", url="https://example.org/cnt", image=None,
+            servings=2, kcal=400.0, protein=25, carbs=40, fat=12, minutes=30, tags=(), category_hint=None,
+            ingredients=(
+                RawIngredient("ryż", None, None, "ryż"),
+                RawIngredient("kurczak", None, None, "kurczak"),
+            ),
+        ),
+        RecipeMeta("lunch", 3, True, "rule"),
+    )  # fmt: skip
+    _link_with_home(store, monkeypatch, {"ryż"})
+    assert _ratio(store, settings, rid) == pytest.approx(0.5)
+
+
+def test_home_ratio_zero_without_stats(tmp_path: Path) -> None:
+    store, settings, ids = _setup(tmp_path)
+    assert _ratio(store, settings, ids[0]) == 0.0
+
+
+def test_plan_config_passes_cheaper_mode(tmp_path: Path) -> None:
+    on = Settings(data_dir=tmp_path, log_level="info", dev=True, cheaper_mode=True)
+    off = Settings(data_dir=tmp_path, log_level="info", dev=True)
+    assert svc.plan_config(on).cheaper is True
+    assert svc.plan_config(off).cheaper is False
