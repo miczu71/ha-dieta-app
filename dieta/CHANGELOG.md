@@ -1,5 +1,12 @@
 # Dziennik zmian
 
+## 0.3.0 (2026-11-23)
+- Ekran „Lista”: lista zakupów z zatwierdzonego planu (sesje wielodniowe scalone, masy składników skalowane do porcji), z podziałem na „Do kupienia”, „Pewnie masz” (składniki kupione niedawno, przycisk „Dodaj jednak”) i „Bez ceny”; odhaczanie pozycji. Przycisk „Wyślij do todo HA” wysyła pozycje do listy z opcji `todo_entity` (nic nie idzie automatycznie; wysłane nie idą drugi raz).
+- Koszt planu: mediana ceny płaconej z paragonów (zł/100 g) × masa składnika; pasek kosztu w Planie i koszt sesji z **pokryciem %** (udział masy z ceną). Ceny pakowanych bez gramatury w nazwie liczone z masy sztuki (nie dla opakowań „N szt.”). Wymaga **Zakupów 1.11.0** (pola `unit_price`/`last_unit_price`/`is_weight` w `/api/v1/purchases`); ze starszym Zakupami ceny nie są dostępne.
+- Opcja `cheaper_mode` (domyślnie wyłączona): planer premiuje przepisy ze składnikami „w domu”.
+- Migracja bazy v7 (ceny w tabeli zakupów, stan listy `shopping_state`): **po aktualizacji nie wracaj do 0.2.0**.
+- Znane: koszt to szacunek z cen płaconych (ceny półkowe i promocje — osobny etap); linie bez składnika w słowniku i bez ilości nie wchodzą do listy ani kosztu; „wysłano” oznaczane po odpowiedzi HA, więc po przekroczeniu czasu pozycja może zostać wysłana drugi raz.
+
 ## 0.2.0 (2026-11-23)
 - Plan tygodnia (E4): sesje gotowania na kilka dni, wspólne dania ze skalowaniem porcji, wymiana sesji lub dnia, cofnij, zatwierdzenie; opcje slotów (`slot_*_pct`) i planera.
 - Realizacja (E5): ekran „Dziś” — odhaczanie per osoba i posiłek: zjedzone / pominięte / zamiennik (nazwa, kcal, makro opcjonalnie), cofnięcie, okno edycji dziś i 7 dni wstecz, tylko zatwierdzony plan. Ekran „Bilans” — kcal i makro dziennie i tygodniowo na osobę, posiłki „bez odpowiedzi” nie liczą się, licznik zostałych porcji z sesji wielodniowych.

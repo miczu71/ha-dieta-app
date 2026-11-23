@@ -13,6 +13,8 @@ Wartości kcal są szacunkowe. Aplikacja nie jest poradą medyczną.
 - `refresh_time` — godzina nocnego odświeżenia: sync zakupów, potem crawl katalogu.
 - `push_notify` — nazwa usługi `notify.<nazwa>` do porannego powiadomienia z planem dnia (domyślnie `family`; pusta = wyłączone). Add-on ma uprawnienie `homeassistant_api` tylko po to, by ją wywołać. Po zmianie opcji zrestartuj add-on.
 - `push_time` — godzina porannego powiadomienia (07:00); przy błędzie do 3 prób co 10 minut, bez nadrabiania po restarcie.
+- `todo_entity` — encja listy todo HA (np. `todo.zakupy`) dla przycisku „Wyślij do todo HA” w Liście; pusta = przycisk nieaktywny.
+- `cheaper_mode` — tryb „taniej”: planer premiuje przepisy ze składnikami, które pewnie macie w domu (domyślnie wyłączony).
 - `slot_*_pct` i opcje planera — udział slotów w kcal dnia i parametry układania tygodnia.
 
 ## Katalog
@@ -23,4 +25,7 @@ Niepewne metadane przepisów i niezmapowane składniki trafiają do „Co kupuje
 
 ## Plan, Dziś i Bilans
 „Plan” układa tydzień (sesje gotowania na kilka dni) i po zatwierdzeniu go zamraża. „Dziś” pozwala odhaczyć posiłek osoby (zjedzone, pominięte, zamiennik z własną nazwą i kcal) w oknie dziś i 7 dni wstecz; brak odhaczenia = „bez odpowiedzi” i nie liczy się do bilansu. „Bilans” sumuje kcal i makro dnia i tygodnia na osobę oraz pokazuje zostałe porcje sesji wielodniowych.
-Baza w wersji 6 (tabela `meal_log`) nie jest czytelna dla 0.1.5 — nie wracaj do starszej wersji bez kopii `/data`.
+Baza w wersji 7 nie jest czytelna dla 0.2.0 ani starszych — nie wracaj do starszej wersji bez kopii `/data`.
+
+## Lista i koszt
+„Lista” buduje zakupy z zatwierdzonego planu: składniki sesji scalone, bez tych, które pewnie macie w domu (przycisk „Dodaj jednak”). Koszt planu to szacunek z cen płaconych na paragonach (mediana, zł/100 g) z podanym pokryciem — udziałem masy składników z ceną. Wymaga Zakupów 1.11.0 i zsynchronizowanych zakupów.
