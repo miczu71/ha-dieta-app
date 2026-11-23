@@ -354,3 +354,6 @@ Wspólny katalog cen w Zakupach (produkty + obserwacje tylko dopisywane, histori
 Wynik: `docs/POMIAR_ceny.md`, commity `821b360`, `83fff30`; plan `PLAN_E6b.md` (`3bd600d`, `099f1e9`). Frisco + paragony: ≥70% masy z ceną dla 75% przepisów (reguły, górna granica) vs 8% dziś; współczynnik paragon/Frisco 0,75 (367 par EAN). Skrypty poza repo: `~/dev/biedronka-spike/scripts/e6b_frisco_map.py`, `e6b_coverage.py`, `e6b_prices.py` (odstęp 4 s).
 Biedronka `products/price`: HTTP 429 dla wszystkich EAN/sklepów (token OK) → próba nierozstrzygnięta, powtórzyć jutro (1 zapytanie, potem partie ≤20 co ≥10 s); budżet w kaskadzie mały i konfigurowalny. Sprawdzić log Zakupów (`shelf/error`, poranny przebieg 06:30) — czy limit dotyka też produkcji.
 Decyzja usera: wspólny katalog cen w Zakupach (Frisco wczytywane tam). Następny: E6b.1 (Zakupy: katalog + `/api/v1/shelf`), najpierw plan etapu z sekcją Wykonawca.
+
+## E6b.1 PLAN GOTOWY 2026-11-23 (`docs/PLAN_E6b_1.md`)
+Log Zakupów (36 h): bez błędów `shelf`/429 — limit nie dotyka produkcji. Plan etapu z sekcją Wykonawca (sonnet-worker, jedna paczka, schemat v16 `catalog_products`/`catalog_obs`, ingest paragonów + Frisco, `/api/v1/catalog`). Następny krok: `wt new` w repo Zakupów → sonnet-worker → verifier → commit → stage-end.
