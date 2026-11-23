@@ -263,3 +263,6 @@ Kontrakt jak w pomiarze 0.1.3. Mapowanie LLM Ani Gotuje mogło jeszcze trwać (c
 E3b: wydanie `v0.1.4` (non-draft, CI zielone, 180 testów), zainstalowane i zrestartowane; opcje na żywo `familiar_threshold: 50` + `aniagotuje`; pomiar w sekcji wyżej (≥50% = 12,0%; Aniagotuje 148 przepisów, wszystkie bez kcal).
 **Decyzja usera 2026-11-23:** opcja 1 — kcal na porcję dla Ani Gotuje liczone ze składników („kcal ze składników+”; znaczenie „+” do wyjaśnienia w wywiadzie).
 **E3c (do zrobienia, najpierw wywiad `grill-me`):** kto korzysta z wyniku, co automatycznie / za zgodą, miara sukcesu; źródła danych odżywczych (OFF, tabele, IŻŻ), dokładność i tolerancja błędu, porcje, zakres (tylko Aniagotuje czy też Respo/Lidl bez kcal), oznaczenie „szacunek” w UI. Potem `docs/PLAN_E3c.md`, wykonawcy, wydanie 0.1.5. Przed E4 powtórzyć pomiar znajomości po zakończeniu mapowania LLM Ani Gotuje.
+
+## E3c PLAN GOTOWY 2026-11-23
+Wywiad zakończony (sesja a031f378 + runda z 2026-11-23): kcal i makro na porcję ze składników dla wszystkich przepisów bez kcal ze źródła; kaskada tabela → OFF → LLM; auto z plakietką „szacunek”, do kolejki tylko niska pewność i pokrycie <85% masy; porcje bez liczby = masa/400 g. Plan: `docs/PLAN_E3c.md`. Paczki: seedy (ja) → W1 ‖ W2a → W2b (sonnet, ryzyko: migracja v4) → W3. Wydanie 0.1.5, potem E4.
