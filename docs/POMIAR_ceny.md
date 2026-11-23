@@ -19,3 +19,9 @@
 ## Otwarte do dokończenia E6b.0
 - Próba Biedronki po EAN (EAN-y z Frisco ≤100, ponowienie 112 EAN z OFF, ≤100 „sąsiadów”): wymaga odświeżonego tokenu spike'u (`! python ~/dev/biedronka-spike/spike.py login osoba1`), odstęp ≥4 s.
 - Precyzja mapowania na losowej próbce 30 pozycji po warstwie AI (nowy pomiar, bo zmiana wariantu).
+
+## Przebieg 2 (2026-11-23, wieczór) — próba Biedronki po EAN: NIEROZSTRZYGNIĘTA (HTTP 429)
+- Próba 101 EAN (kanarek + po jednym EAN-ie Frisco na składnik, odstęp 4 s): **101/101 błędów**, łącznie z kanarkiem (znany dobry EAN). Diagnoza jednym zapytaniem na 3 sklepy (6308, 3889, 6715): wszystkie **HTTP 429**. Logowanie i `products/most-purchased` działają (token OK, refresh obrócony), limit dotyczy tylko `products/price`.
+- Wniosek (nie pomiar): limit utrzymuje się ≥45 min po poprzednim przebiegu (1 zapytanie/s o 18:08) i nie zniknął przy 4 s odstępu. Kolejne próby w tym stanie nic nie dadzą i mogą go przedłużać → **nie ponawiam dziś**. Ponowna próba: jutro, najpierw 1 zapytanie, potem partie ≤20 co ≥10 s, i dopiero wtedy ocena, czy dzienny limit jest niższy od planowanych ~100 EAN/noc.
+- Ryzyko dla Zakupów: jeśli konto jest to samo, poranny przebieg cen półkowych (06:30) też może dostawać 429 — sprawdzić w logu Zakupów (`shelf/error`) przed E6b.1.
+- Bramka offline (≥50% przepisów z ≥70% masy z ceną) zaliczona bez Biedronki (75% z Frisco×0,75). Warstwa „Biedronka po EAN” kaskady zostaje, ale jej limity są nieznane → w E6b.3 domyślnie mały budżet (np. ≤30 EAN/noc), konfigurowalny.
