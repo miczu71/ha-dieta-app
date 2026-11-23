@@ -16,6 +16,7 @@ from fastapi.templating import Jinja2Templates
 from .. import plan_service as svc
 from ..planner import SLOTS
 from ..settings import Settings
+from ..shopping import plan_cost
 from ..store import Store
 from .kupujemy import queue_size
 
@@ -63,6 +64,7 @@ def make_plan_router(settings: Settings, store: Store, templates: Jinja2Template
         week = week_of(tydzien)
         warnings = request.query_params.getlist("w")
         view = svc.view(store, settings, week)
+        cost = plan_cost(store, settings, week) if view.plan is not None else None
         base = {
             "version": request.app.state.version,
             "queue_size": queue_size(store),
@@ -79,6 +81,8 @@ def make_plan_router(settings: Settings, store: Store, templates: Jinja2Template
                 "notice_text": NOTICE_TEXT.get(notice, ""),
                 "warnings": [x[:MAX_WARNING_CHARS] for x in warnings[:MAX_WARNINGS]],
                 "modes": MODES,
+                "cost": cost,
+                "session_costs": {s.session_id: s for s in cost.sessions} if cost is not None else {},
             },
         )
 

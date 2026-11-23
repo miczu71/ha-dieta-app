@@ -27,6 +27,7 @@ from .catalog import make_catalog_router
 from .chart import weight_chart
 from .dzis import make_dzis_router
 from .kupujemy import SyncRunner, default_runner, make_router, seconds_until
+from .lista import make_lista_router
 from .plan import make_plan_router
 
 log = logging.getLogger(__name__)
@@ -141,6 +142,7 @@ def create_app(
     app.include_router(make_catalog_router(settings, store, templates, crawler))
     app.include_router(make_plan_router(settings, store, templates))
     app.include_router(make_dzis_router(settings, store, templates))
+    app.include_router(make_lista_router(settings, store, templates))
 
     @app.middleware("http")
     async def no_store(request: Request, call_next):  # type: ignore[no-untyped-def]

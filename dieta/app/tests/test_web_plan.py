@@ -8,6 +8,7 @@ from dieta.settings import Settings
 from dieta.sources.base import RawIngredient, Recipe
 from dieta.store import Profile, RecipeMeta, Store
 from dieta.web.app import create_app
+from dieta.zakupy_client import Purchase
 
 WEEK = "2026-11-23"  # poniedziałek
 
@@ -27,7 +28,7 @@ def _recipe(sid: str, title: str, kcal: float) -> Recipe:
         minutes=30,
         tags=(),
         category_hint=None,
-        ingredients=(RawIngredient("1 ryż", 1, None, "ryż"),),
+        ingredients=(RawIngredient("400 g ryż", 400, "g", "ryż"),),
     )
 
 
@@ -206,3 +207,50 @@ def test_swap_rejects_unicode_digits_without_500(tmp_path: Path) -> None:
             follow_redirects=False,
         )
         assert r.status_code == 303
+
+
+def _approved_plan(client: TestClient) -> None:
+    client.post("/plan/generuj", data={"tydzien": WEEK})
+    client.post("/plan/zatwierdz", data={"tydzien": WEEK})
+
+
+def test_cost_bar_without_prices_shows_single_line(tmp_path: Path) -> None:
+    client, store = _client(tmp_path)
+    _demo(store)
+    _approved_plan(client)
+    resp = client.get("/plan", params={"tydzien": WEEK})
+    assert resp.status_code == 200
+    assert "Brak cen z Zakupów" in resp.text
+    assert "Koszt tygodnia" not in resp.text
+
+
+def test_cost_bar_with_prices_shows_total_coverage_and_session(tmp_path: Path) -> None:
+    client, store = _client(tmp_path)
+    _demo(store)
+    store.link_recipe_ingredient("ryż", "ryż", "dry")  # type: ignore[arg-type]
+    store.upsert_ingredient("ryż", None)
+    store.replace_purchases(
+        [
+            Purchase(
+                code="r1",
+                chain="lidl",
+                name="Ryż biały 400g",
+                names=("Ryż biały 400g",),
+                purchases=1,
+                spend=3.2,
+                first=date(2026, 11, 1),
+                last=date(2026, 11, 1),
+                dates=(date(2026, 11, 1),),
+                category="food",
+                unit_price=3.2,
+                is_weight=False,
+            )
+        ]
+    )
+    store.set_mapping("r1", "approved", "ryż", "dry", "x")
+    _approved_plan(client)
+    resp = client.get("/plan", params={"tydzien": WEEK})
+    assert resp.status_code == 200
+    assert "Koszt tygodnia" in resp.text
+    assert "pokrycie cen" in resp.text
+    assert "zł/porcja" in resp.text

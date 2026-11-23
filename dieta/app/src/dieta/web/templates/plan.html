@@ -1,5 +1,7 @@
 {% extends "base.html" %}
 {% macro por(x) %}{{ ('%.1f' % x).replace('.', ',') }}{% endmacro %}
+{% macro money(x) %}{{ ('%.2f' % x).replace('.', ',') }} zł{% endmacro %}
+{% macro pct(x) %}{{ (x * 100) | round | int }}%{% endmacro %}
 {% macro swap_btns(zakres, ident, label) %}
 <form method="post" action="plan/wymien" class="dz-swap">
   <input type="hidden" name="tydzien" value="{{ v.week_start.isoformat() }}">
@@ -22,6 +24,16 @@
   <span class="dz-num">Tydzień od {{ v.week_start.isoformat() }}</span>
   <a class="dz-link" href="plan?tydzien={{ v.next_week.isoformat() }}">Następny →</a>
 </nav>
+
+{% if cost is not none %}
+<section class="dz-card dz-cost" aria-label="Koszt planu">
+  {% if cost.total > 0 %}
+  <p class="dz-num">Koszt tygodnia dla domu: <b>{{ money(cost.total) }}</b> · pokrycie cen {{ pct(cost.coverage) }}</p>
+  {% else %}
+  <p class="dz-sub">Brak cen z Zakupów.</p>
+  {% endif %}
+</section>
+{% endif %}
 
 {% if not v.has_target[0] and not v.has_target[1] %}
 <section class="dz-card">
@@ -91,6 +103,8 @@
             {% if m.estimated %}<span class="dz-chip dz-chip--plain">szacunek</span>{% endif %}
             {% if m.storage_days %}<span class="dz-chip dz-chip--plain">przechowuje {{ m.storage_days }} dni</span>{% endif %}
             {% if m.minutes %}<span class="dz-chip dz-chip--plain">{{ m.minutes }} min</span>{% endif %}
+            {% set sc = session_costs.get(m.session_id) %}
+            {% if m.session_first and sc and cost.total > 0 %}<span class="dz-chip dz-chip--plain dz-num">sesja {{ money(sc.cost) }} · {{ money(sc.per_portion) }}/porcja · pokrycie cen {{ pct(sc.coverage) }}</span>{% endif %}
           </span>
         </div>
         <div class="dz-meal-actions">
