@@ -1,0 +1,713 @@
+[
+ {
+  "id": 1,
+  "title": "Śniadanie 1",
+  "slot_affinity": {
+   "breakfast": 1.0
+  },
+  "kcal": 380.0,
+  "protein": 23.1,
+  "carbs": 31.1,
+  "fat": 19.3,
+  "minutes": 15,
+  "storage_days": 4,
+  "familiarity": 0.7,
+  "liked": false,
+  "main_ingredient": "tofu",
+  "dismissed": false
+ },
+ {
+  "id": 2,
+  "title": "Śniadanie 2",
+  "slot_affinity": {
+   "breakfast": 1.0
+  },
+  "kcal": 428.0,
+  "protein": 20.1,
+  "carbs": 41.7,
+  "fat": 15.9,
+  "minutes": 15,
+  "storage_days": 5,
+  "familiarity": 0.55,
+  "liked": true,
+  "main_ingredient": "wołowina",
+  "dismissed": false
+ },
+ {
+  "id": 3,
+  "title": "Śniadanie 3",
+  "slot_affinity": {
+   "breakfast": 1.0
+  },
+  "kcal": 475.0,
+  "protein": 33.3,
+  "carbs": 49.1,
+  "fat": 17.6,
+  "minutes": 60,
+  "storage_days": 5,
+  "familiarity": 0.2,
+  "liked": true,
+  "main_ingredient": "ciecierzyca",
+  "dismissed": false
+ },
+ {
+  "id": 4,
+  "title": "Śniadanie 4",
+  "slot_affinity": {
+   "breakfast": 1.0
+  },
+  "kcal": 522.0,
+  "protein": 29.6,
+  "carbs": 44.8,
+  "fat": 19.9,
+  "minutes": 30,
+  "storage_days": 3,
+  "familiarity": 0.7,
+  "liked": true,
+  "main_ingredient": "wołowina",
+  "dismissed": false
+ },
+ {
+  "id": 5,
+  "title": "Śniadanie 5",
+  "slot_affinity": {
+   "breakfast": 1.0
+  },
+  "kcal": 570.0,
+  "protein": 34.2,
+  "carbs": 58.1,
+  "fat": 21.2,
+  "minutes": 15,
+  "storage_days": 3,
+  "familiarity": 0.55,
+  "liked": false,
+  "main_ingredient": "tofu",
+  "dismissed": false
+ },
+ {
+  "id": 6,
+  "title": "Śniadanie 6",
+  "slot_affinity": {
+   "breakfast": 1.0
+  },
+  "kcal": 618.0,
+  "protein": 39.3,
+  "carbs": 72.3,
+  "fat": 26.3,
+  "minutes": 20,
+  "storage_days": 3,
+  "familiarity": 0.3,
+  "liked": false,
+  "main_ingredient": "ciecierzyca",
+  "dismissed": false
+ },
+ {
+  "id": 7,
+  "title": "Śniadanie 7",
+  "slot_affinity": {
+   "breakfast": 1.0
+  },
+  "kcal": 665.0,
+  "protein": 43.9,
+  "carbs": 76.5,
+  "fat": 32.7,
+  "minutes": 30,
+  "storage_days": 2,
+  "familiarity": 0.8,
+  "liked": true,
+  "main_ingredient": "łosoś",
+  "dismissed": false
+ },
+ {
+  "id": 8,
+  "title": "Śniadanie 8",
+  "slot_affinity": {
+   "breakfast": 1.0
+  },
+  "kcal": 712.0,
+  "protein": 53.4,
+  "carbs": 61.3,
+  "fat": 31.9,
+  "minutes": 15,
+  "storage_days": 2,
+  "familiarity": 0.4,
+  "liked": false,
+  "main_ingredient": "wołowina",
+  "dismissed": false
+ },
+ {
+  "id": 9,
+  "title": "Śniadanie 9",
+  "slot_affinity": {
+   "breakfast": 1.0
+  },
+  "kcal": 760.0,
+  "protein": 55.2,
+  "carbs": 78.9,
+  "fat": 35.3,
+  "minutes": 40,
+  "storage_days": 2,
+  "familiarity": 0.3,
+  "liked": false,
+  "main_ingredient": "jajka",
+  "dismissed": false
+ },
+ {
+  "id": 10,
+  "title": "Obiad 1",
+  "slot_affinity": {
+   "lunch": 1.0,
+   "dinner": 0.5
+  },
+  "kcal": 520.0,
+  "protein": 24.9,
+  "carbs": 56.2,
+  "fat": 24.8,
+  "minutes": 90,
+  "storage_days": 5,
+  "familiarity": 0.6,
+  "liked": true,
+  "main_ingredient": "łosoś",
+  "dismissed": false
+ },
+ {
+  "id": 11,
+  "title": "Obiad 2",
+  "slot_affinity": {
+   "lunch": 1.0,
+   "dinner": 0.5
+  },
+  "kcal": 573.0,
+  "protein": 26.6,
+  "carbs": 56.4,
+  "fat": 22.4,
+  "minutes": 15,
+  "storage_days": 5,
+  "familiarity": 0.7,
+  "liked": true,
+  "main_ingredient": "jajka",
+  "dismissed": false
+ },
+ {
+  "id": 12,
+  "title": "Obiad 3",
+  "slot_affinity": {
+   "lunch": 1.0,
+   "dinner": 0.5
+  },
+  "kcal": 627.0,
+  "protein": 34.6,
+  "carbs": 60.0,
+  "fat": 32.4,
+  "minutes": 15,
+  "storage_days": 3,
+  "familiarity": 0.4,
+  "liked": false,
+  "main_ingredient": "tofu",
+  "dismissed": true
+ },
+ {
+  "id": 13,
+  "title": "Obiad 4",
+  "slot_affinity": {
+   "lunch": 1.0,
+   "dinner": 0.5
+  },
+  "kcal": 680.0,
+  "protein": 52.7,
+  "carbs": 77.9,
+  "fat": 27.9,
+  "minutes": 40,
+  "storage_days": 4,
+  "familiarity": 0.7,
+  "liked": false,
+  "main_ingredient": "łosoś",
+  "dismissed": false
+ },
+ {
+  "id": 14,
+  "title": "Obiad 5",
+  "slot_affinity": {
+   "lunch": 1.0,
+   "dinner": 0.5
+  },
+  "kcal": 733.0,
+  "protein": 37.7,
+  "carbs": 63.8,
+  "fat": 29.4,
+  "minutes": 20,
+  "storage_days": 2,
+  "familiarity": 0.55,
+  "liked": false,
+  "main_ingredient": "wołowina",
+  "dismissed": false
+ },
+ {
+  "id": 15,
+  "title": "Obiad 6",
+  "slot_affinity": {
+   "lunch": 1.0,
+   "dinner": 0.5
+  },
+  "kcal": 787.0,
+  "protein": 44.5,
+  "carbs": 67.5,
+  "fat": 35.9,
+  "minutes": 60,
+  "storage_days": 4,
+  "familiarity": 0.3,
+  "liked": false,
+  "main_ingredient": "tofu",
+  "dismissed": false
+ },
+ {
+  "id": 16,
+  "title": "Obiad 7",
+  "slot_affinity": {
+   "lunch": 1.0,
+   "dinner": 0.5
+  },
+  "kcal": 840.0,
+  "protein": 67.7,
+  "carbs": 93.4,
+  "fat": 43.5,
+  "minutes": null,
+  "storage_days": 5,
+  "familiarity": 0.9,
+  "liked": false,
+  "main_ingredient": "łosoś",
+  "dismissed": false
+ },
+ {
+  "id": 17,
+  "title": "Obiad 8",
+  "slot_affinity": {
+   "lunch": 1.0,
+   "dinner": 0.5
+  },
+  "kcal": 893.0,
+  "protein": 57.4,
+  "carbs": 85.7,
+  "fat": 35.2,
+  "minutes": 20,
+  "storage_days": 5,
+  "familiarity": 0.3,
+  "liked": true,
+  "main_ingredient": "ziemniaki",
+  "dismissed": false
+ },
+ {
+  "id": 18,
+  "title": "Obiad 9",
+  "slot_affinity": {
+   "lunch": 1.0,
+   "dinner": 0.5
+  },
+  "kcal": 947.0,
+  "protein": 43.1,
+  "carbs": 81.5,
+  "fat": 35.8,
+  "minutes": 30,
+  "storage_days": 2,
+  "familiarity": 0.2,
+  "liked": true,
+  "main_ingredient": "ciecierzyca",
+  "dismissed": false
+ },
+ {
+  "id": 19,
+  "title": "Obiad 10",
+  "slot_affinity": {
+   "lunch": 1.0,
+   "dinner": 0.5
+  },
+  "kcal": 1000.0,
+  "protein": 70.2,
+  "carbs": 118.2,
+  "fat": 46.8,
+  "minutes": 40,
+  "storage_days": 2,
+  "familiarity": 0.7,
+  "liked": true,
+  "main_ingredient": "soczewica",
+  "dismissed": false
+ },
+ {
+  "id": 20,
+  "title": "Kolacja 1",
+  "slot_affinity": {
+   "dinner": 1.0,
+   "lunch": 0.5
+  },
+  "kcal": 460.0,
+  "protein": 29.6,
+  "carbs": 38.4,
+  "fat": 17.4,
+  "minutes": 30,
+  "storage_days": 4,
+  "familiarity": 0.9,
+  "liked": false,
+  "main_ingredient": "makaron",
+  "dismissed": false
+ },
+ {
+  "id": 21,
+  "title": "Kolacja 2",
+  "slot_affinity": {
+   "dinner": 1.0,
+   "lunch": 0.5
+  },
+  "kcal": 509.0,
+  "protein": 27.2,
+  "carbs": 60.1,
+  "fat": 21.6,
+  "minutes": 90,
+  "storage_days": 2,
+  "familiarity": 0.2,
+  "liked": false,
+  "main_ingredient": "jajka",
+  "dismissed": false
+ },
+ {
+  "id": 22,
+  "title": "Kolacja 3",
+  "slot_affinity": {
+   "dinner": 1.0,
+   "lunch": 0.5
+  },
+  "kcal": 558.0,
+  "protein": 43.8,
+  "carbs": 56.2,
+  "fat": 29.2,
+  "minutes": 30,
+  "storage_days": 3,
+  "familiarity": 0.4,
+  "liked": false,
+  "main_ingredient": "tofu",
+  "dismissed": true
+ },
+ {
+  "id": 23,
+  "title": "Kolacja 4",
+  "slot_affinity": {
+   "dinner": 1.0,
+   "lunch": 0.5
+  },
+  "kcal": 607.0,
+  "protein": 42.1,
+  "carbs": 67.7,
+  "fat": 30.1,
+  "minutes": 20,
+  "storage_days": 3,
+  "familiarity": 0.7,
+  "liked": false,
+  "main_ingredient": "ciecierzyca",
+  "dismissed": false
+ },
+ {
+  "id": 24,
+  "title": "Kolacja 5",
+  "slot_affinity": {
+   "dinner": 1.0,
+   "lunch": 0.5
+  },
+  "kcal": 656.0,
+  "protein": 43.1,
+  "carbs": 61.8,
+  "fat": 24.0,
+  "minutes": 15,
+  "storage_days": 4,
+  "familiarity": 0.55,
+  "liked": false,
+  "main_ingredient": "ciecierzyca",
+  "dismissed": false
+ },
+ {
+  "id": 25,
+  "title": "Kolacja 6",
+  "slot_affinity": {
+   "dinner": 1.0,
+   "lunch": 0.5
+  },
+  "kcal": 704.0,
+  "protein": 54.2,
+  "carbs": 76.7,
+  "fat": 29.8,
+  "minutes": 30,
+  "storage_days": 2,
+  "familiarity": 0.3,
+  "liked": true,
+  "main_ingredient": "ciecierzyca",
+  "dismissed": true
+ },
+ {
+  "id": 26,
+  "title": "Kolacja 7",
+  "slot_affinity": {
+   "dinner": 1.0,
+   "lunch": 0.5
+  },
+  "kcal": 753.0,
+  "protein": 44.2,
+  "carbs": 74.8,
+  "fat": 40.5,
+  "minutes": 60,
+  "storage_days": 2,
+  "familiarity": 0.7,
+  "liked": false,
+  "main_ingredient": "ziemniaki",
+  "dismissed": false
+ },
+ {
+  "id": 27,
+  "title": "Kolacja 8",
+  "slot_affinity": {
+   "dinner": 1.0,
+   "lunch": 0.5
+  },
+  "kcal": 802.0,
+  "protein": 62.6,
+  "carbs": 68.0,
+  "fat": 34.5,
+  "minutes": 90,
+  "storage_days": 3,
+  "familiarity": 0.3,
+  "liked": false,
+  "main_ingredient": "makaron",
+  "dismissed": false
+ },
+ {
+  "id": 28,
+  "title": "Kolacja 9",
+  "slot_affinity": {
+   "dinner": 1.0,
+   "lunch": 0.5
+  },
+  "kcal": 851.0,
+  "protein": 49.8,
+  "carbs": 95.3,
+  "fat": 45.5,
+  "minutes": 40,
+  "storage_days": 5,
+  "familiarity": 0.4,
+  "liked": false,
+  "main_ingredient": "ryż",
+  "dismissed": false
+ },
+ {
+  "id": 29,
+  "title": "Kolacja 10",
+  "slot_affinity": {
+   "dinner": 1.0,
+   "lunch": 0.5
+  },
+  "kcal": 900.0,
+  "protein": 75.8,
+  "carbs": 73.0,
+  "fat": 42.0,
+  "minutes": 40,
+  "storage_days": 3,
+  "familiarity": 0.7,
+  "liked": false,
+  "main_ingredient": "wołowina",
+  "dismissed": false
+ },
+ {
+  "id": 30,
+  "title": "Przekąska 1",
+  "slot_affinity": {
+   "snack1": 1.0,
+   "snack2": 1.0
+  },
+  "kcal": 160.0,
+  "protein": 8.3,
+  "carbs": 16.3,
+  "fat": 5.8,
+  "minutes": null,
+  "storage_days": 5,
+  "familiarity": 0.8,
+  "liked": false,
+  "main_ingredient": "tofu",
+  "dismissed": false
+ },
+ {
+  "id": 31,
+  "title": "Przekąska 2",
+  "slot_affinity": {
+   "snack1": 1.0,
+   "snack2": 1.0
+  },
+  "kcal": 188.0,
+  "protein": 11.7,
+  "carbs": 21.6,
+  "fat": 9.6,
+  "minutes": 20,
+  "storage_days": 3,
+  "familiarity": 0.4,
+  "liked": true,
+  "main_ingredient": "jajka",
+  "dismissed": false
+ },
+ {
+  "id": 32,
+  "title": "Przekąska 3",
+  "slot_affinity": {
+   "snack1": 1.0,
+   "snack2": 1.0
+  },
+  "kcal": 216.0,
+  "protein": 12.6,
+  "carbs": 22.0,
+  "fat": 11.0,
+  "minutes": 15,
+  "storage_days": 5,
+  "familiarity": 0.4,
+  "liked": false,
+  "main_ingredient": "soczewica",
+  "dismissed": false
+ },
+ {
+  "id": 33,
+  "title": "Przekąska 4",
+  "slot_affinity": {
+   "snack1": 1.0,
+   "snack2": 1.0
+  },
+  "kcal": 244.0,
+  "protein": 16.2,
+  "carbs": 24.6,
+  "fat": 8.9,
+  "minutes": 40,
+  "storage_days": 3,
+  "familiarity": 0.7,
+  "liked": false,
+  "main_ingredient": "makaron",
+  "dismissed": false
+ },
+ {
+  "id": 34,
+  "title": "Przekąska 5",
+  "slot_affinity": {
+   "snack1": 1.0,
+   "snack2": 1.0
+  },
+  "kcal": 272.0,
+  "protein": 13.9,
+  "carbs": 28.5,
+  "fat": 10.4,
+  "minutes": 15,
+  "storage_days": 4,
+  "familiarity": 0.4,
+  "liked": false,
+  "main_ingredient": "tofu",
+  "dismissed": false
+ },
+ {
+  "id": 35,
+  "title": "Przekąska 6",
+  "slot_affinity": {
+   "snack1": 1.0,
+   "snack2": 1.0
+  },
+  "kcal": 300.0,
+  "protein": 24.0,
+  "carbs": 24.7,
+  "fat": 11.8,
+  "minutes": 15,
+  "storage_days": 3,
+  "familiarity": 0.2,
+  "liked": false,
+  "main_ingredient": "tofu",
+  "dismissed": false
+ },
+ {
+  "id": 36,
+  "title": "Deser 1",
+  "slot_affinity": {
+   "snack1": 1.0,
+   "snack2": 1.0
+  },
+  "kcal": 150.0,
+  "protein": 9.4,
+  "carbs": 15.7,
+  "fat": 6.8,
+  "minutes": 60,
+  "storage_days": 3,
+  "familiarity": 0.6,
+  "liked": false,
+  "main_ingredient": "soczewica",
+  "dismissed": false
+ },
+ {
+  "id": 37,
+  "title": "Deser 2",
+  "slot_affinity": {
+   "snack1": 1.0,
+   "snack2": 1.0
+  },
+  "kcal": 185.0,
+  "protein": 12.1,
+  "carbs": 16.6,
+  "fat": 8.4,
+  "minutes": 30,
+  "storage_days": 3,
+  "familiarity": 0.9,
+  "liked": false,
+  "main_ingredient": "makaron",
+  "dismissed": false
+ },
+ {
+  "id": 38,
+  "title": "Deser 3",
+  "slot_affinity": {
+   "snack1": 1.0,
+   "snack2": 1.0
+  },
+  "kcal": 220.0,
+  "protein": 13.4,
+  "carbs": 20.4,
+  "fat": 10.6,
+  "minutes": 40,
+  "storage_days": 2,
+  "familiarity": 0.2,
+  "liked": true,
+  "main_ingredient": "jajka",
+  "dismissed": false
+ },
+ {
+  "id": 39,
+  "title": "Deser 4",
+  "slot_affinity": {
+   "snack1": 1.0,
+   "snack2": 1.0
+  },
+  "kcal": 255.0,
+  "protein": 20.9,
+  "carbs": 27.0,
+  "fat": 10.9,
+  "minutes": 30,
+  "storage_days": 3,
+  "familiarity": 0.7,
+  "liked": false,
+  "main_ingredient": "ciecierzyca",
+  "dismissed": false
+ },
+ {
+  "id": 40,
+  "title": "Deser 5",
+  "slot_affinity": {
+   "snack1": 1.0,
+   "snack2": 1.0
+  },
+  "kcal": 290.0,
+  "protein": 17.7,
+  "carbs": 28.9,
+  "fat": 15.6,
+  "minutes": null,
+  "storage_days": 3,
+  "familiarity": 0.3,
+  "liked": true,
+  "main_ingredient": "łosoś",
+  "dismissed": false
+ }
+]
