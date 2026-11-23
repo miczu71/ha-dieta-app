@@ -368,3 +368,6 @@ Plan `docs/PLAN_E6b_2.md`. Migracja v8 (`catalog_item`, `catalog_map`, kopia `.p
 Pomiar na feedzie (bez AI, 15 111 produktów, 957 składników): reguły ścisłe zmapowały 1367 produktów → 369 składników; reszta (luźni kandydaci) czeka na AI przy skonfigurowanym LLM — realne pokrycie zmierzyć na żywo.
 NIEBLOKUJĄCE: martwy parametr `ingredient_by_code` w `receipt_to_frisco_factor` (nie podany w `sync_catalog`) — wykorzystać albo usunąć w E6b.3; `FriscoPrice.regular100` zawsze None; UI kolejki `pending_catalog` w E6b.4; krok 4 PLAN_E6b_1 (migracja Zakupów na kopii żywej bazy) nadal niewykonany.
 Następny: E6b.3 (kaskada `pricing.py`, nocna kolejka EAN do Zakupów, harmonogram tygodniowy `sync_catalog`, powtórka próby Biedronki 1 zapytanie → partie ≤20 co ≥10 s) — najpierw `docs/PLAN_E6b_3.md` z Wykonawcą.
+
+## E6b.3 PLAN GOTOWY 2026-11-23 (`docs/PLAN_E6b_3.md`)
+Zmiana zakresu: w Zakupach `/api/v1/shelf` jest tylko GET (zleceń EAN brak) → E6b.3 = tylko Dieta (kaskada `cascade_prices`, `shelf_item` v9, `sync_shelf`, harmonogram tygodniowy `sync_catalog` z `force`, cache `build_context`); **E6b.3b** (Zakupy `POST /api/v1/shelf` + nocna kolejka EAN + powtórka próby Biedronki) osobnym etapem po E6b.3, plan `PLAN_E6b_3b.md` przed startem.
