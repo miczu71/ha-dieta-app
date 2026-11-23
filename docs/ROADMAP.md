@@ -275,3 +275,8 @@ Wywiad zakończony (sesja a031f378 + runda z 2026-11-23): kcal i makro na porcj�
 - LLM: `JSONDecodeError` w paczkach słownika (`dictionary.py`) — sporadyczne, do diagnozy.
 - Do zrobienia: 42 przepisy Policzonej bez szacunku (kolumna `kcal_source` pusta — sprawdzić dlaczego), kolejka 98 + 34 składniki do przejrzenia przez usera, pomiar z OFF (jeśli zostaje), lock `decide_ingredient` vs crawl, backfill `kcal_100g` Ani, zrzuty Playwright 390/1280 (niedostępne z kontenera: ingress 401, direct-IP wisi, tunel SSH zablokowany), powtórny pomiar znajomości.
 - Następny etap: **E4 planer** (wywiad `grill-me`).
+
+## E4 PLAN GOTOWY 2026-11-23 (czeka na akceptację)
+Wywiad zakończony, plan: `docs/PLAN_E4.md`. Pomiar znajomości po 0.1.5 (na żywo): znajome ≥50% w puli z kcal = 98 z 693 (obiad 22, kolacja 20, śniadanie 23), ≥60% = 36, ≥70% = 14; wszystkie mają `storage_days`.
+Decyzje: sesje wielodniowe od razu; tydzień pon–niedz; sloty 25/35/30 + 10% rezerwa; pula = kcal ze źródła lub szacunek auto; wspólne dania ze skalowaniem porcji (0,6–1,8); zatwierdzenie zamraża plan w add-onie (bez Cookidoo/kalendarza); suwak odkrywania 0–3 (domyślnie 1); wymiana sesji lub dnia + cofnij; kcal dnia ±10%, tydzień ±5%.
+Paczki: W1 algorytm (`planner.py`, sonnet) ‖ W2 opcje + cele + migracja v5 (sonnet, ryzyko) → W3 serwis + ekran Plan (haiku). Bez wydania (0.2.0 po E5).
