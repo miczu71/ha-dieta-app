@@ -40,25 +40,25 @@ def _plan_names(monkeypatch, names: set[str]) -> None:  # type: ignore[no-untype
 
 def test_build_queue_plan_first_then_catalog_without_duplicates(tmp_path: Path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
     store = _store(tmp_path)
-    _catalog(store, ["5900001", "5900002", "5900003", "5900004"])
-    store.set_catalog_map("5900001", "approved", "mleko", "mleko 3,2%")
-    store.set_mapping("b:5900002", "approved", "mleko", None, "mleko bio")
+    _catalog(store, ["59000001", "59000002", "59000003", "59000004"])
+    store.set_catalog_map("59000001", "approved", "mleko", "mleko 3,2%")
+    store.set_mapping("b:59000002", "approved", "mleko", None, "mleko bio")
     _plan_names(monkeypatch, {"mleko"})
 
-    assert build_queue(store, TODAY) == ["5900001", "5900002", "5900003", "5900004"]
-    assert build_queue(store, TODAY, limit=3) == ["5900001", "5900002", "5900003"]
-    assert build_queue(store, TODAY, plan_only=True) == ["5900001", "5900002"]
+    assert build_queue(store, TODAY) == ["59000001", "59000002", "59000003", "59000004"]
+    assert build_queue(store, TODAY, limit=3) == ["59000001", "59000002", "59000003"]
+    assert build_queue(store, TODAY, plan_only=True) == ["59000001", "59000002"]
 
 
 def test_build_queue_skips_fresh_and_absent(tmp_path: Path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
     store = _store(tmp_path)
-    _catalog(store, ["5900001", "5900002", "5900003", "5900004"])
-    store.upsert_shelf_items([_shelf("5900001", TODAY - timedelta(days=1))])
-    store.upsert_shelf_items([_shelf("5900002", TODAY - timedelta(days=10))])
-    store.set_meta("shelf_absent_json", json.dumps(["5900003"]))
+    _catalog(store, ["59000001", "59000002", "59000003", "59000004"])
+    store.upsert_shelf_items([_shelf("59000001", TODAY - timedelta(days=1))])
+    store.upsert_shelf_items([_shelf("59000002", TODAY - timedelta(days=10))])
+    store.set_meta("shelf_absent_json", json.dumps(["59000003"]))
     _plan_names(monkeypatch, set())
 
-    assert build_queue(store, TODAY) == ["5900002", "5900004"]
+    assert build_queue(store, TODAY) == ["59000002", "59000004"]
 
 
 def test_build_queue_default_limit_is_100(tmp_path: Path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
@@ -73,7 +73,7 @@ def test_build_queue_default_limit_is_100(tmp_path: Path, monkeypatch) -> None: 
 
 def test_sync_shelf_queue_without_config_sends_nothing(tmp_path: Path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
     store = _store(tmp_path)
-    _catalog(store, ["5900001"])
+    _catalog(store, ["59000001"])
     _plan_names(monkeypatch, set())
     calls: list[list[str]] = []
 
@@ -88,7 +88,7 @@ def test_sync_shelf_queue_without_config_sends_nothing(tmp_path: Path, monkeypat
 
 def test_sync_shelf_queue_success_writes_meta(tmp_path: Path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
     store = _store(tmp_path)
-    _catalog(store, ["5900001", "5900002"])
+    _catalog(store, ["59000001", "59000002"])
     _plan_names(monkeypatch, set())
     calls: list[list[str]] = []
 
@@ -97,14 +97,14 @@ def test_sync_shelf_queue_success_writes_meta(tmp_path: Path, monkeypatch) -> No
         return ShelfRequestResult(accepted=len(eans))
 
     assert sync_shelf_queue(store, _settings(tmp_path), TODAY, post=post) == 2
-    assert calls == [["5900001", "5900002"]]
+    assert calls == [["59000001", "59000002"]]
     assert store.get_meta("shelf_queue_at") == TODAY.isoformat()
     assert store.get_meta("shelf_queue_error") == ""
 
 
 def test_sync_shelf_queue_error_goes_to_meta(tmp_path: Path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
     store = _store(tmp_path)
-    _catalog(store, ["5900001"])
+    _catalog(store, ["59000001"])
     _plan_names(monkeypatch, set())
 
     def post(url: str, token: str, eans: list[str]) -> ShelfRequestResult:
@@ -116,7 +116,7 @@ def test_sync_shelf_queue_error_goes_to_meta(tmp_path: Path, monkeypatch) -> Non
 
 def test_sync_shelf_queue_busy_is_not_an_error(tmp_path: Path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
     store = _store(tmp_path)
-    _catalog(store, ["5900001"])
+    _catalog(store, ["59000001"])
     _plan_names(monkeypatch, set())
 
     def post(url: str, token: str, eans: list[str]) -> ShelfRequestResult:
@@ -125,3 +125,9 @@ def test_sync_shelf_queue_busy_is_not_an_error(tmp_path: Path, monkeypatch) -> N
     assert sync_shelf_queue(store, _settings(tmp_path), TODAY, post=post) == 0
     assert store.get_meta("shelf_queue_status") == "busy"
     assert store.get_meta("shelf_queue_error") == ""
+
+
+def test_build_queue_drops_malformed_eans(tmp_path: Path) -> None:
+    store = Store(tmp_path / "d.db")
+    _catalog(store, ["5900000000002", "05900000000002", "59000X0000002"])
+    assert build_queue(store, TODAY) == ["5900000000002"]

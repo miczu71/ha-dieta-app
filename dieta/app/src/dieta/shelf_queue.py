@@ -7,6 +7,7 @@ Pomijamy EAN-y świeże (≤7 dni w ``shelf_item``) i „brak w Biedronce” (``
 from __future__ import annotations
 
 import json
+import re
 from collections.abc import Callable
 from datetime import date, timedelta
 
@@ -89,11 +90,15 @@ def _absent_eans(store: Store) -> set[str]:
     return {str(ean) for ean in raw} if isinstance(raw, list) else set()
 
 
+# Zakupy odrzucają CAŁE zlecenie (400), gdy choć jeden EAN nie pasuje — filtrujemy po swojej stronie.
+_EAN_RE = re.compile(r"\d{8,13}")
+
+
 def build_queue(store: Store, today: date, *, limit: int = QUEUE_LIMIT, plan_only: bool = False) -> list[str]:
     """Lista EAN do odczytu: plan, potem katalog (bez ``plan_only``), bez duplikatów, świeżych i „brak”."""
     skip = _fresh_eans(store, today) | _absent_eans(store)
     candidates = plan_eans(store, today) + ([] if plan_only else catalog_eans(store))
-    queue = [ean for ean in dict.fromkeys(candidates) if ean not in skip]
+    queue = [ean for ean in dict.fromkeys(candidates) if ean not in skip and _EAN_RE.fullmatch(ean)]
     return queue[:limit]
 
 
