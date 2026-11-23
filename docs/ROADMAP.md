@@ -242,3 +242,6 @@ Tagi `v0.1.2` (logi przebiegu), `v0.1.3` (cooldown), non-draft, CI zielone, 164 
 **Poprawka 0.1.3:** po przerwaniu źródła przez 429 kolejne próby (też ręczne) wstrzymane do następnego dnia (`crawl_cooldown:<źródło>`).
 **Pomiar znajomości po mapowaniu (301 przepisów: Respo 150, Lidl 149, Policzona 2):** ≥70% = 4 (1,3%), ≥60% = 14 (4,7%), ≥50% = 44 (14,6%).
 **Bramka E0 (znajomość ≥70% dla <10% przepisów) — DECYZJA USERA:** obniżyć próg (np. 50–60%) i/lub poszerzyć źródła; Policzona (cel: fit, kcal) dalej zablokowana przez 429 — rozważyć wolniejsze tempo/inny dostęp. Następny etap E4 (planer) czeka na tę decyzję.
+
+## E3b PLAN GOTOWY 2026-11-23 (przed E4)
+Decyzja usera: domyślny próg znajomości 50% + szersze źródła. Plan: `docs/PLAN_E3b.md`. W1 = konektor Aniagotuje + próg 50%, W2 = Policzona przez kanał Atom (`/blogs/przepisy.atom?page=N`, omija 429). Wydanie 0.1.4 po etapie, potem pomiar znajomości per źródło; następny E4 (planer).
