@@ -371,3 +371,8 @@ Następny: E6b.3 (kaskada `pricing.py`, nocna kolejka EAN do Zakupów, harmonogr
 
 ## E6b.3 PLAN GOTOWY 2026-11-23 (`docs/PLAN_E6b_3.md`)
 Zmiana zakresu: w Zakupach `/api/v1/shelf` jest tylko GET (zleceń EAN brak) → E6b.3 = tylko Dieta (kaskada `cascade_prices`, `shelf_item` v9, `sync_shelf`, harmonogram tygodniowy `sync_catalog` z `force`, cache `build_context`); **E6b.3b** (Zakupy `POST /api/v1/shelf` + nocna kolejka EAN + powtórka próby Biedronki) osobnym etapem po E6b.3, plan `PLAN_E6b_3b.md` przed startem.
+
+## E6b.3 ZROBIONE 2026-11-23 (Dieta, commit `5238fc0`, niewydane) → następny E6b.3b
+Plan `docs/PLAN_E6b_3.md` (`206fbde`). Migracja v9 (`shelf_item`, kopia `.pre-v9`), `fetch_shelf`/`sync_shelf` (po `sync_catalog` w `default_runner`), `sync_catalog(force)` z bramką 7 dni (nocna pętla), `pricing.cascade_prices` (paragon ≤30 d, próg 0,8 → Biedronka cache ≤7 d / promocja w tygodniu planu → paragon 31–180 d → Frisco ≈ `estimate`), `IngredientPrice` z `source/as_of/promo_to/estimate`, `build_context` z kaskadą i cache per request (`Store.data_version`), `ingredient_by_code` użyty. Pytest 545 passed, ruff/mypy czyste; verifier ACCEPT.
+NIEBLOKUJĄCE: `_promo_applies` — promocja bez dat obowiązuje każdy tydzień (sprawdzić dane Zakupów); `data_version` per proces; test `cheaper_mode` sprawdza tylko zakres; krok 4 planu (pomiar źródeł na fixture) niewykonany; krok 4 PLAN_E6b_1 (migracja Zakupów na kopii żywej bazy) nadal niewykonany.
+Następny: E6b.3b (Zakupy `POST /api/v1/shelf` zlecenia w tle + Dieta nocna kolejka EAN, powtórka próby Biedronki 1 zapytanie → partie ≤20 co ≥10 s, przycisk „Odśwież ceny planu”) — najpierw `docs/PLAN_E6b_3b.md` z Wykonawcą (dwa repo: ha-lidl-app i ha-dieta-app). Potem E6b.4, E6b-release.
