@@ -167,6 +167,7 @@ def test_default_runner_calls_sync_catalog_after_sync(tmp_path: Path, monkeypatc
         kupujemy, "sync_catalog", lambda *a, **k: (calls.append("catalog"), forced.append(k["force"]), 1)[2]
     )
     monkeypatch.setattr(kupujemy, "sync_shelf", lambda *a, **k: calls.append("shelf") or 1)
+    monkeypatch.setattr(kupujemy, "sync_shelf_queue", lambda *a, **k: 0)
     s = Settings(data_dir=tmp_path, log_level="info", dev=True, zakupy_url="http://z:1", zakupy_token="x")
     assert kupujemy.default_runner(s, Store(s.db_path))() == 5
     assert calls == ["sync", "catalog", "shelf"]
@@ -178,3 +179,65 @@ def test_default_runner_calls_sync_catalog_after_sync(tmp_path: Path, monkeypatc
     s2 = Settings(data_dir=tmp_path, log_level="info", dev=True, zakupy_url="", zakupy_token="")
     assert kupujemy.default_runner(s2, Store(s2.db_path))() == 5
     assert calls == ["sync"]
+
+
+def test_default_runner_queues_prices_before_shelf_only_when_not_forced(tmp_path: Path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    from dieta.web import kupujemy
+
+    calls: list[str] = []
+    monkeypatch.setattr(kupujemy, "sync", lambda *a, **k: 5)
+    monkeypatch.setattr(kupujemy, "sync_catalog", lambda *a, **k: 1)
+    monkeypatch.setattr(kupujemy, "sync_shelf", lambda *a, **k: calls.append("shelf") or 1)
+    monkeypatch.setattr(kupujemy, "sync_shelf_queue", lambda *a, **k: calls.append("queue") or 0)
+    s = Settings(data_dir=tmp_path, log_level="info", dev=True, zakupy_url="http://z:1", zakupy_token="x")
+    kupujemy.default_runner(s, Store(s.db_path))()
+    assert calls == ["queue", "shelf"]
+
+    calls.clear()
+    kupujemy.default_runner(s, Store(s.db_path))(force=True)
+    assert calls == ["shelf"]
+
+
+def _ceny_client(tmp_path: Path, monkeypatch, effect):  # type: ignore[no-untyped-def]
+    from dieta.web import kupujemy
+
+    seen: list[dict[str, object]] = []
+
+    def fake(store, settings, today, *, plan_only=False, **kwargs):  # type: ignore[no-untyped-def]
+        seen.append({"plan_only": plan_only})
+        return effect(store)
+
+    monkeypatch.setattr(kupujemy, "sync_shelf_queue", fake)
+    client, store = _client(tmp_path, runner=lambda force=False: 0)
+    return client, store, seen
+
+
+def test_ceny_button_queues_plan_only_and_reports_count(tmp_path: Path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    client, _, seen = _ceny_client(tmp_path, monkeypatch, lambda store: 3)
+    r = client.post("/kupujemy/ceny")
+    assert r.status_code == 303 and r.headers["location"] == "../kupujemy?notice=ceny-3"
+    assert seen == [{"plan_only": True}]
+    page = client.get("/kupujemy?notice=ceny-3")
+    assert "Zlecono odczyt 3 cen" in page.text
+
+
+def test_ceny_button_reports_busy_without_error(tmp_path: Path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    def busy(store):  # type: ignore[no-untyped-def]
+        store.set_meta("shelf_queue_status", "busy")
+        return 0
+
+    client, _, _ = _ceny_client(tmp_path, monkeypatch, busy)
+    r = client.post("/kupujemy/ceny")
+    assert r.headers["location"] == "../kupujemy?notice=ceny-busy"
+    assert "Odczyt już trwa." in client.get("/kupujemy?notice=ceny-busy").text
+
+
+def test_ceny_button_reports_error_from_meta(tmp_path: Path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    def failed(store):  # type: ignore[no-untyped-def]
+        store.set_meta("shelf_queue_error", "Zakupy zwróciły HTTP 500.")
+        return 0
+
+    client, _, _ = _ceny_client(tmp_path, monkeypatch, failed)
+    r = client.post("/kupujemy/ceny")
+    assert r.headers["location"] == "../kupujemy?error=ceny"
+    assert "Nie udało się zlecić" in client.get("/kupujemy?error=ceny").text

@@ -21,9 +21,10 @@ from ..dictionary import Durability, llm_ask_from
 from ..nutrition_lookup import MAX_KCAL_100G
 from ..pipeline import estimate_nutrition
 from ..settings import Settings
+from ..shelf_queue import sync_shelf_queue
 from ..store import MEAL_CATEGORIES, IngredientNutrition, MappingRow, PendingRecipeMeta, RecipeRow, Store
 from ..sync import map_recipe_ingredients, stats, sync, sync_catalog, sync_shelf
-from ..zakupy_client import fetch_purchases
+from ..zakupy_client import fetch_purchases, fetch_shelf_absent
 
 log = logging.getLogger(__name__)
 
@@ -73,7 +74,9 @@ def default_runner(settings: Settings, store: Store) -> SyncRunner:
                 ask=llm_ask_from(settings, CATALOG_ASK_PROMPT),
                 force=force,
             )
-            sync_shelf(store, settings, date.today())
+            if not force:
+                sync_shelf_queue(store, settings, date.today())  # nocą zlecamy odczyt cen w Zakupach
+            sync_shelf(store, settings, date.today(), fetch_absent=fetch_shelf_absent)
         return count
 
     return run
@@ -177,6 +180,24 @@ def make_router(
         if count == 0 and (store.get_meta("last_sync_error") or ""):
             return back("../kupujemy", error="sync")
         return back("../kupujemy", notice="ok")
+
+    @router.post("/kupujemy/ceny")
+    async def refresh_prices() -> Response:
+        try:
+            count = await run_in_threadpool(
+                partial(sync_shelf_queue, store, settings, date.today(), plan_only=True)
+            )
+        except Exception as exc:  # noqa: BLE001 — logujemy tylko typ (komunikat może zawierać nagłówki z tokenem)
+            log.warning("zlecenie cen planu zakończone błędem: %s", type(exc).__name__)
+            return back("../kupujemy", error="ceny")
+        if store.get_meta("shelf_queue_error") or "":
+            return back("../kupujemy", error="ceny")
+        status = store.get_meta("shelf_queue_status") or ""
+        if status == "busy":
+            return back("../kupujemy", notice="ceny-busy")
+        if status == "empty":
+            return back("../kupujemy", notice="ceny-empty")
+        return back("../kupujemy", notice=f"ceny-{count}")
 
     @router.get("/kupujemy/zatwierdz")
     def review(request: Request, error: str = "") -> Response:

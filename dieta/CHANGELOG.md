@@ -1,5 +1,10 @@
 # Dziennik zmian
 
+## Niewydane (E6b.3b)
+- Nocna kolejka odczytu cen Biedronki: składniki zatwierdzonego planu (bieżący i następny tydzień), potem katalog; zlecenie `POST /api/v1/shelf` w Zakupach (do 100 EAN, bez świeżych ≤7 dni i „brak w Biedronce”). Zakupy 1.12.0 muszą wyjść przed tą wersją Diety (bez POST Dieta dostaje 405 i zapisuje błąd w meta, nic się nie psuje).
+- Przycisk „Odśwież ceny planu” na ekranie „Co kupujemy” zleca odczyt tylko cen planu (wynik przyjdzie nocą lub przy następnym odświeżeniu).
+- Lista „brak w Biedronce” (`absent` z `GET /api/v1/shelf`) zapisywana w meta; nie jest pobierana ręcznym odświeżeniem katalogu.
+
 ## Niewydane (E6b.3)
 - Koszt planu i lista zakupów liczą cenę składnika kaskadą: paragon z ostatnich 30 dni (ostatnia cena; gdy < 0,8 × mediany to promocja/kupon, więc mediana) → cache cen Biedronki z Zakupów (do 7 dni; promocja tylko gdy okno przecina tydzień planu i nie „tylko z kartą”) → starszy paragon (do 180 dni, mediana) → Frisco ≈ (× współczynnik; oznaczone jako szacunek). Każda cena niesie źródło i datę (UI w E6b.4, do tego czasu koszt może różnić się od 0.3.0).
 - Migracja bazy v9 (tabela `shelf_item`, cache Biedronki z `GET /api/v1/shelf`; przed nią kopia `dieta.db.pre-v9`).

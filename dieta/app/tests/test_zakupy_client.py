@@ -1,3 +1,4 @@
+import io
 import json
 import urllib.error
 import urllib.request
@@ -9,10 +10,14 @@ import pytest
 from dieta.zakupy_client import (
     CatalogItem,
     Purchase,
+    ShelfRequestResult,
     ZakupyError,
     fetch_catalog,
     fetch_purchases,
     fetch_shelf,
+    fetch_shelf_absent,
+    fetch_shelf_full,
+    post_shelf_request,
 )
 
 TOKEN = "TOKEN-TESTOWY-987"
@@ -254,3 +259,43 @@ def test_fetch_shelf_errors() -> None:
     with pytest.raises(ZakupyError) as info:
         fetch_shelf("http://z:8099", TOKEN, opener=_Recorder(error=err))
     assert TOKEN not in str(info.value)
+
+
+def test_post_shelf_request_parses_202_and_sends_json_body() -> None:
+    opener = _Recorder(json.dumps({"accepted": 2, "skipped_fresh": 1, "skipped_absent": 0}).encode())
+    result = post_shelf_request("http://z:8099", TOKEN, ["5900001", "5900002"], opener=opener)
+    req = opener.requests[0]
+    assert req.full_url == "http://z:8099/api/v1/shelf" and req.get_method() == "POST"
+    assert req.get_header("Authorization") == f"Bearer {TOKEN}"
+    assert json.loads(req.data) == {"eans": ["5900001", "5900002"]}
+    assert result == ShelfRequestResult(accepted=2, skipped_fresh=1, skipped_absent=0)
+
+
+def test_post_shelf_request_busy_409_is_result_not_error() -> None:
+    body = io.BytesIO(b'{"detail": "busy", "reason": "busy"}')
+    err = urllib.error.HTTPError("http://z", 409, "Conflict", None, body)  # type: ignore[arg-type]
+    result = post_shelf_request("http://z:8099", TOKEN, ["5900001"], opener=_Recorder(error=err))
+    assert result.busy is True and result.accepted == 0
+
+
+def test_post_shelf_request_other_errors_raise_without_token() -> None:
+    for code in (400, 401, 500):
+        err = urllib.error.HTTPError("http://z", code, "x", None, io.BytesIO(b"{}"))  # type: ignore[arg-type]
+        with pytest.raises(ZakupyError) as info:
+            post_shelf_request("http://z:8099", TOKEN, ["5900001"], opener=_Recorder(error=err))
+        assert TOKEN not in str(info.value)
+    err = urllib.error.HTTPError("http://z", 409, "x", None, io.BytesIO(b'{"reason": "no_store"}'))  # type: ignore[arg-type]
+    with pytest.raises(ZakupyError):
+        post_shelf_request("http://z:8099", TOKEN, ["5900001"], opener=_Recorder(error=err))
+
+
+def test_fetch_shelf_full_returns_items_and_absent() -> None:
+    payload = {**SHELF_PAYLOAD, "absent": ["5900009"]}
+    items, absent = fetch_shelf_full("http://z:8099", TOKEN, opener=_Recorder(json.dumps(payload).encode()))
+    assert [i.ean for i in items] == ["5900001", "5900003"]
+    assert absent == ["5900009"]
+    assert fetch_shelf_absent("http://z:8099", TOKEN, opener=_Recorder(json.dumps(payload).encode())) == [
+        "5900009"
+    ]
+    no_absent = _Recorder(json.dumps(SHELF_PAYLOAD).encode())
+    assert fetch_shelf_full("http://z:8099", TOKEN, opener=no_absent)[1] == []

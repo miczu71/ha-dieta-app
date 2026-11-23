@@ -2,6 +2,8 @@
 {% block content %}
 {% if error == 'sync' %}<p class="dz-err" role="alert">Nie udało się pobrać zakupów: {{ last_sync_error }}</p>{% endif %}
 {% if notice == 'ok' %}<p class="dz-ok" role="status">Zakupy odświeżone.</p>{% endif %}
+{% if error == 'ceny' %}<p class="dz-err" role="alert">Nie udało się zlecić (szczegóły w logu).</p>{% endif %}
+{% if notice == 'ceny-busy' %}<p class="dz-ok" role="status">Odczyt już trwa.</p>{% elif notice == 'ceny-empty' %}<p class="dz-ok" role="status">Brak cen do odczytu.</p>{% elif notice.startswith('ceny-') %}<p class="dz-ok" role="status">Zlecono odczyt {{ notice[5:] }} cen — pojawią się za kilka minut.</p>{% endif %}
 {% if not configured %}
 <section class="dz-card">
   <h2 class="dz-heading">Połącz z Zakupami</h2>
@@ -12,6 +14,7 @@
   <div class="dz-bar">
     <p class="dz-sub">{% if last_sync_at %}Ostatnie pobranie: <span class="dz-num">{{ last_sync_at }}</span>{% else %}Zakupy nie były jeszcze pobrane.{% endif %}</p>
     <form method="post" action="kupujemy/odswiez"><button class="dz-btn" type="submit">Odśwież teraz</button></form>
+    <form method="post" action="kupujemy/ceny"><button class="dz-btn" type="submit">Odśwież ceny planu</button></form>
   </div>
   {% if last_sync_error and error != 'sync' %}<p class="dz-err" role="alert">Ostatnie pobranie nie powiodło się: {{ last_sync_error }}</p>{% endif %}
   {% if queue_size %}<p class="dz-sub"><a class="dz-link" href="kupujemy/zatwierdz">Do zatwierdzenia: <span class="dz-num">{{ queue_size }}</span></a></p>{% endif %}

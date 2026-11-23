@@ -212,3 +212,17 @@ def test_sync_shelf_error_goes_to_meta_without_raising(tmp_path: Path) -> None:
     assert store.get_meta("shelf_sync_error") == "Brak połączenia z Zakupami."
     assert sync_shelf(store, _settings(tmp_path, url=""), TODAY, fetch=_shelf) == 0
     assert store.get_meta("shelf_sync_error")
+
+
+def test_sync_shelf_writes_absent_list_to_meta(tmp_path: Path) -> None:
+    store = _store(tmp_path)
+    absent = lambda url, token: ["5900009", "5900008"]  # noqa: E731
+    assert sync_shelf(store, _settings(tmp_path), TODAY, fetch=_shelf, fetch_absent=absent) == 1
+    assert json.loads(store.get_meta("shelf_absent_json") or "") == ["5900008", "5900009"]
+
+
+def test_sync_shelf_without_absent_fetcher_keeps_meta(tmp_path: Path) -> None:
+    store = _store(tmp_path)
+    store.set_meta("shelf_absent_json", '["5900001"]')
+    assert sync_shelf(store, _settings(tmp_path), TODAY, fetch=_shelf) == 1
+    assert store.get_meta("shelf_absent_json") == '["5900001"]'

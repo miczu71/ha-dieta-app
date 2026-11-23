@@ -96,19 +96,33 @@ def _parse_product(row: dict[str, Any]) -> Purchase:
     )
 
 
-def _get_json(base_url: str, token: str, path: str, opener: Opener | None) -> Any:
+def _get_json(
+    base_url: str,
+    token: str,
+    path: str,
+    opener: Opener | None,
+    body: bytes | None = None,
+    *,
+    busy_ok: bool = False,
+) -> Any:
+    """GET (bez ``body``) albo POST z JSON. ``busy_ok``: 409 z ``reason=busy`` → ``{"busy": True}``."""
     if not token:
         raise ZakupyError("Brak tokena API Zakupów w opcjach Diety.")
     parsed = urllib.parse.urlsplit(base_url.strip())
     if parsed.scheme not in ("http", "https") or not parsed.netloc:
         raise ZakupyError("Nieprawidłowy adres Zakupów (wymagany http:// lub https://).")
     url = f"{base_url.strip().rstrip('/')}{path}"
-    req = urllib.request.Request(url, headers={"Authorization": f"Bearer {token}"}, method="GET")
+    headers = {"Authorization": f"Bearer {token}"}
+    if body is not None:
+        headers["Content-Type"] = "application/json"
+    req = urllib.request.Request(url, data=body, headers=headers, method="GET" if body is None else "POST")
     open_fn = opener or _open
     try:
         with closing(open_fn(req)) as resp:
             raw = resp.read()
     except urllib.error.HTTPError as exc:
+        if exc.code == 409 and busy_ok and _reason(exc) == "busy":
+            return {"busy": True}
         if exc.code in (401, 403):
             raise ZakupyError(f"Zakupy odrzuciły token (HTTP {exc.code}).") from None
         if exc.code == 503:
@@ -190,11 +204,61 @@ def _parse_shelf_item(row: dict[str, Any]) -> ShelfItem | None:
     )
 
 
-def fetch_shelf(base_url: str, token: str, *, opener: Opener | None = None) -> list[ShelfItem]:
-    """Cache cen Biedronki (`/api/v1/shelf`); wiersze bez ceny > 0 są pomijane."""
+@dataclass(frozen=True)
+class ShelfRequestResult:
+    """Odpowiedź `POST /api/v1/shelf` (202); ``busy`` = 409, odczyt już trwa (bez błędu)."""
+
+    accepted: int = 0
+    skipped_fresh: int = 0
+    skipped_absent: int = 0
+    busy: bool = False
+
+
+def _reason(exc: urllib.error.HTTPError) -> str | None:
+    try:
+        payload = json.loads(exc.read())
+    except (ValueError, OSError, AttributeError):
+        return None
+    return payload.get("reason") if isinstance(payload, dict) else None
+
+
+def fetch_shelf_full(
+    base_url: str, token: str, *, opener: Opener | None = None
+) -> tuple[list[ShelfItem], list[str]]:
+    """Cache cen Biedronki i lista EAN „brak w Biedronce” (`absent`, pole opcjonalne)."""
     payload = _get_json(base_url, token, "/api/v1/shelf", opener)
     try:
         items = (_parse_shelf_item(row) for row in payload["items"])
-        return [item for item in items if item is not None]
+        shelf = [item for item in items if item is not None]
+        absent = [str(ean) for ean in payload.get("absent") or []]
+    except (ValueError, KeyError, TypeError, AttributeError):
+        raise ZakupyError("Nieprawidłowa odpowiedź Zakupów.") from None
+    return shelf, absent
+
+
+def fetch_shelf(base_url: str, token: str, *, opener: Opener | None = None) -> list[ShelfItem]:
+    """Cache cen Biedronki (`/api/v1/shelf`); wiersze bez ceny > 0 są pomijane."""
+    return fetch_shelf_full(base_url, token, opener=opener)[0]
+
+
+def fetch_shelf_absent(base_url: str, token: str, *, opener: Opener | None = None) -> list[str]:
+    """EAN-y „brak w Biedronce” (pole `absent` z `/api/v1/shelf`)."""
+    return fetch_shelf_full(base_url, token, opener=opener)[1]
+
+
+def post_shelf_request(
+    base_url: str, token: str, eans: list[str], *, opener: Opener | None = None
+) -> ShelfRequestResult:
+    """Zleca odczyt cen po EAN (`POST /api/v1/shelf`); 409 `busy` → ``busy=True`` bez wyjątku."""
+    body = json.dumps({"eans": list(eans)}).encode("utf-8")
+    payload = _get_json(base_url, token, "/api/v1/shelf", opener, body, busy_ok=True)
+    if payload.get("busy"):
+        return ShelfRequestResult(busy=True)
+    try:
+        return ShelfRequestResult(
+            accepted=int(payload["accepted"]),
+            skipped_fresh=int(payload["skipped_fresh"]),
+            skipped_absent=int(payload["skipped_absent"]),
+        )
     except (ValueError, KeyError, TypeError, AttributeError):
         raise ZakupyError("Nieprawidłowa odpowiedź Zakupów.") from None
