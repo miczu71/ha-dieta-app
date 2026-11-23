@@ -53,7 +53,7 @@ def test_migration_v2_to_v3_keeps_data(tmp_path: Path) -> None:
     assert isinstance(profile, Profile) and profile.age == 30
     assert store.ingredient_durability("ryż") == "dry"
     assert store.get_meta("last_sync_at") == "2026-11-21"
-    assert sqlite3.connect(path).execute("PRAGMA user_version").fetchone()[0] == len(_MIGRATIONS) == 7
+    assert sqlite3.connect(path).execute("PRAGMA user_version").fetchone()[0] == len(_MIGRATIONS) == 8
     assert store.recipes({}, frozenset()) == []
 
 

@@ -39,6 +39,17 @@ class Purchase:
     last_unit_price: float | None = None
 
 
+@dataclass(frozen=True)
+class CatalogItem:
+    ean: str
+    name: str
+    brand: str | None
+    size: float | None
+    size_unit: str | None
+    price: float
+    observed_at: str
+
+
 Opener = Callable[[urllib.request.Request], Any]
 
 
@@ -68,15 +79,13 @@ def _parse_product(row: dict[str, Any]) -> Purchase:
     )
 
 
-def fetch_purchases(
-    base_url: str, token: str, months: int = 12, *, opener: Opener | None = None
-) -> list[Purchase]:
+def _get_json(base_url: str, token: str, path: str, opener: Opener | None) -> Any:
     if not token:
         raise ZakupyError("Brak tokena API Zakupów w opcjach Diety.")
     parsed = urllib.parse.urlsplit(base_url.strip())
     if parsed.scheme not in ("http", "https") or not parsed.netloc:
         raise ZakupyError("Nieprawidłowy adres Zakupów (wymagany http:// lub https://).")
-    url = f"{base_url.strip().rstrip('/')}/api/v1/purchases?months={int(months)}"
+    url = f"{base_url.strip().rstrip('/')}{path}"
     req = urllib.request.Request(url, headers={"Authorization": f"Bearer {token}"}, method="GET")
     open_fn = opener or _open
     try:
@@ -91,7 +100,50 @@ def fetch_purchases(
     except (urllib.error.URLError, OSError):
         raise ZakupyError("Brak połączenia z Zakupami.") from None
     try:
-        payload = json.loads(raw)
+        return json.loads(raw)
+    except ValueError:
+        raise ZakupyError("Nieprawidłowa odpowiedź Zakupów.") from None
+
+
+def fetch_purchases(
+    base_url: str, token: str, months: int = 12, *, opener: Opener | None = None
+) -> list[Purchase]:
+    payload = _get_json(base_url, token, f"/api/v1/purchases?months={int(months)}", opener)
+    try:
         return [_parse_product(row) for row in payload["products"]]
+    except (ValueError, KeyError, TypeError, AttributeError):
+        raise ZakupyError("Nieprawidłowa odpowiedź Zakupów.") from None
+
+
+def _parse_catalog_item(row: dict[str, Any], source: str) -> CatalogItem | None:
+    observations = [
+        o for o in row.get("observations") or [] if o.get("source") == source and o.get("price") is not None
+    ]
+    if not observations:
+        return None
+    last = max(observations, key=lambda o: str(o["observed_at"]))
+    price = float(last["price"])
+    if price <= 0:
+        return None
+    return CatalogItem(
+        ean=str(row["ean"]),
+        name=str(row["name"]),
+        brand=None if row.get("brand") is None else str(row["brand"]),
+        size=_opt_float(row.get("size")),
+        size_unit=None if row.get("size_unit") is None else str(row["size_unit"]),
+        price=price,
+        observed_at=str(last["observed_at"]),
+    )
+
+
+def fetch_catalog(
+    base_url: str, token: str, source: str = "frisco", *, opener: Opener | None = None
+) -> list[CatalogItem]:
+    """Katalog cen rynkowych (`/api/v1/catalog`); cena z ostatniej obserwacji `source`."""
+    query = urllib.parse.urlencode({"source": source})
+    payload = _get_json(base_url, token, f"/api/v1/catalog?{query}", opener)
+    try:
+        items = (_parse_catalog_item(row, source) for row in payload["products"])
+        return [item for item in items if item is not None]
     except (ValueError, KeyError, TypeError, AttributeError):
         raise ZakupyError("Nieprawidłowa odpowiedź Zakupów.") from None

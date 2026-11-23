@@ -15,12 +15,13 @@ from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 
+from ..catalog_map import ASK_PROMPT as CATALOG_ASK_PROMPT
 from ..dictionary import Durability, llm_ask_from
 from ..nutrition_lookup import MAX_KCAL_100G
 from ..pipeline import estimate_nutrition
 from ..settings import Settings
 from ..store import MEAL_CATEGORIES, IngredientNutrition, MappingRow, PendingRecipeMeta, RecipeRow, Store
-from ..sync import map_recipe_ingredients, stats, sync
+from ..sync import map_recipe_ingredients, stats, sync, sync_catalog
 from ..zakupy_client import fetch_purchases
 
 log = logging.getLogger(__name__)
@@ -62,7 +63,15 @@ def default_runner(settings: Settings, store: Store) -> SyncRunner:
             return _run()
 
     def _run() -> int:
-        return sync(store, settings, date.today(), fetch=fetch_purchases, ask=llm_ask_from(settings))
+        count = sync(store, settings, date.today(), fetch=fetch_purchases, ask=llm_ask_from(settings))
+        if settings.zakupy_url:
+            sync_catalog(
+                store,
+                settings,
+                date.today(),
+                ask=llm_ask_from(settings, CATALOG_ASK_PROMPT),
+            )
+        return count
 
     return run
 

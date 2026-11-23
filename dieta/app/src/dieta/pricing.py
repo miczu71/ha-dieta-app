@@ -11,7 +11,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from statistics import median
 
-from dieta.zakupy_client import Purchase
+from dieta.zakupy_client import CatalogItem, Purchase
 
 # opcjonalny mnożnik „6x", liczba, jednostka; lookbehind odcina liczby sklejone z poprzednim tokenem
 _PACK_RE = re.compile(
@@ -95,3 +95,92 @@ def ingredient_prices(
         )
         for ingredient, values in prices.items()
     }
+
+
+MIN_GROUP_PAIRS = 30  # współczynnik per trwałość tylko przy tylu parach w grupie
+
+
+@dataclass(frozen=True)
+class Factor:
+    """Współczynnik cena z paragonu / cena Frisco: ``value`` globalny, ``by_durability`` dla grup n>=30."""
+
+    value: float
+    n: int
+    by_durability: dict[str, float]
+
+
+@dataclass(frozen=True)
+class FriscoPrice:
+    price100: float  # zł za 100 g, po współczynniku (przybliżona cena „z paragonu")
+    n_products: int
+    regular100: float | None = None  # katalog nie niesie ceny regularnej — rezerwa na E6b.3
+
+
+def frisco_price100(item: CatalogItem) -> float | None:
+    """zł/100 g produktu Frisco (rozmiar w kg/l); ``None`` dla sztuk i braków."""
+    if item.size_unit not in ("Kilogram", "Litre") or item.size is None or item.size <= 0 or item.price <= 0:
+        return None
+    return item.price / (item.size * 1000) * 100
+
+
+def receipt_to_frisco_factor(
+    purchases: Sequence[Purchase],
+    frisco: Sequence[CatalogItem],
+    piece_g_by_ingredient: Mapping[str, float] | None = None,
+    *,
+    durability_by_code: Mapping[str, str] | None = None,
+    ingredient_by_code: Mapping[str, str] | None = None,
+) -> Factor:
+    """Mediana ilorazu (cena z paragonu / cena Frisco) po parach kod zakupu ↔ EAN (``code.split(":",1)[-1]``).
+
+    ``piece_g_by_ingredient`` + ``ingredient_by_code`` pozwalają policzyć cenę pakowanych bez gramatury.
+    """
+    by_ean = {i.ean: p for i in frisco if (p := frisco_price100(i)) is not None}
+    piece_g = piece_g_by_ingredient or {}
+    ratios: list[float] = []
+    groups: dict[str, list[float]] = {}
+    for purchase in purchases:
+        frisco100 = by_ean.get(purchase.code.split(":", 1)[-1])
+        if frisco100 is None:
+            continue
+        ingredient = (ingredient_by_code or {}).get(purchase.code)
+        receipt100 = price_per_100g(purchase, piece_g.get(ingredient) if ingredient else None)
+        if receipt100 is None:
+            continue
+        ratio = receipt100 / frisco100
+        ratios.append(ratio)
+        durability = (durability_by_code or {}).get(purchase.code)
+        if durability:
+            groups.setdefault(durability, []).append(ratio)
+    if not ratios:
+        return Factor(1.0, 0, {})
+    return Factor(
+        float(median(ratios)),
+        len(ratios),
+        {d: float(median(v)) for d, v in groups.items() if len(v) >= MIN_GROUP_PAIRS},
+    )
+
+
+def frisco_prices(
+    items: Sequence[CatalogItem],
+    mapped: Mapping[str, str],
+    factor: Factor,
+    durability_by_ingredient: Mapping[str, str] | None = None,
+) -> dict[str, FriscoPrice]:
+    """Cena składnika = mediana zł/100 g zmapowanych produktów × współczynnik (trwałości albo globalny).
+
+    ``mapped``: EAN → nazwa składnika (tylko rule/ai/approved); składnik bez produktów nie trafia do wyniku.
+    """
+    per_ingredient: dict[str, list[float]] = {}
+    for item in items:
+        ingredient = mapped.get(item.ean)
+        price100 = frisco_price100(item)
+        if ingredient is None or price100 is None:
+            continue
+        per_ingredient.setdefault(ingredient, []).append(price100)
+    result: dict[str, FriscoPrice] = {}
+    for ingredient, values in per_ingredient.items():
+        durability = (durability_by_ingredient or {}).get(ingredient)
+        multiplier = factor.by_durability.get(durability, factor.value) if durability else factor.value
+        result[ingredient] = FriscoPrice(float(median(values)) * multiplier, len(values))
+    return result

@@ -6,9 +6,11 @@ Błąd pobierania zapisuje `meta.last_sync_error` i zostawia poprzedni snapshot.
 
 from __future__ import annotations
 
+import json
 from collections.abc import Callable
 from datetime import date
 
+from dieta.catalog_map import map_catalog
 from dieta.dictionary import (
     SEED_PATH,
     AskFn,
@@ -18,12 +20,14 @@ from dieta.dictionary import (
     map_with_llm,
     normalize_name,
 )
+from dieta.pricing import receipt_to_frisco_factor
 from dieta.profile import IngredientStat, build_stats
 from dieta.settings import Settings
 from dieta.store import MappingStatus, Store
-from dieta.zakupy_client import Purchase, ZakupyError
+from dieta.zakupy_client import CatalogItem, Purchase, ZakupyError, fetch_catalog
 
 FetchFn = Callable[[str, str], list[Purchase]]
+CatalogFetchFn = Callable[[str, str], list[CatalogItem]]
 MISSING_CONFIG = "Brak adresu albo tokena Zakupów w opcjach Diety."
 
 
@@ -106,6 +110,48 @@ def sync(
     store.set_meta("last_sync_at", today.isoformat())
     store.set_meta("last_sync_error", "")
     return len(purchases)
+
+
+def sync_catalog(
+    store: Store,
+    settings: Settings,
+    today: date,
+    *,
+    fetch: CatalogFetchFn = fetch_catalog,
+    ask: AskFn | None = None,
+) -> int:
+    """Pobiera katalog Frisco, upsertuje snapshot, mapuje nowe EAN i przelicza współczynnik cen.
+
+    Wiersze nieobecne w odpowiedzi zostają (``observed_at`` mówi o świeżości). Zwraca liczbę produktów;
+    0 przy błędzie (wtedy ``meta.catalog_sync_error`` jest ustawione, bez wyjątku).
+    """
+    url, token = settings.zakupy_url, settings.zakupy_token
+    if not url or not token:
+        store.set_meta("catalog_sync_error", MISSING_CONFIG)
+        return 0
+    try:
+        items = fetch(url, token)
+    except ZakupyError as exc:
+        store.set_meta("catalog_sync_error", str(exc))
+        return 0
+    store.upsert_catalog_items(items, today.isoformat())
+    mapped = {row.ean for row in store.catalog_map_rows()}
+    fresh = [i for i in store.catalog_items() if i.ean not in mapped]
+    for decision in map_catalog(fresh, store.used_ingredient_names(), ask):
+        store.set_catalog_map(decision.ean, decision.status, decision.ingredient, decision.source_name)
+    mappings = store.mappings()
+    factor = receipt_to_frisco_factor(
+        store.purchases(),
+        store.catalog_items(),
+        durability_by_code={r.code: r.durability for r in mappings if r.durability is not None},
+    )
+    store.set_meta(
+        "frisco_factor_json",
+        json.dumps({"value": factor.value, "n": factor.n, "by_durability": factor.by_durability}),
+    )
+    store.set_meta("catalog_sync_at", today.isoformat())
+    store.set_meta("catalog_sync_error", "")
+    return len(items)
 
 
 def stats(store: Store, settings: Settings, today: date) -> list[IngredientStat]:

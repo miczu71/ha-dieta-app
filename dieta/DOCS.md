@@ -29,3 +29,6 @@ Baza w wersji 7 nie jest czytelna dla 0.2.0 ani starszych — nie wracaj do star
 
 ## Lista i koszt
 „Lista” buduje zakupy z zatwierdzonego planu: składniki sesji scalone, bez tych, które pewnie macie w domu (przycisk „Dodaj jednak”). Koszt planu to szacunek z cen płaconych na paragonach (mediana, zł/100 g) z podanym pokryciem — udziałem masy składników z ceną. Wymaga Zakupów 1.11.0 i zsynchronizowanych zakupów.
+
+## Katalog cen Frisco (w przygotowaniu)
+Po odświeżeniu zakupów Dieta pobiera z Zakupów katalog cen Frisco (`/api/v1/catalog?source=frisco`) i mapuje produkty na składniki z przepisów. Nazwa produktu zbliżona do nazwy składnika = mapowanie automatyczne; luźne dopasowania ocenia AI (wymaga skonfigurowanego LLM) — wątpliwe czekają w kolejce. Z par „ten sam EAN na paragonie i we Frisco” liczony jest współczynnik cen. Wynik jest zapisywany w bazie i nie wpływa jeszcze na koszt planu.

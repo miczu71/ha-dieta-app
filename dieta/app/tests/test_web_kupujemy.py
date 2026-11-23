@@ -155,3 +155,19 @@ def test_refresh_survives_runner_exception(tmp_path: Path) -> None:
     r = client.post("/kupujemy/odswiez")
     assert r.status_code == 303 and r.headers["location"] == "../kupujemy?error=sync"
     assert "secret-token" not in (store.get_meta("last_sync_error") or "")
+
+
+def test_default_runner_calls_sync_catalog_after_sync(tmp_path: Path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    from dieta.web import kupujemy
+
+    calls: list[str] = []
+    monkeypatch.setattr(kupujemy, "sync", lambda *a, **k: calls.append("sync") or 5)
+    monkeypatch.setattr(kupujemy, "sync_catalog", lambda *a, **k: calls.append("catalog") or 1)
+    s = Settings(data_dir=tmp_path, log_level="info", dev=True, zakupy_url="http://z:1", zakupy_token="x")
+    assert kupujemy.default_runner(s, Store(s.db_path))() == 5
+    assert calls == ["sync", "catalog"]
+
+    calls.clear()
+    s2 = Settings(data_dir=tmp_path, log_level="info", dev=True, zakupy_url="", zakupy_token="")
+    assert kupujemy.default_runner(s2, Store(s2.db_path))() == 5
+    assert calls == ["sync"]

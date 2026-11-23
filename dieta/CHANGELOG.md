@@ -1,5 +1,8 @@
 # Dziennik zmian
 
+## Niewydane (E6b.2)
+- Katalog cen Frisco (z Zakupów, `/api/v1/catalog`): migracja bazy v8 (tabele `catalog_item`, `catalog_map`; przed nią kopia `dieta.db.pre-v8`), mapowanie produktów na składniki przepisów (ścisłe = `rule`, luźne przez AI = `ai`/`excluded`/`pending`; bez LLM luźne czekają), współczynnik „cena z paragonu / cena Frisco” (mediana z par EAN, `meta.frisco_factor_json`). Synchronizacja po przycisku odświeżenia zakupów. Ceny nie wchodzą jeszcze do kosztu planu ani UI (E6b.3/E6b.4).
+
 ## 0.3.0 (2026-11-23)
 - Ekran „Lista”: lista zakupów z zatwierdzonego planu (sesje wielodniowe scalone, masy składników skalowane do porcji), z podziałem na „Do kupienia”, „Pewnie masz” (składniki kupione niedawno, przycisk „Dodaj jednak”) i „Bez ceny”; odhaczanie pozycji. Przycisk „Wyślij do todo HA” wysyła pozycje do listy z opcji `todo_entity` (nic nie idzie automatycznie; wysłane nie idą drugi raz).
 - Koszt planu: mediana ceny płaconej z paragonów (zł/100 g) × masa składnika; pasek kosztu w Planie i koszt sesji z **pokryciem %** (udział masy z ceną). Ceny pakowanych bez gramatury w nazwie liczone z masy sztuki (nie dla opakowań „N szt.”). Wymaga **Zakupów 1.11.0** (pola `unit_price`/`last_unit_price`/`is_weight` w `/api/v1/purchases`); ze starszym Zakupami ceny nie są dostępne.

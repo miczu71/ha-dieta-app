@@ -1,0 +1,356 @@
+{
+ "generated_at": "2026-11-22T10:00:00",
+ "products": [
+  {
+   "ean": "5900000000001",
+   "name": "Pomidory malinowe",
+   "brand": "X",
+   "size": 1.0,
+   "size_unit": "Kilogram",
+   "frisco_id": "0001",
+   "observations": [
+    {
+     "source": "frisco",
+     "price": 12.0,
+     "regular": 12.0,
+     "promo_from": null,
+     "promo_to": null,
+     "observed_at": "2026-11-20T08:00:00"
+    }
+   ]
+  },
+  {
+   "ean": "5900000000002",
+   "name": "Pomidory",
+   "brand": "X",
+   "size": 0.5,
+   "size_unit": "Kilogram",
+   "frisco_id": "0002",
+   "observations": [
+    {
+     "source": "frisco",
+     "price": 4.0,
+     "regular": 4.0,
+     "promo_from": null,
+     "promo_to": null,
+     "observed_at": "2026-11-20T08:00:00"
+    }
+   ]
+  },
+  {
+   "ean": "5900000000003",
+   "name": "Klopsiki w sosie pomidorowym",
+   "brand": "X",
+   "size": 0.4,
+   "size_unit": "Kilogram",
+   "frisco_id": "0003",
+   "observations": [
+    {
+     "source": "frisco",
+     "price": 9.0,
+     "regular": 9.0,
+     "promo_from": null,
+     "promo_to": null,
+     "observed_at": "2026-11-20T08:00:00"
+    }
+   ]
+  },
+  {
+   "ean": "5900000000004",
+   "name": "Mleko 2%",
+   "brand": "X",
+   "size": 1.0,
+   "size_unit": "Litre",
+   "frisco_id": "0004",
+   "observations": [
+    {
+     "source": "frisco",
+     "price": 3.5,
+     "regular": 3.5,
+     "promo_from": null,
+     "promo_to": null,
+     "observed_at": "2026-11-20T08:00:00"
+    }
+   ]
+  },
+  {
+   "ean": "5900000000005",
+   "name": "Mleko",
+   "brand": "X",
+   "size": 1.0,
+   "size_unit": "Litre",
+   "frisco_id": "0005",
+   "observations": [
+    {
+     "source": "frisco",
+     "price": 3.2,
+     "regular": 3.2,
+     "promo_from": null,
+     "promo_to": null,
+     "observed_at": "2026-11-20T08:00:00"
+    }
+   ]
+  },
+  {
+   "ean": "5900000000006",
+   "name": "Ryż biały",
+   "brand": "X",
+   "size": 0.4,
+   "size_unit": "Kilogram",
+   "frisco_id": "0006",
+   "observations": [
+    {
+     "source": "frisco",
+     "price": 4.0,
+     "regular": 4.0,
+     "promo_from": null,
+     "promo_to": null,
+     "observed_at": "2026-11-20T08:00:00"
+    }
+   ]
+  },
+  {
+   "ean": "5900000000007",
+   "name": "Ryż",
+   "brand": "X",
+   "size": 1.0,
+   "size_unit": "Kilogram",
+   "frisco_id": "0007",
+   "observations": [
+    {
+     "source": "frisco",
+     "price": 6.0,
+     "regular": 6.0,
+     "promo_from": null,
+     "promo_to": null,
+     "observed_at": "2026-11-20T08:00:00"
+    }
+   ]
+  },
+  {
+   "ean": "5900000000008",
+   "name": "Jajka",
+   "brand": "X",
+   "size": 10,
+   "size_unit": "Piece",
+   "frisco_id": "0008",
+   "observations": [
+    {
+     "source": "frisco",
+     "price": 12.0,
+     "regular": 12.0,
+     "promo_from": null,
+     "promo_to": null,
+     "observed_at": "2026-11-20T08:00:00"
+    }
+   ]
+  },
+  {
+   "ean": "5900000000009",
+   "name": "Piwo jasne pomidorowe",
+   "brand": "X",
+   "size": 0.5,
+   "size_unit": "Litre",
+   "frisco_id": "0009",
+   "observations": [
+    {
+     "source": "frisco",
+     "price": 4.0,
+     "regular": 4.0,
+     "promo_from": null,
+     "promo_to": null,
+     "observed_at": "2026-11-20T08:00:00"
+    }
+   ]
+  },
+  {
+   "ean": "5900000000010",
+   "name": "Płyn do naczyń cytryna",
+   "brand": "X",
+   "size": 0.5,
+   "size_unit": "Litre",
+   "frisco_id": "0010",
+   "observations": [
+    {
+     "source": "frisco",
+     "price": 6.0,
+     "regular": 6.0,
+     "promo_from": null,
+     "promo_to": null,
+     "observed_at": "2026-11-20T08:00:00"
+    }
+   ]
+  },
+  {
+   "ean": "5900000000011",
+   "name": "Masło extra",
+   "brand": "X",
+   "size": 0.2,
+   "size_unit": "Kilogram",
+   "frisco_id": "0011",
+   "observations": [
+    {
+     "source": "frisco",
+     "price": 8.0,
+     "regular": 8.0,
+     "promo_from": null,
+     "promo_to": null,
+     "observed_at": "2026-11-20T08:00:00"
+    }
+   ]
+  },
+  {
+   "ean": "5900000000012",
+   "name": "Sól kuchenna",
+   "brand": "X",
+   "size": 1.0,
+   "size_unit": "Kilogram",
+   "frisco_id": "0012",
+   "observations": [
+    {
+     "source": "frisco",
+     "price": 2.0,
+     "regular": 2.0,
+     "promo_from": null,
+     "promo_to": null,
+     "observed_at": "2026-11-20T08:00:00"
+    }
+   ]
+  },
+  {
+   "ean": "5900000000013",
+   "name": "Cebula",
+   "brand": "X",
+   "size": 1.0,
+   "size_unit": "Kilogram",
+   "frisco_id": "0013",
+   "observations": [
+    {
+     "source": "frisco",
+     "price": 3.0,
+     "regular": 3.0,
+     "promo_from": null,
+     "promo_to": null,
+     "observed_at": "2026-11-20T08:00:00"
+    }
+   ]
+  },
+  {
+   "ean": "5900000000014",
+   "name": "Cebula czerwona w occie",
+   "brand": "X",
+   "size": 0.3,
+   "size_unit": "Kilogram",
+   "frisco_id": "0014",
+   "observations": [
+    {
+     "source": "frisco",
+     "price": 7.0,
+     "regular": 7.0,
+     "promo_from": null,
+     "promo_to": null,
+     "observed_at": "2026-11-20T08:00:00"
+    }
+   ]
+  },
+  {
+   "ean": "5900000000015",
+   "name": "Chleb żytni",
+   "brand": "X",
+   "size": 0.5,
+   "size_unit": "Kilogram",
+   "frisco_id": "0015",
+   "observations": [
+    {
+     "source": "frisco",
+     "price": 6.0,
+     "regular": 6.0,
+     "promo_from": null,
+     "promo_to": null,
+     "observed_at": "2026-11-20T08:00:00"
+    }
+   ]
+  },
+  {
+   "ean": "5900000000016",
+   "name": "Banany",
+   "brand": "X",
+   "size": 1.0,
+   "size_unit": "Kilogram",
+   "frisco_id": "0016",
+   "observations": [
+    {
+     "source": "frisco",
+     "price": 6.0,
+     "regular": 6.0,
+     "promo_from": null,
+     "promo_to": null,
+     "observed_at": "2026-11-20T08:00:00"
+    }
+   ]
+  },
+  {
+   "ean": "5900000000017",
+   "name": "Jogurt naturalny",
+   "brand": "X",
+   "size": 0.4,
+   "size_unit": "Kilogram",
+   "frisco_id": "0017",
+   "observations": [
+    {
+     "source": "frisco",
+     "price": 3.0,
+     "regular": 3.0,
+     "promo_from": null,
+     "promo_to": null,
+     "observed_at": "2026-11-20T08:00:00"
+    }
+   ]
+  },
+  {
+   "ean": "5900000000018",
+   "name": "Jogurt naturalny truskawkowy z musli",
+   "brand": "X",
+   "size": 0.2,
+   "size_unit": "Kilogram",
+   "frisco_id": "0018",
+   "observations": [
+    {
+     "source": "frisco",
+     "price": 4.0,
+     "regular": 4.0,
+     "promo_from": null,
+     "promo_to": null,
+     "observed_at": "2026-11-20T08:00:00"
+    }
+   ]
+  },
+  {
+   "ean": "5900000000019",
+   "name": "Bez obserwacji",
+   "brand": "X",
+   "size": 1,
+   "size_unit": "Kilogram",
+   "frisco_id": "0019",
+   "observations": []
+  },
+  {
+   "ean": "5900000000020",
+   "name": "Zero ceny",
+   "brand": "X",
+   "size": 1,
+   "size_unit": "Kilogram",
+   "frisco_id": "0020",
+   "observations": [
+    {
+     "source": "frisco",
+     "price": 0,
+     "regular": 0,
+     "promo_from": null,
+     "promo_to": null,
+     "observed_at": "2026-11-20T08:00:00"
+    }
+   ]
+  }
+ ]
+}

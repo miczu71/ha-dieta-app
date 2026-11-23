@@ -6,7 +6,7 @@ from typing import Any
 
 import pytest
 
-from dieta.zakupy_client import Purchase, ZakupyError, fetch_purchases
+from dieta.zakupy_client import CatalogItem, Purchase, ZakupyError, fetch_catalog, fetch_purchases
 
 TOKEN = "TOKEN-TESTOWY-987"
 
@@ -132,3 +132,63 @@ def test_new_zakupy_response_parses_prices() -> None:
     a, b = fetch_purchases("http://z:8099", TOKEN, opener=_Recorder(body=body))
     assert (a.unit_price, a.is_weight, a.last_unit_price) == (24.9, True, 26.5)
     assert (b.unit_price, b.is_weight, b.last_unit_price) == (None, False, None)
+
+
+CATALOG_PAYLOAD: dict[str, Any] = {
+    "generated_at": "2026-11-22T10:00:00",
+    "products": [
+        {
+            "ean": "5900001",
+            "name": "Mleko 2%",
+            "brand": "Mlekovita",
+            "size": 1.0,
+            "size_unit": "Litre",
+            "frisco_id": "1",
+            "observations": [
+                {"source": "frisco", "price": 3.2, "observed_at": "2026-11-10T08:00:00"},
+                {"source": "frisco", "price": 3.5, "observed_at": "2026-11-20T08:00:00"},
+                {"source": "inne", "price": 1.0, "observed_at": "2026-11-21T08:00:00"},
+            ],
+        },
+        {"ean": "5900002", "name": "Bez obserwacji", "size": 1, "size_unit": "Kilogram", "observations": []},
+        {
+            "ean": "5900003",
+            "name": "Zero",
+            "size": 1,
+            "size_unit": "Kilogram",
+            "observations": [{"source": "frisco", "price": 0, "observed_at": "2026-11-20T08:00:00"}],
+        },
+    ],
+}
+
+
+def test_fetch_catalog_uses_last_observation_and_skips_empty() -> None:
+    opener = _Recorder(json.dumps(CATALOG_PAYLOAD).encode())
+    result = fetch_catalog("http://x:8099/", TOKEN, opener=opener)
+    assert result == [
+        CatalogItem("5900001", "Mleko 2%", "Mlekovita", 1.0, "Litre", 3.5, "2026-11-20T08:00:00")
+    ]
+    req = opener.requests[0]
+    assert req.full_url == "http://x:8099/api/v1/catalog?source=frisco"
+    assert req.get_header("Authorization") == f"Bearer {TOKEN}"
+
+
+def test_fetch_catalog_without_token_or_bad_url() -> None:
+    opener = _Recorder(b"{}")
+    with pytest.raises(ZakupyError):
+        fetch_catalog("http://x:8099", "", opener=opener)
+    with pytest.raises(ZakupyError):
+        fetch_catalog("ftp://x", TOKEN, opener=opener)
+    assert opener.requests == []
+
+
+def test_fetch_catalog_401_hides_token() -> None:
+    err = urllib.error.HTTPError("http://x/api/v1/catalog", 401, "Unauthorized", {}, None)
+    with pytest.raises(ZakupyError) as info:
+        fetch_catalog("http://x:8099", TOKEN, opener=_Recorder(error=err))
+    assert TOKEN not in str(info.value)
+
+
+def test_fetch_catalog_invalid_payload() -> None:
+    with pytest.raises(ZakupyError):
+        fetch_catalog("http://x:8099", TOKEN, opener=_Recorder(b'{"nope": 1}'))

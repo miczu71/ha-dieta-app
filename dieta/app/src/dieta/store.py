@@ -5,6 +5,7 @@ Schemat wersjonowany przez ``PRAGMA user_version``; kolejne migracje dopisujemy 
 """
 
 import json
+import shutil
 import sqlite3
 from collections.abc import Iterable, Mapping, Sequence
 from contextlib import closing
@@ -17,9 +18,10 @@ from dieta.dictionary import Durability, normalize_name
 from dieta.match import Familiarity, familiarity
 from dieta.profile import IngredientStat
 from dieta.sources.base import Recipe
-from dieta.zakupy_client import Purchase
+from dieta.zakupy_client import CatalogItem, Purchase
 
 PERSON_IDS = (1, 2)
+CatalogStatus = Literal["rule", "ai", "pending", "approved", "excluded"]
 MappingStatus = Literal["rule", "seed", "ai", "pending", "approved", "excluded"]
 MetaStatus = Literal["rule", "ai", "pending", "approved"]
 RecipeFlag = Literal["liked", "dismissed"]
@@ -218,7 +220,26 @@ _MIGRATIONS: list[str] = [
         PRIMARY KEY (week_start, ingredient_id, state)
     );
     """,
+    """
+    CREATE TABLE catalog_item (
+        ean TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        brand TEXT,
+        size REAL,
+        size_unit TEXT,
+        price REAL NOT NULL,
+        observed_at TEXT NOT NULL,
+        fetched_at TEXT NOT NULL
+    );
+    CREATE TABLE catalog_map (
+        ean TEXT PRIMARY KEY,
+        ingredient_id INTEGER REFERENCES ingredient(id),
+        status TEXT NOT NULL CHECK(status IN ('rule','ai','pending','approved','excluded')),
+        source_name TEXT NOT NULL DEFAULT ''
+    );
+    """,
 ]
+BACKUP_BEFORE_VERSION = 8  # migracja v8 (katalog Frisco): kopia pliku bazy przed pierwszym uruchomieniem
 
 
 @dataclass(frozen=True)
@@ -243,6 +264,21 @@ class MappingRow:
     ingredient: str | None
     durability: Durability | None
     source_name: str
+
+
+@dataclass(frozen=True)
+class CatalogMapRow:
+    ean: str
+    status: CatalogStatus
+    ingredient: str | None
+    source_name: str
+
+
+@dataclass(frozen=True)
+class PendingCatalog:
+    ean: str
+    name: str
+    ingredient: str | None  # kandydat zaproponowany przy mapowaniu
 
 
 @dataclass(frozen=True)
@@ -441,7 +477,12 @@ class Store:
     def __init__(self, path: Path) -> None:
         self._path = path
         path.parent.mkdir(parents=True, exist_ok=True)
+        existed = path.exists() and path.stat().st_size > 0
         with closing(self._connect()) as conn:
+            version = conn.execute("PRAGMA user_version").fetchone()[0]
+            backup = path.with_name(path.name + f".pre-v{BACKUP_BEFORE_VERSION}")
+            if existed and 0 < version < BACKUP_BEFORE_VERSION and not backup.exists():
+                shutil.copy2(path, backup)
             _migrate(conn)
 
     def _connect(self) -> sqlite3.Connection:
@@ -671,6 +712,83 @@ class Store:
 
     def exclude(self, code: str) -> None:
         self.set_mapping(code, "excluded", None, None, self._source_of(code))
+
+    # --- Katalog Frisco (migracja v8) ---
+
+    def upsert_catalog_items(self, items: Iterable[CatalogItem], fetched_at: str) -> None:
+        rows = [
+            (i.ean, i.name, i.brand, i.size, i.size_unit, i.price, i.observed_at, fetched_at) for i in items
+        ]
+        with closing(self._connect()) as conn, conn:
+            conn.executemany(
+                "INSERT INTO catalog_item "
+                "(ean, name, brand, size, size_unit, price, observed_at, fetched_at) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(ean) DO UPDATE SET name = excluded.name, "
+                "brand = excluded.brand, size = excluded.size, size_unit = excluded.size_unit, "
+                "price = excluded.price, observed_at = excluded.observed_at, "
+                "fetched_at = excluded.fetched_at",
+                rows,
+            )
+
+    def catalog_items(self) -> list[CatalogItem]:
+        with closing(self._connect()) as conn:
+            rows = conn.execute(
+                "SELECT ean, name, brand, size, size_unit, price, observed_at FROM catalog_item ORDER BY ean"
+            ).fetchall()
+        return [CatalogItem(*row) for row in rows]
+
+    def catalog_map_rows(self) -> list[CatalogMapRow]:
+        with closing(self._connect()) as conn:
+            rows = conn.execute(
+                "SELECT m.ean, m.status, i.name, m.source_name FROM catalog_map m "
+                "LEFT JOIN ingredient i ON i.id = m.ingredient_id ORDER BY m.ean"
+            ).fetchall()
+        return [CatalogMapRow(ean, cast(CatalogStatus, status), ing, src) for ean, status, ing, src in rows]
+
+    def set_catalog_map(
+        self, ean: str, status: CatalogStatus, ingredient_name: str | None, source_name: str
+    ) -> None:
+        ingredient_id = (
+            self.upsert_ingredient(normalize_name(ingredient_name), None) if ingredient_name else None
+        )
+        with closing(self._connect()) as conn, conn:
+            conn.execute(
+                "INSERT INTO catalog_map (ean, ingredient_id, status, source_name) VALUES (?, ?, ?, ?) "
+                "ON CONFLICT(ean) DO UPDATE SET ingredient_id = excluded.ingredient_id, "
+                "status = excluded.status, source_name = excluded.source_name",
+                (ean, ingredient_id, status, source_name),
+            )
+
+    def pending_catalog(self) -> list[PendingCatalog]:
+        """Kolejka: wpisy `pending` z nazwą produktu (z snapshotu) i kandydackim składnikiem."""
+        with closing(self._connect()) as conn:
+            rows = conn.execute(
+                "SELECT m.ean, c.name, i.name FROM catalog_map m "
+                "JOIN catalog_item c ON c.ean = m.ean "
+                "LEFT JOIN ingredient i ON i.id = m.ingredient_id "
+                "WHERE m.status = 'pending' ORDER BY c.name"
+            ).fetchall()
+        return [PendingCatalog(ean, name, ing) for ean, name, ing in rows]
+
+    def _catalog_source(self, ean: str) -> str:
+        with closing(self._connect()) as conn:
+            row = conn.execute("SELECT source_name FROM catalog_map WHERE ean = ?", (ean,)).fetchone()
+        return "" if row is None else str(row[0])
+
+    def approve_catalog(self, ean: str, ingredient_name: str) -> None:
+        self.set_catalog_map(ean, "approved", ingredient_name, self._catalog_source(ean))
+
+    def exclude_catalog(self, ean: str) -> None:
+        self.set_catalog_map(ean, "excluded", None, self._catalog_source(ean))
+
+    def used_ingredient_names(self) -> list[str]:
+        """Składniki powiązane z liniami przepisów (kandydaci do mapowania katalogu)."""
+        with closing(self._connect()) as conn:
+            rows = conn.execute(
+                "SELECT DISTINCT i.name FROM recipe_ingredient ri "
+                "JOIN ingredient i ON i.id = ri.ingredient_id ORDER BY i.name"
+            ).fetchall()
+        return [str(r[0]) for r in rows]
 
     def get_meta(self, key: str) -> str | None:
         with closing(self._connect()) as conn:
