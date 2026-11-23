@@ -1,0 +1,8 @@
+Dieta (ha-dieta-app)
+
+Wartości odżywcze składników mogą pochodzić z Open Food Facts (https://world.openfoodfacts.org),
+bazy udostępnianej na licencji Open Database License (ODbL) 1.0; zawartość pojedynczych
+rekordów na licencji Database Contents License (DbCL). Dane są zapisywane lokalnie
+w bazie add-onu i oznaczane jako źródło "off". Kopia ani nowa baza pochodna nie są udostępniane.
+Wbudowana tabela wartości (dieta/app/src/dieta/seed/nutrition_basic.json) zawiera typowe wartości
+na 100 g oparte na ogólnodostępnych tabelach składu żywności (m.in. IŻŻ, USDA FoodData Central).

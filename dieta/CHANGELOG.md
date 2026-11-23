@@ -1,5 +1,12 @@
 # Dziennik zmian
 
+## 0.1.5 (2026-11-23)
+- Szacunek kcal i makro na porcję dla przepisów bez wartości ze źródła (m.in. cała Ania Gotuje): wartości na 100 g składnika z wbudowanej tabeli, potem Open Food Facts, potem AI; ilości w miarach domowych i sztukach przeliczane na gramy, linie bez ilości szacuje AI (waga 0,5 w pokryciu). Przepisy z kcal ze źródła pozostają bez zmian.
+- Przepis z pokryciem masy ≥ 85% (i zgodny z kcal/100 g ze strony Ani, ±25%) dostaje status „szacunek” i wchodzi do planera; pozostałe są „niepełnym szacunkiem” w kolejce do sprawdzenia. W Katalogu: „~420 kcal (szacunek)”, pokrycie, nieznane składniki, „porcje szacowane”, filtr kcal.
+- Kolejka zatwierdzania: składniki z niską pewnością lub wartością odstającą (edycja 4 liczb) oraz przepisy z niepełnym szacunkiem. Wartości niewiarygodne (>900 kcal/100 g, ujemne, same zera) nie wchodzą do szacunku.
+- Migracja bazy v4 (tabela `ingredient_nutrition`, kolumny szacunku); wersja 0.1.4 odczyta bazę v4.
+- Znane: kontrakt pomiaru (≥ 80% przepisów w ±30%) niespełniony dla wszystkich szacunków (68%); przepisy „auto”: mediana błędu 11,5%, 80% w ±30%. Open Food Facts był w pomiarze niedostępny (HTTP 503), więc jego wpływ nie jest zmierzony; szczegóły w `docs/POMIAR_kcal.md`.
+
 ## 0.1.4 (2026-11-23)
 - Nowe źródło: Ania Gotuje (parser microdata; wartości odżywcze tylko na 100 g, więc przepisy bez kcal na porcję są oznaczone „brak kcal” i pomijane przez planer).
 - Policzona Szama: lista przepisów z kanału Atom (30 najnowszych z pełną treścią, bez zapytań o artykuły i bez limitu dziennego) oraz sitemapa dla zaległości; linki z kanału tylko z własnego hosta (https). Gdy padną kanał i sitemapa, przebieg pokazuje przyczynę zamiast „sitemapa nie zawiera przepisów”.
