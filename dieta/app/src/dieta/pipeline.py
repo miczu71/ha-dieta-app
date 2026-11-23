@@ -271,6 +271,7 @@ def estimate_nutrition(
                     consistent = abs(computed - recipe.kcal_100g) / recipe.kcal_100g <= KCAL_100G_TOLERANCE
             auto = est.coverage >= COVERAGE_OK and consistent
             has_values = est.known > 0
+            auto = auto and has_values
             store.save_recipe_estimate(
                 recipe.id,
                 kcal=est.kcal if has_values else None,
@@ -279,12 +280,12 @@ def estimate_nutrition(
                 fat=est.fat if has_values else None,
                 servings_estimated=est.servings_estimated,
                 coverage=est.coverage,
-                status="auto" if auto and has_values else "pending",
+                status="auto" if auto else "pending",
                 unknown=est.unknown_names,
                 assumed=est.assumed_lines,
             )
             stats.recipes += 1
-            if auto and has_values:
+            if auto:
                 stats.auto += 1
             else:
                 stats.pending += 1

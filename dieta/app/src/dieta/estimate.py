@@ -11,6 +11,7 @@ import json
 import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
+from functools import cache
 from pathlib import Path
 from statistics import median
 from typing import Literal
@@ -26,7 +27,7 @@ ASSUMED_WEIGHT = 0.5
 SERVING_G = 400.0
 COVERAGE_OK = 0.85
 
-Method = Literal["exact", "measure", "piece", "none"]
+Method = Literal["exact", "measure", "piece", "assumed", "none"]
 
 
 @dataclass(frozen=True)
@@ -49,6 +50,7 @@ class _Entry:
     values: Per100
 
 
+@cache
 def _phrase_re(key: str) -> re.Pattern[str]:
     return re.compile(rf"(?<!\w){re.escape(key)}(?!\w)")
 
@@ -91,6 +93,21 @@ class Measures:
     free_words: tuple[str, ...]
     noise_words: tuple[str, ...] = ()
     assumed_caps: tuple[tuple[float, tuple[str, ...]], ...] = ()
+    free_re: re.Pattern[str] | None = field(init=False, default=None, repr=False, compare=False)
+    cap_res: tuple[tuple[float, tuple[re.Pattern[str], ...]], ...] = field(
+        init=False, default=(), repr=False, compare=False
+    )
+
+    def __post_init__(self) -> None:
+        words = sorted(self.free_words, key=len, reverse=True)
+        if words:
+            alternation = "|".join(re.escape(w) for w in words)
+            object.__setattr__(self, "free_re", re.compile(rf"(?<!\w)(?:{alternation})(?!\w)"))
+        object.__setattr__(
+            self,
+            "cap_res",
+            tuple((cap, tuple(_phrase_re(w) for w in words_)) for cap, words_ in self.assumed_caps),
+        )
 
 
 def load_nutrition_seed(path: Path | None = None) -> NutritionSeed:
@@ -140,18 +157,13 @@ def is_noise(name: str, text: str, measures: Measures) -> bool:
 def assumed_cap(name: str, measures: Measures) -> float | None:
     """Sufit ilości zgadywanej (g) dla kategorii (tłuszcze, przyprawy) wg słów kluczowych nazwy."""
     norm = normalize_name(name)
-    caps = [cap for cap, words in measures.assumed_caps if any(_phrase_re(w).search(norm) for w in words)]
+    caps = [cap for cap, res in measures.cap_res if any(rx.search(norm) for rx in res)]
     return min(caps) if caps else None
 
 
 def is_free(name: str, measures: Measures) -> bool:
     """True, gdy nazwa zawiera słowo z listy składników darmowych jako całą frazę."""
-    norm = normalize_name(name)
-    words = sorted(measures.free_words, key=len, reverse=True)
-    if not words:
-        return False
-    alternation = "|".join(re.escape(w) for w in words)
-    return re.search(rf"(?<!\w)(?:{alternation})(?!\w)", norm) is not None
+    return measures.free_re is not None and measures.free_re.search(normalize_name(name)) is not None
 
 
 def to_grams(
@@ -217,7 +229,7 @@ class Estimate:
 class _Row:
     line: Line
     grams: float | None
-    method: str
+    method: Method
     per: Per100 | None
 
 
@@ -243,7 +255,7 @@ def estimate_recipe(
             density_g_ml=per.density_g_ml if per else None,
             unit_g=per.unit_g if per else None,
         )
-        method: str = kind
+        method: Method = kind
         if grams is None and line.grams_assumed is not None:
             grams, method = line.grams_assumed, "assumed"
         rows.append(_Row(line=line, grams=grams, method=method, per=per))
@@ -252,13 +264,11 @@ def estimate_recipe(
     with_grams = [r.grams for r in rows if r.grams is not None]
     nominal = median(with_grams) if with_grams else NOMINAL_MASS_G
 
-    covered = [r for r in rows if r.grams is not None and r.per is not None]
+    covered = [(r.grams, r.per, r.method) for r in rows if r.grams is not None and r.per is not None]
     known = len(covered)
 
     denom = sum(r.grams if r.grams is not None else nominal for r in rows)
-    numer = sum(
-        r.grams * (ASSUMED_WEIGHT if r.method == "assumed" else 1.0) for r in covered if r.grams is not None
-    )
+    numer = sum(grams * (ASSUMED_WEIGHT if method == "assumed" else 1.0) for grams, _, method in covered)
     coverage = numer / denom if total and denom > 0 else 0.0
 
     unknown_names: list[str] = []
@@ -275,14 +285,12 @@ def estimate_recipe(
         servings_estimated = False
 
     kcal = protein = carbs = fat = 0.0
-    for r in covered:
-        if r.grams is None or r.per is None:
-            continue
-        factor = r.grams / 100.0
-        kcal += factor * r.per.kcal
-        protein += factor * r.per.protein
-        carbs += factor * r.per.carbs
-        fat += factor * r.per.fat
+    for grams, per, _ in covered:
+        factor = grams / 100.0
+        kcal += factor * per.kcal
+        protein += factor * per.protein
+        carbs += factor * per.carbs
+        fat += factor * per.fat
 
     return Estimate(
         kcal=float(round(kcal / servings_value)),

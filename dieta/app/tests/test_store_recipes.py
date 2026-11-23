@@ -135,3 +135,29 @@ def test_ingredients_without_ask_are_not_marked_pending(tmp_path: Path) -> None:
     assert map_recipe_ingredients(store, None) == 0
     assert "ing:zagadka" not in store.mapped_codes()
     assert Settings(data_dir=tmp_path, log_level="info", dev=True).sources
+
+
+def test_pending_estimate_queries_skip_dismissed(tmp_path: Path) -> None:
+    store = Store(tmp_path / "d.db")
+    ids = [store.upsert_recipe(_recipe(f"u{i}", f"R{i}", kcal=None), META) for i in range(3)]
+    for rid, status in zip(ids, ("pending", "pending", "auto"), strict=True):
+        store.save_recipe_estimate(
+            rid,
+            kcal=100,
+            protein=1,
+            carbs=1,
+            fat=1,
+            servings_estimated=False,
+            coverage=0.5,
+            status=status,  # type: ignore[arg-type]
+            unknown=(),
+            assumed=0,
+        )
+    assert store.count_pending_estimates() == 2
+    assert store.is_estimate_pending(ids[0]) and not store.is_estimate_pending(ids[2])
+    assert not store.is_estimate_pending(9999)
+    assert [r.title for r in store.recipes_by_est_status("pending", {}, frozenset())] == ["R0", "R1"]
+    store.set_flag(ids[0], "dismissed")
+    assert store.count_pending_estimates() == 1
+    assert not store.is_estimate_pending(ids[0])
+    assert [r.title for r in store.recipes_by_est_status("pending", {}, frozenset())] == ["R1"]

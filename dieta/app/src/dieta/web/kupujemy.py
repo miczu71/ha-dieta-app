@@ -16,6 +16,7 @@ from fastapi.responses import RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 
 from ..dictionary import Durability, llm_ask_from
+from ..nutrition_lookup import MAX_KCAL_100G
 from ..pipeline import estimate_nutrition
 from ..settings import Settings
 from ..store import MEAL_CATEGORIES, IngredientNutrition, MappingRow, PendingRecipeMeta, RecipeRow, Store
@@ -94,7 +95,7 @@ def ingredient_queue(store: Store) -> list[IngredientNutrition]:
 
 def estimate_queue(store: Store) -> list[RecipeRow]:
     """Szacunki kcal o statusie `pending` (bez odrzuconych)."""
-    return [r for r in store.recipes({}, frozenset()) if r.est_status == "pending"]
+    return store.recipes_by_est_status("pending", {}, frozenset())
 
 
 def queue_size(store: Store) -> int:
@@ -102,17 +103,17 @@ def queue_size(store: Store) -> int:
         len(review_queue(store))
         + len(recipe_queue(store))
         + len(ingredient_queue(store))
-        + len(estimate_queue(store))
+        + store.count_pending_estimates()
     )
 
 
 def _nutrition_values(*raw: str) -> tuple[float, ...] | None:
-    """kcal, białko, węgle, tłuszcz na 100 g: liczby skończone ≥ 0, kcal ≤ 900."""
+    """kcal, białko, węgle, tłuszcz na 100 g: liczby skończone ≥ 0, kcal ≤ MAX_KCAL_100G."""
     try:
         values = tuple(float(x.replace(",", ".")) for x in raw)
     except ValueError:
         return None
-    if any(not math.isfinite(v) or v < 0 for v in values) or values[0] > 900:
+    if any(not math.isfinite(v) or v < 0 for v in values) or values[0] > MAX_KCAL_100G:
         return None
     return values
 
@@ -249,7 +250,7 @@ def make_router(
 
     @router.post("/kupujemy/zatwierdz-szacunek")
     async def decide_estimate(recipe_id: int = Form(...), action: str = Form(...)) -> Response:
-        if recipe_id not in {r.id for r in estimate_queue(store)}:
+        if not store.is_estimate_pending(recipe_id):
             return back("zatwierdz", error="nieznany")
         if action == "approve":
             store.set_recipe_estimate_status(recipe_id, "approved")

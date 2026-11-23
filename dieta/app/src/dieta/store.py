@@ -283,6 +283,15 @@ _RECIPE_COLUMNS = (
     "r.est_assumed"
 )
 
+# Przepis do szacowania: bez kcal ze źródła i bez ręcznie zatwierdzonego szacunku.
+_ESTIMABLE_SQL = "kcal_source IS NOT 'source' AND est_status IS NOT 'approved'"
+_ESTIMABLE_R_SQL = _ESTIMABLE_SQL.replace("kcal_source", "r.kcal_source").replace(
+    "est_status", "r.est_status"
+)
+
+# Szacunek czekający na decyzję; odrzucone (``dismissed``) wypadają z kolejki.
+_PENDING_VISIBLE_SQL = "r.est_status = 'pending' AND COALESCE(f.dismissed, 0) = 0"
+
 
 def _check_person(person_id: int) -> None:
     if person_id not in PERSON_IDS:
@@ -759,6 +768,16 @@ class Store:
         rows.sort(key=lambda r: (-r.familiarity.ratio, -r.familiarity.known, r.title.lower()))
         return rows
 
+    def recipes_by_est_status(
+        self, status: EstStatus, stats: Mapping[str, IngredientStat], basics: frozenset[str]
+    ) -> list[RecipeRow]:
+        """Przepisy o danym statusie szacunku, bez odrzuconych; kolejność jak w ``recipes``."""
+        rows = self._recipe_rows(
+            "WHERE r.est_status = ? AND COALESCE(f.dismissed, 0) = 0", (status,), stats, basics
+        )
+        rows.sort(key=lambda r: (-r.familiarity.ratio, -r.familiarity.known, r.title.lower()))
+        return rows
+
     def set_flag(self, recipe_id: int, flag: RecipeFlag, value: bool = True) -> None:
         if flag not in ("liked", "dismissed"):
             raise ValueError(f"unknown flag: {flag}")
@@ -870,8 +889,7 @@ class Store:
                 "JOIN recipe r ON r.id = ri.recipe_id "
                 "JOIN ingredient i ON i.id = ri.ingredient_id "
                 "LEFT JOIN ingredient_nutrition n ON n.ingredient_id = i.id "
-                "WHERE n.ingredient_id IS NULL AND r.kcal_source IS NOT 'source' "
-                "AND r.est_status IS NOT 'approved' ORDER BY i.name"
+                f"WHERE n.ingredient_id IS NULL AND {_ESTIMABLE_R_SQL} ORDER BY i.name"
             ).fetchall()
         return [(int(r[0]), str(r[1])) for r in rows]
 
@@ -879,50 +897,50 @@ class Store:
         """Przepisy bez kcal ze źródła i bez ręcznie zatwierdzonego szacunku."""
         with closing(self._connect()) as conn:
             rows = conn.execute(
-                "SELECT id, title, servings, kcal_100g FROM recipe "
-                "WHERE kcal_source IS NOT 'source' AND est_status IS NOT 'approved' ORDER BY id"
+                f"SELECT id, title, servings, kcal_100g FROM recipe WHERE {_ESTIMABLE_SQL} ORDER BY id"
             ).fetchall()
         return [RecipeToEstimate(r[0], r[1], r[2], r[3]) for r in rows]
 
-    def recipe_lines(self, recipe_id: int) -> list[RecipeLine]:
+    def _line_rows(self, where: str, params: tuple[object, ...] = ()) -> list[RecipeLine]:
         with closing(self._connect()) as conn:
             rows = conn.execute(
                 "SELECT ri.recipe_id, ri.pos, ri.text, ri.amount, ri.unit, ri.name, ri.ingredient_id, "
                 "i.name, ri.grams_assumed, r.title FROM recipe_ingredient ri "
                 "JOIN recipe r ON r.id = ri.recipe_id "
-                "LEFT JOIN ingredient i ON i.id = ri.ingredient_id "
-                "WHERE ri.recipe_id = ? ORDER BY ri.pos",
-                (recipe_id,),
+                f"LEFT JOIN ingredient i ON i.id = ri.ingredient_id WHERE {where} "
+                "ORDER BY ri.recipe_id, ri.pos",
+                params,
             ).fetchall()
         return [RecipeLine(*r) for r in rows]
+
+    def recipe_lines(self, recipe_id: int) -> list[RecipeLine]:
+        return self._line_rows("ri.recipe_id = ?", (recipe_id,))
 
     def lines_without_amount(self) -> list[RecipeLine]:
         """Linie bez ilości i bez ``grams_assumed`` w przepisach do estymacji."""
-        with closing(self._connect()) as conn:
-            rows = conn.execute(
-                "SELECT ri.recipe_id, ri.pos, ri.text, ri.amount, ri.unit, ri.name, ri.ingredient_id, "
-                "i.name, ri.grams_assumed, r.title FROM recipe_ingredient ri "
-                "JOIN recipe r ON r.id = ri.recipe_id "
-                "LEFT JOIN ingredient i ON i.id = ri.ingredient_id "
-                "WHERE ri.amount IS NULL AND ri.grams_assumed IS NULL "
-                "AND r.kcal_source IS NOT 'source' AND r.est_status IS NOT 'approved' "
-                "ORDER BY ri.recipe_id, ri.pos"
-            ).fetchall()
-        return [RecipeLine(*r) for r in rows]
+        return self._line_rows(f"ri.amount IS NULL AND ri.grams_assumed IS NULL AND {_ESTIMABLE_R_SQL}")
 
     def lines_with_amount_unassumed(self) -> list[RecipeLine]:
         """Linie z ilością i bez ``grams_assumed`` w przepisach do estymacji."""
+        return self._line_rows(f"ri.amount IS NOT NULL AND ri.grams_assumed IS NULL AND {_ESTIMABLE_R_SQL}")
+
+    def count_pending_estimates(self) -> int:
         with closing(self._connect()) as conn:
-            rows = conn.execute(
-                "SELECT ri.recipe_id, ri.pos, ri.text, ri.amount, ri.unit, ri.name, ri.ingredient_id, "
-                "i.name, ri.grams_assumed, r.title FROM recipe_ingredient ri "
-                "JOIN recipe r ON r.id = ri.recipe_id "
-                "LEFT JOIN ingredient i ON i.id = ri.ingredient_id "
-                "WHERE ri.amount IS NOT NULL AND ri.grams_assumed IS NULL "
-                "AND r.kcal_source IS NOT 'source' AND r.est_status IS NOT 'approved' "
-                "ORDER BY ri.recipe_id, ri.pos"
-            ).fetchall()
-        return [RecipeLine(*r) for r in rows]
+            return int(
+                conn.execute(
+                    "SELECT COUNT(*) FROM recipe r LEFT JOIN recipe_flag f ON f.recipe_id = r.id "
+                    f"WHERE {_PENDING_VISIBLE_SQL}"
+                ).fetchone()[0]
+            )
+
+    def is_estimate_pending(self, recipe_id: int) -> bool:
+        with closing(self._connect()) as conn:
+            row = conn.execute(
+                "SELECT 1 FROM recipe r LEFT JOIN recipe_flag f ON f.recipe_id = r.id "
+                f"WHERE r.id = ? AND {_PENDING_VISIBLE_SQL}",
+                (recipe_id,),
+            ).fetchone()
+        return row is not None
 
     def reset_llm_nutrition(self) -> int:
         """Usuwa wpisy ``source='llm'`` ze statusem ``auto``; pozostałe zostają."""
@@ -959,7 +977,7 @@ class Store:
             cur = conn.execute(
                 "UPDATE recipe SET kcal=?, protein=?, carbs=?, fat=?, kcal_source='estimate', "
                 "est_coverage=?, est_status=?, servings_estimated=?, est_unknown_json=?, est_assumed=?, "
-                "has_nutrition=? WHERE id=? AND kcal_source IS NOT 'source' AND est_status IS NOT 'approved'",
+                f"has_nutrition=? WHERE id=? AND {_ESTIMABLE_SQL}",
                 (
                     kcal,
                     protein,
