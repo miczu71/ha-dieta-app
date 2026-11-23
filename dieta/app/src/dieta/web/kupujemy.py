@@ -22,7 +22,15 @@ from ..nutrition_lookup import MAX_KCAL_100G
 from ..pipeline import estimate_nutrition
 from ..settings import Settings
 from ..shelf_queue import sync_shelf_queue
-from ..store import MEAL_CATEGORIES, IngredientNutrition, MappingRow, PendingRecipeMeta, RecipeRow, Store
+from ..store import (
+    MEAL_CATEGORIES,
+    IngredientNutrition,
+    MappingRow,
+    PendingCatalog,
+    PendingRecipeMeta,
+    RecipeRow,
+    Store,
+)
 from ..sync import map_recipe_ingredients, stats, sync, sync_catalog, sync_shelf
 from ..zakupy_client import fetch_purchases, fetch_shelf_absent
 
@@ -113,11 +121,17 @@ def estimate_queue(store: Store) -> list[RecipeRow]:
     return store.recipes_by_est_status("pending", {}, frozenset())
 
 
+def catalog_queue(store: Store) -> list[PendingCatalog]:
+    """Mapowania EAN katalogu Frisco o statusie `pending` (kandydat składnika z automatu)."""
+    return store.pending_catalog()
+
+
 def queue_size(store: Store) -> int:
     return (
         len(review_queue(store))
         + len(recipe_queue(store))
         + len(ingredient_queue(store))
+        + len(catalog_queue(store))
         + store.count_pending_estimates()
     )
 
@@ -208,6 +222,7 @@ def make_router(
             section="kupujemy",
             root="../",
             queue=review_queue(store),
+            catalog_queue=catalog_queue(store),
             recipe_queue=recipe_queue(store),
             ing_queue=ingredient_queue(store),
             est_queue=estimate_queue(store),
@@ -236,6 +251,25 @@ def make_router(
             return back("zatwierdz", error="dane")
         if code.startswith(ING_PREFIX):
             await run_in_threadpool(map_recipe_ingredients, store, None)  # powiąż z przepisami
+        return back("zatwierdz")
+
+    @router.post("/kupujemy/zatwierdz-katalog")
+    async def decide_catalog(
+        ean: str = Form(...),
+        ingredient: str = Form(""),
+        action: str = Form(...),
+    ) -> Response:
+        if ean not in {p.ean for p in catalog_queue(store)}:
+            return back("zatwierdz", error="nieznany")
+        if action == "exclude":
+            store.exclude_catalog(ean)
+        elif action == "approve":
+            name = " ".join(ingredient.split()).lower()
+            if not name or len(name) > 80:
+                return back("zatwierdz", error="dane")
+            store.approve_catalog(ean, name)
+        else:
+            return back("zatwierdz", error="dane")
         return back("zatwierdz")
 
     @router.post("/kupujemy/zatwierdz-przepis")

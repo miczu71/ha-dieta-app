@@ -6,8 +6,8 @@ from fastapi.testclient import TestClient
 from dieta.settings import Settings
 from dieta.store import Store
 from dieta.web.app import create_app
-from dieta.web.kupujemy import review_queue, seconds_until
-from dieta.zakupy_client import Purchase
+from dieta.web.kupujemy import catalog_queue, queue_size, review_queue, seconds_until
+from dieta.zakupy_client import CatalogItem, Purchase
 
 TODAY = date.today()
 
@@ -241,3 +241,68 @@ def test_ceny_button_reports_error_from_meta(tmp_path: Path, monkeypatch) -> Non
     r = client.post("/kupujemy/ceny")
     assert r.headers["location"] == "../kupujemy?error=ceny"
     assert "Nie udało się zlecić" in client.get("/kupujemy?error=ceny").text
+
+
+def _seed_catalog(store: Store) -> None:
+    store.upsert_catalog_items(
+        [
+            CatalogItem("590001", "Mleko 2% UHT", "Mlekovita", 1.0, "Litre", 3.5, "2026-11-20T08:00:00"),
+            CatalogItem("590002", "Masło extra", "Mlekpol", 0.2, "Kilogram", 9.9, "2026-11-20T08:00:00"),
+        ],
+        "2026-11-21",
+    )
+    store.set_catalog_map("590001", "pending", "mleko", "mleko 2% uht")
+    store.set_catalog_map("590002", "approved", "masło", "masło extra")
+
+
+def test_catalog_queue_card_and_size(tmp_path: Path) -> None:
+    client, store = _client(tmp_path)
+    _seed_catalog(store)
+    assert [p.ean for p in catalog_queue(store)] == ["590001"]
+    assert queue_size(store) == 1
+    html = client.get("/kupujemy/zatwierdz").text
+    assert "Mleko 2% UHT" in html and "EAN 590001" in html
+    assert 'value="mleko"' in html and "To nie ten składnik" in html
+    assert "Nic do zatwierdzenia" not in html
+    assert "Masło extra" not in html  # zatwierdzony wpis nie jest w kolejce
+
+
+def test_catalog_approve_removes_from_queue(tmp_path: Path) -> None:
+    client, store = _client(tmp_path)
+    _seed_catalog(store)
+    r = client.post(
+        "/kupujemy/zatwierdz-katalog",
+        data={"ean": "590001", "action": "approve", "ingredient": "  Mleko   Świeże "},
+    )
+    assert r.status_code == 303 and r.headers["location"] == "zatwierdz"
+    row = next(m for m in store.catalog_map_rows() if m.ean == "590001")
+    assert (row.status, row.ingredient) == ("approved", "mleko świeże")
+    assert catalog_queue(store) == [] and queue_size(store) == 0
+    assert "Nic do zatwierdzenia" in client.get("/kupujemy/zatwierdz").text
+
+
+def test_catalog_exclude(tmp_path: Path) -> None:
+    client, store = _client(tmp_path)
+    _seed_catalog(store)
+    r = client.post("/kupujemy/zatwierdz-katalog", data={"ean": "590001", "action": "exclude"})
+    assert r.status_code == 303 and r.headers["location"] == "zatwierdz"
+    row = next(m for m in store.catalog_map_rows() if m.ean == "590001")
+    assert row.status == "excluded"
+    assert catalog_queue(store) == []
+
+
+def test_catalog_invalid_decisions_change_nothing(tmp_path: Path) -> None:
+    client, store = _client(tmp_path)
+    _seed_catalog(store)
+    for data, error in (
+        ({"ean": "590001", "action": "approve", "ingredient": "   "}, "dane"),
+        ({"ean": "590001", "action": "approve", "ingredient": "x" * 81}, "dane"),
+        ({"ean": "590001", "action": "wat", "ingredient": "mleko"}, "dane"),
+        ({"ean": "590002", "action": "exclude"}, "nieznany"),  # zatwierdzony, nie w kolejce
+        ({"ean": "999999", "action": "exclude"}, "nieznany"),
+    ):
+        r = client.post("/kupujemy/zatwierdz-katalog", data=data)
+        assert r.status_code == 303 and r.headers["location"] == f"zatwierdz?error={error}"
+    row = next(m for m in store.catalog_map_rows() if m.ean == "590001")
+    assert (row.status, row.ingredient) == ("pending", "mleko")
+    assert next(m for m in store.catalog_map_rows() if m.ean == "590002").status == "approved"

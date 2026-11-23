@@ -3,7 +3,7 @@
 {% block content %}
 {% if error %}<p class="dz-err" role="alert">Nie zapisano: {{ {'dane': 'podaj poprawne dane', 'odzywcze': 'kcal 0–900, białko, węgle i tłuszcz ≥ 0 na 100 g'}.get(error, 'pozycji nie ma już w kolejce') }}.</p>{% endif %}
 <p class="dz-sub"><a class="dz-link" href="../kupujemy">← Co kupujemy</a></p>
-{% if not queue and not recipe_queue and not ing_queue and not est_queue %}<p class="dz-sub">Nic do zatwierdzenia.</p>{% endif %}
+{% if not queue and not catalog_queue and not recipe_queue and not ing_queue and not est_queue %}<p class="dz-sub">Nic do zatwierdzenia.</p>{% endif %}
 <ul class="dz-list">
 {% for q in queue %}
   <li class="dz-card dz-pending">
@@ -17,6 +17,20 @@
       <div class="dz-row">
         <button class="dz-btn" type="submit" name="action" value="approve">Zatwierdź</button>
         <button class="dz-btn dz-btn--ghost" type="submit" name="action" value="exclude">To nie składnik</button>
+      </div>
+    </form>
+  </li>
+{% endfor %}
+{% for c in catalog_queue %}
+  <li class="dz-card dz-pending">
+    <h2 class="dz-heading">{{ c.name }}</h2>
+    <p class="dz-item-meta">EAN {{ c.ean }}</p>
+    <form method="post" action="zatwierdz-katalog" class="dz-form">
+      <input type="hidden" name="ean" value="{{ c.ean }}">
+      <label>Składnik<input type="text" name="ingredient" maxlength="80" value="{{ c.ingredient or '' }}"></label>
+      <div class="dz-row">
+        <button class="dz-btn" type="submit" name="action" value="approve">Zatwierdź</button>
+        <button class="dz-btn dz-btn--ghost" type="submit" name="action" value="exclude">To nie ten składnik</button>
       </div>
     </form>
   </li>
