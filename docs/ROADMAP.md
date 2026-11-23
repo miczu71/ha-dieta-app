@@ -349,3 +349,8 @@ Kaskada cen: paragon ≤30 dni → Biedronka po EAN (cache 7 dni, promocja gdy w
 
 ### E6b — zmiana architektury 2026-11-23 (decyzja usera)
 Wspólny katalog cen w Zakupach (produkty + obserwacje tylko dopisywane, historia promocji, baza EAN Biedronki rośnie z paragonów/API/Frisco); Frisco wczytywane w Zakupach, Dieta czyta przez `/api/v1/*`. Szczegóły: `PLAN_E6b.md` pkt 2, E6b.1/E6b.2. E6b.0: pomiar offline gotowy (`POMIAR_ceny.md`, 75% przy regułach, współczynnik 0,75), próba Biedronki po EAN w toku.
+
+## E6b.0 ZROBIONE 2026-11-23 (pomiar; bramka offline: GO) → następny E6b.1
+Wynik: `docs/POMIAR_ceny.md`, commity `821b360`, `83fff30`; plan `PLAN_E6b.md` (`3bd600d`, `099f1e9`). Frisco + paragony: ≥70% masy z ceną dla 75% przepisów (reguły, górna granica) vs 8% dziś; współczynnik paragon/Frisco 0,75 (367 par EAN). Skrypty poza repo: `~/dev/biedronka-spike/scripts/e6b_frisco_map.py`, `e6b_coverage.py`, `e6b_prices.py` (odstęp 4 s).
+Biedronka `products/price`: HTTP 429 dla wszystkich EAN/sklepów (token OK) → próba nierozstrzygnięta, powtórzyć jutro (1 zapytanie, potem partie ≤20 co ≥10 s); budżet w kaskadzie mały i konfigurowalny. Sprawdzić log Zakupów (`shelf/error`, poranny przebieg 06:30) — czy limit dotyka też produkcji.
+Decyzja usera: wspólny katalog cen w Zakupach (Frisco wczytywane tam). Następny: E6b.1 (Zakupy: katalog + `/api/v1/shelf`), najpierw plan etapu z sekcją Wykonawca.
