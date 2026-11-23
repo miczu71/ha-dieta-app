@@ -299,7 +299,7 @@ def test_aniagotuje_microdata_przepis() -> None:
 
 
 def test_aniagotuje_strona_bez_recipe_to_none() -> None:
-    page = "<html><body><h1 itemprop=\"name\">Blog</h1><p>tekst bez przepisu</p></body></html>"
+    page = '<html><body><h1 itemprop="name">Blog</h1><p>tekst bez przepisu</p></body></html>'
     assert AniagotujeSource().parse("https://aniagotuje.pl/przepis/x", page) is None
 
 
