@@ -155,12 +155,11 @@ def crawl(
     used = _used_today(store, name, today)
     added = skipped = errors = already = rate_limited = 0
     limit_reached = False
-    prefetch = getattr(source, "prefetched", None)  # strona z kanału: bez zapytania, poza dziennym limitem
     for url in urls:
         if url in known or url in skipped_urls:
             already += 1
             continue
-        cached = prefetch(url) if prefetch is not None else None
+        cached = source.prefetched(url)  # strona z kanału: bez zapytania, poza dziennym limitem
         if cached is None:
             if used >= limit:
                 limit_reached = True

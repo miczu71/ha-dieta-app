@@ -11,6 +11,7 @@ from pathlib import Path
 from dieta.dictionary import Durability
 
 DEFAULT_REFRESH_TIME = "03:30"
+DEFAULT_FAMILIAR_THRESHOLD = 50
 KNOWN_SOURCES = ("respo", "lidl", "policzona", "aniagotuje")
 _REFRESH_RE = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$")
 
@@ -32,7 +33,7 @@ class Settings:
     shelf_dry_days: int = 30
     shelf_frozen_days: int = 60
     crawl_daily_limit: int = 150
-    familiar_threshold: int = 50
+    familiar_threshold: int = DEFAULT_FAMILIAR_THRESHOLD
     sources: tuple[str, ...] = KNOWN_SOURCES
 
     @property
@@ -95,6 +96,6 @@ def load_settings() -> Settings:
         shelf_dry_days=_bounded(options, "shelf_dry_days", 30, 1, 365),
         shelf_frozen_days=_bounded(options, "shelf_frozen_days", 60, 1, 365),
         crawl_daily_limit=_bounded(options, "crawl_daily_limit", 150, 1, 1000),
-        familiar_threshold=_bounded(options, "familiar_threshold", 50, 0, 100),
+        familiar_threshold=_bounded(options, "familiar_threshold", DEFAULT_FAMILIAR_THRESHOLD, 0, 100),
         sources=_sources(options.get("sources")),
     )

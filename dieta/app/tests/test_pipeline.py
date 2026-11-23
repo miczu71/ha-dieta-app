@@ -31,3 +31,10 @@ def test_run_catalog_logs_phases(tmp_path: Path, caplog: pytest.LogCaptureFixtur
     assert "koniec crawla policzona" in text
     assert "mapowanie składników" in text
     assert "metadane AI" in text
+
+
+def test_known_sources_have_factory_and_label() -> None:
+    from dieta.pipeline import SOURCE_FACTORIES, SOURCE_LABELS
+    from dieta.settings import KNOWN_SOURCES
+
+    assert set(KNOWN_SOURCES) == set(SOURCE_FACTORIES) == set(SOURCE_LABELS)

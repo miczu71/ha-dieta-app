@@ -6,11 +6,11 @@ lista „nazwa – ilość”, wartości odżywcze z tekstu artykułu.
 
 from __future__ import annotations
 
-import html
 import logging
 import re
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
+from html import escape
 from html.parser import HTMLParser
 
 from dieta.sources.base import Fetch, RawIngredient, Recipe
@@ -155,9 +155,9 @@ def _first_number(pattern: re.Pattern[str], text: str) -> float | None:
 
 def _synthetic_page(title: str, content: str) -> str:
     """Strona HTML złożona z wpisu Atom: ten sam kształt (h1, og:image, div.article), co czyta `parse`."""
-    escaped = html.escape(title)
+    escaped = escape(title)
     image = _IMG_SRC_RE.search(content)
-    og_image = f'<meta property="og:image" content="{html.escape(image.group(1))}">' if image else ""
+    og_image = f'<meta property="og:image" content="{escape(image.group(1))}">' if image else ""
     return (
         f"<html><head><title>{escaped}</title>{og_image}</head>"
         f'<body><h1>{escaped}</h1><div class="article">{content}</div></body></html>'

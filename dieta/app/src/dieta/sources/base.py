@@ -20,7 +20,7 @@ class RawIngredient:
 
 @dataclass(frozen=True)
 class Recipe:
-    source: str  # "respo" | "lidl" | "policzona"
+    source: str  # nazwa źródła, jak w KNOWN_SOURCES (settings.py)
     source_id: str  # stabilny: URL kanoniczny
     title: str
     url: str
@@ -45,4 +45,8 @@ class RecipeSource(Protocol):
 
     def parse(self, url: str, html: str) -> Recipe | None:
         """Przepis z HTML strony; None gdy to nie jest przepis."""
+        ...
+
+    def prefetched(self, url: str) -> str | None:
+        """Strona pobrana już przy listowaniu (np. z kanału): bez zapytania i limitu w crawl; inaczej None."""
         ...

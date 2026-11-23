@@ -43,6 +43,9 @@ class FakeSource:
         self.notrecipe = notrecipe or set()
         self.parsed: list[str] = []
 
+    def prefetched(self, url: str) -> str | None:
+        return None
+
     def list_urls(self, *, fetch):  # type: ignore[no-untyped-def]
         return list(self.urls)
 

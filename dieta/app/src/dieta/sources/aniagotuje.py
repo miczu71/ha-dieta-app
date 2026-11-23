@@ -9,7 +9,14 @@ from dataclasses import dataclass, field
 from html.parser import HTMLParser
 
 from dieta.sources.base import Fetch, Recipe
-from dieta.sources.jsonld import _duration_minutes, parse_ingredient, parse_number, recipe_urls, sitemap_locs
+from dieta.sources.jsonld import (
+    duration_minutes,
+    parse_ingredient,
+    parse_number,
+    recipe_urls,
+    sitemap_locs,
+    strings,
+)
 
 SITEMAP_URL = "https://aniagotuje.pl/sitemap.xml"
 URL_MARKER = "/przepis/"
@@ -79,12 +86,11 @@ def _first(props: list[tuple[str, str, str]], prop: str, tag: str | None = None)
     return None
 
 
-def _split_keywords(value: str) -> tuple[str, ...]:
-    return tuple(part.strip() for part in value.split(",") if part.strip())
-
-
 class AniagotujeSource:
     name = "aniagotuje"
+
+    def prefetched(self, url: str) -> str | None:
+        return None  # strony pobiera crawl zwykłym fetch
 
     def list_urls(self, *, fetch: Fetch) -> list[str]:
         return recipe_urls(sitemap_locs(fetch(SITEMAP_URL)), URL_MARKER)
@@ -113,8 +119,8 @@ class AniagotujeSource:
             protein=None,
             carbs=None,
             fat=None,
-            minutes=_duration_minutes(_first(props, "totalTime")),
-            tags=_split_keywords(_first(props, "keywords") or ""),
+            minutes=duration_minutes(_first(props, "totalTime")),
+            tags=strings(_first(props, "keywords")),
             category_hint=_first(props, "recipeCategory"),
             ingredients=ingredients,
         )

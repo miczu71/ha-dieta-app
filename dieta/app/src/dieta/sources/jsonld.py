@@ -75,7 +75,7 @@ def parse_number(value: Any) -> float | None:
     return float(match.group(0).replace(",", ".")) if match else None
 
 
-def _duration_minutes(value: Any) -> int | None:
+def duration_minutes(value: Any) -> int | None:
     """ISO 8601 (PT1H30M, P1DT2H) → minuty."""
     if not isinstance(value, str):
         return None
@@ -87,10 +87,10 @@ def _duration_minutes(value: Any) -> int | None:
 
 
 def _total_minutes(node: dict[str, Any]) -> int | None:
-    total = _duration_minutes(node.get("totalTime"))
+    total = duration_minutes(node.get("totalTime"))
     if total is not None:
         return total
-    parts = (_duration_minutes(node.get("prepTime")), _duration_minutes(node.get("cookTime")))
+    parts = (duration_minutes(node.get("prepTime")), duration_minutes(node.get("cookTime")))
     known = [m for m in parts if m is not None]
     return sum(known) if known else None
 
@@ -124,7 +124,7 @@ def _is_recipe(node: dict[str, Any]) -> bool:
     return "Recipe" in (kind if isinstance(kind, list) else [kind])
 
 
-def _strings(value: Any) -> tuple[str, ...]:
+def strings(value: Any) -> tuple[str, ...]:
     if value is None:
         return ()
     items = value if isinstance(value, list) else str(value).split(",")
@@ -173,7 +173,7 @@ def _recipe_from_node(
     ingredients = tuple(
         parse_ingredient(item) for item in (ingredient_values or []) if isinstance(item, str) and item.strip()
     )
-    categories = _strings(node.get("recipeCategory"))
+    categories = strings(node.get("recipeCategory"))
     return Recipe(
         source=source,
         source_id=url,
@@ -186,7 +186,7 @@ def _recipe_from_node(
         carbs=parse_number(nutrition.get("carbohydrateContent")),
         fat=parse_number(nutrition.get("fatContent")),
         minutes=_total_minutes(node),
-        tags=_strings(node.get("keywords")),
+        tags=strings(node.get("keywords")),
         category_hint=categories[0] if categories else None,
         ingredients=ingredients,
     )
@@ -223,6 +223,9 @@ class JsonLdSource:
         self.sitemap_url = sitemap_url
         self.url_marker = url_marker
         self.sub_sitemap_hint = sub_sitemap_hint
+
+    def prefetched(self, url: str) -> str | None:
+        return None  # strony pobiera crawl zwykłym fetch
 
     def list_urls(self, *, fetch: Fetch) -> list[str]:
         locs = sitemap_locs(fetch(self.sitemap_url))
