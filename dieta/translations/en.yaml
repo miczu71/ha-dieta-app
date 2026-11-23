@@ -43,4 +43,4 @@ configuration:
     description: Share of known ingredients from which a recipe counts as "familiar" (default catalog and planner filter).
   sources:
     name: Recipe sources
-    description: Enabled catalog sources (respo, lidl, policzona).
+    description: Enabled catalog sources (respo, lidl, policzona, aniagotuje).

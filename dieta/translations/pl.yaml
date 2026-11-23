@@ -43,4 +43,4 @@ configuration:
     description: Od jakiego odsetka znanych składników przepis uznajemy za „znajomy" (domyślny filtr katalogu i planera).
   sources:
     name: Źródła przepisów
-    description: Włączone źródła katalogu (respo, lidl, policzona).
+    description: Włączone źródła katalogu (respo, lidl, policzona, aniagotuje).

@@ -8,8 +8,8 @@ Wartości kcal są szacunkowe. Aplikacja nie jest poradą medyczną.
 - `person_1_name`, `person_2_name` — imiona w panelu. Reszta profilu jest w panelu i w `/data`.
 - `log_level` — poziom logów.
 - `crawl_daily_limit` — dzienny limit nowych przepisów na źródło (domyślnie 150).
-- `familiar_threshold` — domyślny próg znajomości w Katalogu, w % (70).
-- `sources` — włączone źródła przepisów: `respo`, `lidl`, `policzona`.
+- `familiar_threshold` — domyślny próg znajomości w Katalogu, w % (50).
+- `sources` — włączone źródła przepisów: `respo`, `lidl`, `policzona`, `aniagotuje`.
 - `refresh_time` — godzina nocnego odświeżenia: sync zakupów, potem crawl katalogu.
 
 ## Katalog

@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+from dieta.sources.aniagotuje import AniagotujeSource
 from dieta.sources.base import RawIngredient
 from dieta.sources.jsonld import parse_ingredient, split_amount_unit
 from dieta.sources.lidl import LidlSource
@@ -266,3 +267,46 @@ def test_policzona_list_urls_z_sitemapy_artykulow() -> None:
         "https://policzona-szama.pl/blogs/przepisy/szarpana-wieprzowina",
     ]
     assert fetch.requested == [sitemap]
+
+
+# --- Microdata: Ania Gotuje ---------------------------------------------------------------------------
+
+
+def test_aniagotuje_microdata_przepis() -> None:
+    url = "https://aniagotuje.pl/przepis/kotlety-z-ciecierzycy"
+    r = AniagotujeSource().parse(url, _page("aniagotuje_kotlety.html"))
+
+    assert r is not None
+    assert r.source == "aniagotuje"
+    assert r.source_id == url
+    assert r.title == "Kotlety z ciecierzycy"
+    assert r.servings == 12.0
+    assert r.minutes == 750
+    assert r.category_hint == "dania bez mięsa"
+    assert "obiad" in r.tags
+    assert r.image is not None and r.image.startswith("https://cdn.aniagotuje.com/")
+    # wartości na stronie są „W 100 g”, więc nie są podawane jako na porcję
+    assert (r.kcal, r.protein, r.carbs, r.fat) == (None, None, None, None)
+    assert len(r.ingredients) >= 3
+    assert r.ingredients[0] == RawIngredient(
+        text="200 g suchej ciecierzycy - niecała szklanka",
+        amount=200.0,
+        unit="g",
+        name="suchej ciecierzycy - niecała szklanka",
+    )
+
+
+def test_aniagotuje_strona_bez_recipe_to_none() -> None:
+    page = "<html><body><h1 itemprop=\"name\">Blog</h1><p>tekst bez przepisu</p></body></html>"
+    assert AniagotujeSource().parse("https://aniagotuje.pl/przepis/x", page) is None
+
+
+def test_aniagotuje_list_urls_filtruje_przepisy() -> None:
+    sitemap = "https://aniagotuje.pl/sitemap.xml"
+    fetch = _fake_fetch({sitemap: _page("aniagotuje_sitemap.xml")})
+
+    assert AniagotujeSource().list_urls(fetch=fetch) == [
+        "https://aniagotuje.pl/przepis/torcik-sernik-mango-z-andrutami-i-beza",
+        "https://aniagotuje.pl/przepis/kotlety-z-ciecierzycy",
+        "https://aniagotuje.pl/przepis/omlet-cesarski-z-truskawkami",
+    ]

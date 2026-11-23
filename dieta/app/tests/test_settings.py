@@ -37,3 +37,11 @@ def test_load_settings_reads_zakupy_options(tmp_path: Path, monkeypatch: pytest.
     assert settings.refresh_time == "03:30"
     assert settings.shelf_dry_days == 30
     assert settings.shelf_days == {"fresh": 4, "chilled": 10, "dry": 30, "frozen": 90}
+
+
+def test_defaults_threshold_50_and_four_sources(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("DIETA_OPTIONS_PATH", str(tmp_path / "brak.json"))
+    monkeypatch.setenv("DIETA_DATA_DIR", str(tmp_path))
+    settings = load_settings()
+    assert settings.familiar_threshold == 50
+    assert settings.sources == ("respo", "lidl", "policzona", "aniagotuje")

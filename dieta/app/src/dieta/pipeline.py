@@ -15,6 +15,7 @@ from dieta.catalog import META_PROMPT, CrawlResult, crawl, enrich_meta
 from dieta.dictionary import AskFn, llm_ask_from
 from dieta.fetcher import make_fetch
 from dieta.settings import Settings
+from dieta.sources.aniagotuje import AniagotujeSource
 from dieta.sources.base import Fetch, RecipeSource
 from dieta.sources.lidl import LidlSource
 from dieta.sources.policzona import PolicznaSource
@@ -28,8 +29,14 @@ SOURCE_FACTORIES: dict[str, Callable[[], RecipeSource]] = {
     "respo": RespoSource,
     "lidl": LidlSource,
     "policzona": PolicznaSource,
+    "aniagotuje": AniagotujeSource,
 }
-SOURCE_LABELS = {"respo": "Centrum Respo", "lidl": "Lidl Przepisy", "policzona": "Policzona Szama"}
+SOURCE_LABELS = {
+    "respo": "Centrum Respo",
+    "lidl": "Lidl Przepisy",
+    "policzona": "Policzona Szama",
+    "aniagotuje": "Ania Gotuje",
+}
 
 # zrodlo (None = wszystkie włączone) → wyniki per źródło
 CrawlRunner = Callable[[str | None], dict[str, CrawlResult]]

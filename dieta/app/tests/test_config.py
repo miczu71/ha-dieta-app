@@ -50,5 +50,5 @@ def test_new_options_are_bounded(tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     monkeypatch.setenv("DIETA_OPTIONS_PATH", str(options))
     monkeypatch.setenv("DIETA_DATA_DIR", str(tmp_path))
     loaded = load_settings()
-    assert (loaded.crawl_daily_limit, loaded.familiar_threshold) == (150, 70)
+    assert (loaded.crawl_daily_limit, loaded.familiar_threshold) == (150, 50)
     assert loaded.sources == ("lidl",)
