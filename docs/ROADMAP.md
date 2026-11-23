@@ -379,3 +379,8 @@ Następny: E6b.3b (Zakupy `POST /api/v1/shelf` zlecenia w tle + Dieta nocna kole
 
 ## E6b.3b PLAN GOTOWY 2026-11-23 (`docs/PLAN_E6b_3b.md`)
 Dwie paczki: W1 Zakupy (`POST /api/v1/shelf`, `refresh_eans`: 1 zapytanie próbne → partie ≤20 co ≥10 s, `shelf_absent` 30 dni, schemat v17, `absent` w GET) — `sonnet-worker` (ryzyko); W2 Dieta (kolejka EAN plan→katalog ≤100/noc, `post_shelf_request`, przycisk „Odśwież ceny planu”) — `haiku-worker`. Test na żywo odroczony do E6b-release.
+
+## E6b.3b ZROBIONE 2026-11-23 (Zakupy `1253609`, Dieta `c122a81`, niewydane) → następny E6b.4
+Plan `docs/PLAN_E6b_3b.md`. Zakupy: `POST /api/v1/shelf` (202/400/409 no_store|no_account|busy, zadanie w tle pod `shelf_lock`), `shelf_prices.refresh_eans` (1 zapytanie próbne → partie 20, 1 s w partii, 10 s między), `shelf_absent` 30 dni (schemat v17, kopia `.pre-absent`), `absent` w GET. Pytest 916 passed, ruff/mypy czyste, verifier ACCEPT. Dieta: `shelf_queue.py` (plan → katalog, ≤100/noc, bez świeżych ≤7 d i absent), `post_shelf_request`, nocna kolejka przed `sync_shelf`, przycisk „Odśwież ceny planu” (`POST /kupujemy/ceny`). Pytest 562 passed, ruff/mypy czyste, verifier ACCEPT.
+NIEBLOKUJĄCE: `sync_shelf` robi drugi GET po `absent` — jego awaria blokuje upsert cen (rozważyć jeden GET); `plan_ingredient_names` testowany tylko monkeypatchem (sprawdzić na realnym planie); brak testu granicy świeżości ≤7 d; `.pre-absent` robiona po `executescript(_SCHEMA)` (wzorzec v15); test na żywo POST (1 EAN próbny) odroczony do E6b-release; kroki 4 PLAN_E6b_1 (migracja Zakupów na kopii żywej bazy) i pomiar źródeł nadal niewykonane.
+Następny: E6b.4 (UI: plakietki źródła/„≈”, pokrycie %, „—” zamiast 0,00 zł, komunikaty todo „wysłano X z Y”), potem E6b-release (Zakupy 1.12.0 przed Dietą 0.4.0).
