@@ -247,3 +247,12 @@ def test_bilans_with_plan_renders_table(tmp_path: Path) -> None:
     assert "dz-table" in resp.text
     assert "Zostało porcji" in resp.text
     assert 'name="stan"' not in resp.text
+
+
+def test_out_of_range_dates_do_not_crash(tmp_path: Path) -> None:
+    client, _ = _client(tmp_path)
+    assert client.get("/dzis?dzien=9999-12-31").status_code == 200
+    assert client.get("/dzis?dzien=0001-01-01").status_code == 200
+    assert client.get("/bilans?tydzien=9999-12-27").status_code == 200
+    resp = client.post("/dzis/odhacz", data={"dzien": date.today().isoformat(), "osoba": "9" * 5000})
+    assert resp.status_code == 303

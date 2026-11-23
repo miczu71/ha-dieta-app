@@ -23,6 +23,8 @@ _log = logging.getLogger(__name__)
 SUPERVISOR_URL = "http://supervisor/core/api/services/notify/"
 SERVICE_RE = re.compile(r"^[a-z0-9_]+$")
 TIMEOUT_S = 15
+ATTEMPTS = 3
+RETRY_DELAY_S = 600
 MAX_CHARS = 1000
 META_LAST = "push_last"
 TAG = "dieta-plan-dnia"
@@ -93,10 +95,10 @@ def send(service: str, title: str, message: str, path: str) -> bool:
         with urllib.request.urlopen(request, timeout=TIMEOUT_S):
             return True
     except urllib.error.HTTPError as exc:
-        _log.warning("push nieudany: HTTP %s", exc.code)
+        _log.warning("push nieudany: notify.%s, HTTP %s", service, exc.code)
         return False
     except (urllib.error.URLError, OSError, ValueError) as exc:
-        _log.warning("push nieudany: %s", type(exc).__name__)
+        _log.warning("push nieudany: notify.%s, %s", service, type(exc).__name__)
         return False
 
 
@@ -123,13 +125,24 @@ def run_once(
     return "sent"
 
 
+async def _attempt(settings: Settings, store: Store) -> None:
+    """Do ``ATTEMPTS`` prób co ``RETRY_DELAY_S`` (chwilowy restart HA/Supervisora o porannej porze)."""
+    for attempt in range(ATTEMPTS):
+        try:
+            result = await asyncio.to_thread(run_once, settings, store, date.today())
+        except Exception:  # CancelledError (BaseException) przechodzi dalej
+            _log.exception("krok pushu nieudany")
+            result = "failed"
+        if result != "failed":
+            return
+        if attempt < ATTEMPTS - 1:
+            await asyncio.sleep(RETRY_DELAY_S)
+
+
 async def _loop(settings: Settings, store: Store) -> None:
     while True:
-        try:
-            await asyncio.sleep(seconds_until(datetime.now(), settings.push_time))
-            await asyncio.to_thread(run_once, settings, store, date.today())
-        except Exception as exc:  # CancelledError (BaseException) przechodzi dalej
-            _log.warning("krok pushu nieudany: %s", type(exc).__name__)
+        await asyncio.sleep(seconds_until(datetime.now(), settings.push_time))
+        await _attempt(settings, store)
 
 
 def start(settings: Settings, store: Store) -> asyncio.Task[None] | None:

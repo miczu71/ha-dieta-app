@@ -238,3 +238,44 @@ def test_start_creates_task_and_cancels(tmp_path: Path) -> None:
         return False
 
     assert asyncio.run(scenario()) is True
+
+
+def test_attempt_retries_after_failure_then_stops(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    store, settings = _store(tmp_path)
+    results = iter(["failed", "sent"])
+    calls: list[int] = []
+    sleeps: list[float] = []
+
+    def fake_run_once(*_args: Any, **_kwargs: Any) -> str:
+        calls.append(1)
+        return next(results)
+
+    async def fake_sleep(seconds: float) -> None:
+        sleeps.append(seconds)
+
+    monkeypatch.setattr(push, "run_once", fake_run_once)
+    monkeypatch.setattr(push.asyncio, "sleep", fake_sleep)
+    asyncio.run(push._attempt(settings, store))
+    assert len(calls) == 2
+    assert sleeps == [push.RETRY_DELAY_S]
+
+
+def test_attempt_survives_exception_and_gives_up_after_attempts(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    store, settings = _store(tmp_path)
+    calls: list[int] = []
+
+    def boom(*_args: Any, **_kwargs: Any) -> str:
+        calls.append(1)
+        raise KeyError("x")
+
+    async def fake_sleep(_seconds: float) -> None:
+        return None
+
+    monkeypatch.setattr(push, "run_once", boom)
+    monkeypatch.setattr(push.asyncio, "sleep", fake_sleep)
+    with caplog.at_level(logging.WARNING):
+        asyncio.run(push._attempt(settings, store))
+    assert len(calls) == push.ATTEMPTS
+    assert "Traceback" in caplog.text or "KeyError" in caplog.text

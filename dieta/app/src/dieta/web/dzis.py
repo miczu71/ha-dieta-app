@@ -20,6 +20,7 @@ from ..settings import Settings
 from ..store import PERSON_IDS, Store
 from .kupujemy import queue_size
 
+MIN_YEAR, MAX_YEAR = 2000, 2100  # poza zakresem timedelta(±1 dzień) mogłoby przepełnić datę
 STATUS_BY_STATE = {"zjedzone": "eaten", "pominiete": "skipped", "zamiennik": "substitute"}
 
 NOTICE_TEXT = {
@@ -34,9 +35,10 @@ NOTICE_TEXT = {
 
 def _strict_day(raw: str) -> date | None:
     try:
-        return date.fromisoformat(raw) if raw else None
+        day = date.fromisoformat(raw) if raw else None
     except ValueError:
         return None
+    return day if day is not None and MIN_YEAR <= day.year <= MAX_YEAR else None
 
 
 def _number(raw: str) -> tuple[bool, float | None]:
@@ -109,7 +111,7 @@ def make_dzis_router(settings: Settings, store: Store, templates: Jinja2Template
         day = _strict_day(dzien)
         if day is None:
             return go(today, rz.NOTICE_BAD)
-        person = int(osoba) if osoba.isdecimal() else 0
+        person = int(osoba) if osoba.isdecimal() and len(osoba) < 4 else 0
         if stan == "reset":
             return go(day, rz.clear(store, day, person, slot, today).notice)
         status = STATUS_BY_STATE.get(stan)
@@ -138,7 +140,7 @@ def make_dzis_router(settings: Settings, store: Store, templates: Jinja2Template
     @router.get("/bilans")
     def bilans_page(request: Request, tydzien: str = "") -> Response:
         today = date.today()
-        week = svc.monday_of(tydzien, today)
+        week = svc.monday_of(tydzien if _strict_day(tydzien) else "", today)
         view = rz.week_balance(store, settings, week, today)
         return templates.TemplateResponse(
             request,

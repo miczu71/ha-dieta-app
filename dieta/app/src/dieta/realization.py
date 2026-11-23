@@ -228,8 +228,10 @@ def day_log(store: Store, settings: Settings, day: date, today: date) -> DayLog:
         by_id = candidates_for(store, settings, {s.recipe_id for s in sessions.values()})
         plan_meals = [m for m in all_meals if m.day == day.weekday()]
         for m in sorted(plan_meals, key=lambda x: planner.SLOTS.index(x.slot)):
-            sess = sessions[m.session_id]
-            cand = by_id[sess.recipe_id]
+            sess = sessions.get(m.session_id)
+            cand = None if sess is None else by_id.get(sess.recipe_id)
+            if sess is None or cand is None:
+                continue  # niespójny plan (brak sesji/przepisu) nie może wywracać widoku
             per: list[MealPerson | None] = []
             for pid in PERSON_IDS:
                 portions = _portions(m, pid)
