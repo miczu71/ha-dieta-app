@@ -185,3 +185,30 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font-sans)
 .dz-icon-btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .dz-btn[disabled]{opacity:.5;cursor:default}
 .dz-card textarea,.dz-card input[type=number]{max-width:100%}
+
+/* E4: Plan (Pojemniki) */
+.dz-week{display:flex;gap:var(--space-3);align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:var(--space-4)}
+.dz-plan{list-style:none;margin:0;padding:0;display:grid;gap:var(--space-3);grid-template-columns:1fr}
+@media (min-width:860px){.dz-plan{grid-template-columns:1fr 1fr}}
+.dz-day-plan{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-lg);padding:var(--space-3);min-width:0}
+.dz-day-head{display:flex;gap:var(--space-2);justify-content:space-between;align-items:center;flex-wrap:wrap;padding-bottom:var(--space-2);border-bottom:1px solid var(--line)}
+.dz-day-name{font:700 15px/20px var(--font-display);display:inline-flex;gap:var(--space-2);align-items:center}
+.dz-dot{display:inline-block;width:10px;height:10px;border-radius:var(--radius-pill);background:var(--dc)}
+.dz-bal{display:flex;gap:var(--space-1);flex-wrap:wrap}
+.dz-bal .dz-chip{font-size:12px}
+.dz-meals{list-style:none;margin:0;padding:0;display:grid;gap:var(--space-2)}
+.dz-meal{display:grid;grid-template-columns:10px 1fr;gap:var(--space-2);padding:var(--space-2) 0;border-top:1px dashed var(--line)}
+.dz-meal:first-child{border-top:0}
+.dz-meal-lid{display:block;width:10px;border-radius:var(--radius-sm);background:var(--dc);min-height:100%}
+.dz-session .dz-meal-lid{box-shadow:var(--shadow-box)}
+.dz-meal-main{display:flex;flex-direction:column;gap:2px;min-width:0}
+.dz-meal-slot{margin:0}
+.dz-meal-title{font:700 15px/20px var(--font-display);overflow-wrap:anywhere}
+.dz-meal-meta{color:var(--muted);font-size:12.5px}
+.dz-meal-tags{display:flex;gap:var(--space-1);flex-wrap:wrap}
+.dz-meal-tags .dz-chip{font-size:11.5px;padding:1px 8px}
+.dz-meal-actions{grid-column:2;display:flex;gap:var(--space-2);flex-wrap:wrap}
+.dz-swap{display:flex;gap:var(--space-1);flex-wrap:wrap;margin:0}
+.dz-swap .dz-btn{font-size:12.5px;padding:4px 8px}
+.dz-swap .dz-i{width:14px;height:14px}
+.dz-day-plan .dz-btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}

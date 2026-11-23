@@ -1182,6 +1182,13 @@ class Store:
             conn.execute("DELETE FROM plan_session WHERE plan_id = ?", (plan_id,))
             self._insert_plan_contents(conn, plan_id, sessions, meals)
 
+    def update_plan_params(self, plan_id: int, seed: int, params_json: str) -> None:
+        """Zapisuje ziarno i migawkę opcji ostatniej generacji (regeneracja zmienia treść planu)."""
+        with closing(self._connect()) as conn, conn:
+            conn.execute(
+                "UPDATE plan SET seed = ?, params_json = ? WHERE id = ?", (seed, params_json, plan_id)
+            )
+
     def set_plan_status(self, plan_id: int, status: PlanStatus) -> bool:
         approved_at = datetime.now().isoformat(timespec="seconds") if status == "approved" else None
         with closing(self._connect()) as conn, conn:

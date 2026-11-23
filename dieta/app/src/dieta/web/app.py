@@ -26,6 +26,7 @@ from ..targets import person_targets
 from .catalog import make_catalog_router
 from .chart import weight_chart
 from .kupujemy import SyncRunner, default_runner, make_router, seconds_until
+from .plan import make_plan_router
 
 log = logging.getLogger(__name__)
 
@@ -134,6 +135,7 @@ def create_app(
     app.mount("/static", StaticFiles(directory=str(WEB_DIR / "static")), name="static")
     app.include_router(make_router(settings, store, templates, runner))
     app.include_router(make_catalog_router(settings, store, templates, crawler))
+    app.include_router(make_plan_router(settings, store, templates))
 
     @app.middleware("http")
     async def no_store(request: Request, call_next):  # type: ignore[no-untyped-def]

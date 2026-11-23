@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% macro por(x) %}{{ ('%.1f' % x).replace('.', ',') }}{% endmacro %}
+{% macro swap_btns(zakres, ident, label) %}
+<form method="post" action="plan/wymien" class="dz-swap">
+  <input type="hidden" name="tydzien" value="{{ v.week_start.isoformat() }}">
+  <input type="hidden" name="zakres" value="{{ zakres }}">
+  <input type="hidden" name="id" value="{{ ident }}">
+  <button class="dz-btn dz-btn--ghost" type="submit" name="tryb" value="los" aria-label="Wymień losowo: {{ label }}">
+    <svg class="dz-i" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8" cy="8" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="16" cy="16" r="1"/></svg>
+    Wymień</button>
+  <button class="dz-btn dz-btn--ghost" type="submit" name="tryb" value="polubione" aria-label="Z polubionych: {{ label }}">
+    <svg class="dz-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.5 1-1.1a5.5 5.5 0 0 0 0-7.8z"/></svg>
+    Z polubionych</button>
+</form>
+{% endmacro %}
+{% block content %}
+{% if notice_text %}<p class="dz-ok" role="status">{{ notice_text }}</p>{% endif %}
+{% for w in warnings %}<p class="dz-err" role="alert">{{ w }}</p>{% endfor %}
+
+<nav class="dz-week" aria-label="Tygodnie">
+  <a class="dz-link" href="plan?tydzien={{ v.prev_week.isoformat() }}">← Poprzedni</a>
+  <span class="dz-num">Tydzień od {{ v.week_start.isoformat() }}</span>
+  <a class="dz-link" href="plan?tydzien={{ v.next_week.isoformat() }}">Następny →</a>
+</nav>
+
+{% if not v.has_target[0] and not v.has_target[1] %}
+<section class="dz-card">
+  <p class="dz-sub">Uzupełnij profile (kcal i wagę), żeby zaplanować tydzień.</p>
+  <a class="dz-link" href="./">Przejdź do profili</a>
+</section>
+{% else %}
+<section class="dz-card dz-bar" aria-label="Akcje planu">
+  {% if v.plan is none %}
+  <form method="post" action="plan/generuj">
+    <input type="hidden" name="tydzien" value="{{ v.week_start.isoformat() }}">
+    <button class="dz-btn" type="submit">Generuj tydzień</button>
+  </form>
+  {% elif v.plan.status == 'draft' %}
+  <form method="post" action="plan/zatwierdz">
+    <input type="hidden" name="tydzien" value="{{ v.week_start.isoformat() }}">
+    <button class="dz-btn" type="submit">Zatwierdź</button>
+  </form>
+  <form method="post" action="plan/generuj">
+    <input type="hidden" name="tydzien" value="{{ v.week_start.isoformat() }}">
+    <button class="dz-btn dz-btn--ghost" type="submit">Wygeneruj od nowa</button>
+  </form>
+  {% else %}
+  <span class="dz-chip dz-chip--plain">Zatwierdzony</span>
+  <form method="post" action="plan/generuj">
+    <input type="hidden" name="tydzien" value="{{ v.week_start.isoformat() }}">
+    <input type="hidden" name="potwierdz" value="1">
+    <button class="dz-btn dz-btn--ghost" type="submit">Wygeneruj od nowa (nadpisze plan)</button>
+  </form>
+  {% endif %}
+  {% if v.plan is not none %}
+  <form method="post" action="plan/cofnij">
+    <input type="hidden" name="tydzien" value="{{ v.week_start.isoformat() }}">
+    <button class="dz-btn dz-btn--ghost" type="submit">Cofnij</button>
+  </form>
+  {% endif %}
+</section>
+{% endif %}
+
+{% if v.plan is none %}
+<p class="dz-sub">Brak planu na ten tydzień.</p>
+{% endif %}
+
+<ol class="dz-plan">
+{% for d in v.days %}
+  <li class="dz-day-plan" style="--dc:var(--day-{{ d.index + 1 }})">
+    <header class="dz-day-head">
+      <span class="dz-day-name dz-num"><span class="dz-dot" aria-hidden="true"></span>{{ d.name }} {{ d.date.day }}.{{ '%02d' % d.date.month }}</span>
+      <span class="dz-bal">
+      {% for p in d.people if p %}
+        <span class="dz-chip{{ ' dz-chip--plain' if p.ok }} dz-num">{{ p.label }} {{ p.kcal }} / {{ p.target }} kcal{% if not p.ok %} · poza ±10%{% endif %}</span>
+      {% endfor %}
+      </span>
+    </header>
+    <ul class="dz-meals">
+    {% for m in d.meals %}
+      <li class="dz-meal{{ ' dz-session' if m.session_first }}">
+        <span class="dz-meal-lid" aria-hidden="true"></span>
+        <div class="dz-meal-main">
+          <span class="dz-eyebrow dz-meal-slot">{{ m.slot_label }}{% if m.session_first and m.session_days > 1 %} · sesja {{ m.session_days }} dni{% endif %}</span>
+          <b class="dz-meal-title">{{ m.title }}</b>
+          <span class="dz-meal-meta dz-num">
+            {% if m.p1 is not none %}{{ v.person_labels[0] }} {{ por(m.p1) }} porcji · {{ m.kcal1 }} kcal{% endif %}
+            {% if m.p2 is not none %} · {{ v.person_labels[1] }} {{ por(m.p2) }} porcji · {{ m.kcal2 }} kcal{% endif %}
+          </span>
+          <span class="dz-meal-tags">
+            {% if m.estimated %}<span class="dz-chip dz-chip--plain">szacunek</span>{% endif %}
+            {% if m.storage_days %}<span class="dz-chip dz-chip--plain">przechowuje {{ m.storage_days }} dni</span>{% endif %}
+            {% if m.minutes %}<span class="dz-chip dz-chip--plain">{{ m.minutes }} min</span>{% endif %}
+          </span>
+        </div>
+        <div class="dz-meal-actions">
+          {{ swap_btns('dzien', d.index ~ ':' ~ m.slot, m.title ~ ', ' ~ d.name) }}
+          {% if m.session_first and v.plan is not none %}
+            {{ swap_btns('sesja', m.session_id, 'cała sesja: ' ~ m.title) }}
+          {% endif %}
+        </div>
+      </li>
+    {% else %}
+      <li class="dz-sub">Brak posiłków.</li>
+    {% endfor %}
+    </ul>
+  </li>
+{% endfor %}
+</ol>
+{% endblock %}
