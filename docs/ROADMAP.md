@@ -258,3 +258,8 @@ Kontrakt jak w pomiarze 0.1.3. Mapowanie LLM Ani Gotuje mogło jeszcze trwać (c
 - Znajomość ogółem: ≥50% **95 (12,0%)**, ≥60% 29 (3,7%), ≥70% 11 (1,4%). Z kcal przy ≥50%: 73 (9,2% katalogu).
 - Per źródło ≥50%: Ania Gotuje 5/148 (wszystkie bez kcal → poza planerem), Policzona 4/44.
 - Wniosek: kryterium ≥10% przy progu 50% spełnione (12,0%), ale użyteczne dla planera (z kcal) jest 9,2% i Aniagotuje nic nie dokłada. Decyzja usera: kcal na porcję dla Aniagotuje (ze składników: OFF/tabele), albo inne źródło z kcal.
+
+## E3b ZAMKNIĘTY 2026-11-23 → następny E3c (kcal ze składników)
+E3b: wydanie `v0.1.4` (non-draft, CI zielone, 180 testów), zainstalowane i zrestartowane; opcje na żywo `familiar_threshold: 50` + `aniagotuje`; pomiar w sekcji wyżej (≥50% = 12,0%; Aniagotuje 148 przepisów, wszystkie bez kcal).
+**Decyzja usera 2026-11-23:** opcja 1 — kcal na porcję dla Ani Gotuje liczone ze składników („kcal ze składników+”; znaczenie „+” do wyjaśnienia w wywiadzie).
+**E3c (do zrobienia, najpierw wywiad `grill-me`):** kto korzysta z wyniku, co automatycznie / za zgodą, miara sukcesu; źródła danych odżywczych (OFF, tabele, IŻŻ), dokładność i tolerancja błędu, porcje, zakres (tylko Aniagotuje czy też Respo/Lidl bez kcal), oznaczenie „szacunek” w UI. Potem `docs/PLAN_E3c.md`, wykonawcy, wydanie 0.1.5. Przed E4 powtórzyć pomiar znajomości po zakończeniu mapowania LLM Ani Gotuje.
