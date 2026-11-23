@@ -266,3 +266,12 @@ E3b: wydanie `v0.1.4` (non-draft, CI zielone, 180 testów), zainstalowane i zres
 
 ## E3c PLAN GOTOWY 2026-11-23
 Wywiad zakończony (sesja a031f378 + runda z 2026-11-23): kcal i makro na porcję ze składników dla wszystkich przepisów bez kcal ze źródła; kaskada tabela → OFF → LLM; auto z plakietką „szacunek”, do kolejki tylko niska pewność i pokrycie <85% masy; porcje bez liczby = masa/400 g. Plan: `docs/PLAN_E3c.md`. Paczki: seedy (ja) → W1 ‖ W2a → W2b (sonnet, ryzyko: migracja v4) → W3. Wydanie 0.1.5, potem E4.
+
+## E3c ZROBIONE 2026-11-23 — wydanie `v0.1.5` (non-draft), zainstalowane
+- Testy 301, ruff/mypy czyste, CI zielone, pubguard bez UWAG; review: blokujące i ważne naprawione w `af2a565` (niewiarygodne wartości pending poza szacunkiem, kontrola nazw w odpowiedzi LLM, kwalifikatory seeda, wyłącznik OFF, kontrola kcal/100 g przy wodzie).
+- **Odstępstwo od kontraktu GO (decyzja usera):** wszystkie szacunki w ±30% = 68–69% (próg 80%); przepisy `auto` mediana błędu 11–13%, ~80% w ±30%. Szczegóły: `docs/POMIAR_kcal.md`.
+- Na żywo (po „Odśwież teraz”, 706 s): migracja v4 OK; szacunek 229 przepisów — auto 131, do sprawdzenia 98, błędy 0; składniki: tabela 310, OFF 0, LLM 134; 536 linii z ilością domyślną. Z kcal/szacunkiem 693/791 (87,6%, wcześniej 562 = 71%). Ania: auto 75, pending 73 (148/148 mają szacunek); Lidl 55/24; Policzona 1/1, 42 bez szacunku.
+- **Ustalenie na żywo:** Open Food Facts jest blokowany przez robots.txt (`FetchError`) → OFF = 0, wyłącznik po 3 awariach działa, całość idzie tabela → LLM. Decyzja do podjęcia: zostawić (respektujemy robots.txt) albo wyciąć OFF z kaskady i NOTICE.
+- LLM: `JSONDecodeError` w paczkach słownika (`dictionary.py`) — sporadyczne, do diagnozy.
+- Do zrobienia: 42 przepisy Policzonej bez szacunku (kolumna `kcal_source` pusta — sprawdzić dlaczego), kolejka 98 + 34 składniki do przejrzenia przez usera, pomiar z OFF (jeśli zostaje), lock `decide_ingredient` vs crawl, backfill `kcal_100g` Ani, zrzuty Playwright 390/1280 (niedostępne z kontenera: ingress 401, direct-IP wisi, tunel SSH zablokowany), powtórny pomiar znajomości.
+- Następny etap: **E4 planer** (wywiad `grill-me`).
