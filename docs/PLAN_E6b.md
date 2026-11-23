@@ -14,7 +14,7 @@ Propozycja usera (2026-11-23): najświeższe ceny z paragonów → starsze spraw
    b. EAN znany → cena Biedronki z cache (≤7 dni); promocyjna, gdy `promotion_valid_period` obejmuje tydzień planu, inaczej regularna;
    c. paragon 31–180 dni (Lidl bez EAN itd.) z plakietką „sprzed N dni”;
    d. Frisco × współczynnik („≈ szacunek”); gdy Frisco nie ma składnika, a jest paragon >180 dni → stary paragon.
-2. **Architektura:** Frisco w Diecie (pobranie raz w tygodniu nd 03:00 + przycisk, plik/indeks w `/data`, poza repo, NOTICE);
+2. **Architektura (zmiana 2026-11-23, po decyzji usera o wspólnym katalogu cen):** katalog cen w Zakupach (tabela produktów: EAN, kody Lidla, SAP Biedronki, id Frisco, aliasy, gramatura; tabela obserwacji tylko dopisywana: produkt, źródło, sklep, cena, cena regularna, promocja od–do, data). Frisco wczytywane w Zakupach (feed raz w tygodniu nd 03:00 + przycisk, zapis tylko zmian cen, dane w `/data` poza repo, NOTICE); Dieta czyta katalog przez `/api/v1/*`, robi mapowanie składników i kaskadę. Dawniej: Frisco w Diecie;
    Biedronka przez Zakupy — nowy endpoint `/api/v1/shelf` (Bearer jak `/api/v1/purchases`), reuse `shelf_prices.py`
    (`product_price`, `parse_price`, `REQUEST_PAUSE_S`, `shelf_lock`, sklep główny z `/polka`).
 3. **Rytm Biedronki:** nocny przebieg w Diecie: najpierw składniki zatwierdzonego planu, potem katalog; ≤~100 EAN/noc,
@@ -37,8 +37,8 @@ Propozycja usera (2026-11-23): najświeższe ceny z paragonów → starsze spraw
   4. Biedronka: token spike'u odświeża user (`! python ~/dev/biedronka-spike/spike.py login osoba1`); próba ≤100 EAN z Frisco (zmapowanych) + ponowienie 112 EAN z OFF + ≤100 „sąsiadów”, odstęp ≥4 s;
   5. pokrycie masy katalogu po kaskadzie (skrypt jak `cov.py` z E6-release, na kopii bazy Diety) vs 13%;
   6. wynik w `docs/POMIAR_ceny.md` (kontrakt skillem `pomiar`). **Bramka:** ≥50% przepisów z ≥70% masy z ceną → GO; mniej → decyzja usera.
-- **E6b.1 Zakupy:** `/api/v1/shelf` (POST listy EAN → zlecenie w tle z blokadą, GET wyników z cache `shelf_prices`, statusy ok/brak/błąd), testy, bez migracji jeśli tabela wystarcza.
-- **E6b.2 Dieta — Frisco:** pobieranie tygodniowe, indeks w `/data`, mapowanie (reguły + AI + kolejka), współczynnik; migracja v8.
+- **E6b.1 Zakupy (katalog cen + `/api/v1/shelf` jako jego widok, bez UI, migracja schematu z kopią `.pre-*`; ingest paragonów/Biedronki/Frisco):** `/api/v1/shelf` (POST listy EAN → zlecenie w tle z blokadą, GET wyników z cache `shelf_prices`, statusy ok/brak/błąd), testy, bez migracji jeśli tabela wystarcza.
+- **E6b.2 Dieta — mapowanie Frisco→składnik:** (feed w katalogu Zakupów), mapowanie (reguły + AI + kolejka), współczynnik; migracja v8.
 - **E6b.3 Dieta — kaskada:** `pricing.py` (źródło + data per cena), nocna kolejka EAN do Zakupów, cache 7/30 dni, promocje w tygodniu planu, tryb „taniej”.
 - **E6b.4 UI + długi E6:** plakietki, podział pokrycia, „—”, cache `build_context`, komunikaty todo.
 - **E6b-release:** simplify → code-review + silent-failure-hunter + pr-test-analyzer + security → release Zakupy 1.12.0, Dieta 0.4.0 → pomiar pokrycia na żywo.

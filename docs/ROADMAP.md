@@ -346,3 +346,6 @@ Następny krok: pomiar pokrycia (składniki zatwierdzonego planu/katalogu ↔ pr
 
 ## E6b PLAN GOTOWY 2026-11-23 (wywiad zakończony, plan: `docs/PLAN_E6b.md`)
 Kaskada cen: paragon ≤30 dni → Biedronka po EAN (cache 7 dni, promocja gdy ważna w tygodniu planu) → paragon 31–180 dni → Frisco × współczynnik („≈”). Frisco w Diecie (feed tygodniowo), Biedronka przez nowy `/api/v1/shelf` w Zakupach. EAN-y: paragony + Frisco + OFF + mała próba „sąsiadów” (≤100). Najpierw pomiar E6b.0 (bramka ≥50% przepisów z ≥70% masy z ceną; dziś 13%), potem kod; jedno wydanie Zakupy 1.12.0 + Dieta 0.4.0.
+
+### E6b — zmiana architektury 2026-11-23 (decyzja usera)
+Wspólny katalog cen w Zakupach (produkty + obserwacje tylko dopisywane, historia promocji, baza EAN Biedronki rośnie z paragonów/API/Frisco); Frisco wczytywane w Zakupach, Dieta czyta przez `/api/v1/*`. Szczegóły: `PLAN_E6b.md` pkt 2, E6b.1/E6b.2. E6b.0: pomiar offline gotowy (`POMIAR_ceny.md`, 75% przy regułach, współczynnik 0,75), próba Biedronki po EAN w toku.
