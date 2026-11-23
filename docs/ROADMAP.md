@@ -251,3 +251,10 @@ Tag `v0.1.4` non-draft, CI zielone, 180 testów, ruff/mypy czyste, pubguard: 2 f
 Opcje na żywo ustawione (`familiar_threshold: 50`, `sources` + `aniagotuje`), status `pending_restart`: **user restartuje add-on Dieta**.
 Dalej: „Odśwież teraz” dla `policzona` i `aniagotuje` → po zakończeniu mapowania LLM pomiar (`pomiar`): przepisy per źródło, % z kcal, odsetek ≥70/60/50% ogółem i per źródło; ≥50% nadal <10% → stop i pytanie. Potem E4 (planer, wywiad `grill-me`).
 Znane (nieblokujące): Aniagotuje bez kcal na porcję („brak kcal”, poza planerem); sitemapy bez kontroli hosta URL-i (dług sprzed 0.1.4); `totalTime` Aniagotuje liczy moczenie.
+
+### Pomiar E3b po 0.1.4 (2026-11-23, na żywo, `GET /katalog?prog=N[&zrodlo=…]`, liczone po wierszach listy)
+Kontrakt jak w pomiarze 0.1.3. Mapowanie LLM Ani Gotuje mogło jeszcze trwać (chip „pobieranie…”), więc liczby Aniagotuje to dolna granica; powtórzyć po zakończeniu.
+- Katalog: 791 przepisów, z czego 229 bez kcal. Ania Gotuje 148 (0 błędów, 2 pominięte) — **148/148 bez kcal** (tylko wartości na 100 g). Policzona 44 (2 bez kcal).
+- Znajomość ogółem: ≥50% **95 (12,0%)**, ≥60% 29 (3,7%), ≥70% 11 (1,4%). Z kcal przy ≥50%: 73 (9,2% katalogu).
+- Per źródło ≥50%: Ania Gotuje 5/148 (wszystkie bez kcal → poza planerem), Policzona 4/44.
+- Wniosek: kryterium ≥10% przy progu 50% spełnione (12,0%), ale użyteczne dla planera (z kcal) jest 9,2% i Aniagotuje nic nie dokłada. Decyzja usera: kcal na porcję dla Aniagotuje (ze składników: OFF/tabele), albo inne źródło z kcal.
