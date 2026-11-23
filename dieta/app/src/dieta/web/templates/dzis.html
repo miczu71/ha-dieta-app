@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% macro por(x) %}{{ ('%.1f' % x).replace('.', ',') }}{% endmacro %}
+{% macro kc(x) %}{{ '%.0f' % x }}{% endmacro %}
+{% macro hidden(pid, slot) %}
+<input type="hidden" name="dzien" value="{{ v.day.isoformat() }}">
+<input type="hidden" name="osoba" value="{{ pid }}">
+<input type="hidden" name="slot" value="{{ slot }}">
+{% endmacro %}
+{% block content %}
+{% if notice_text %}<p class="dz-ok" role="status">{{ notice_text }}</p>{% endif %}
+
+<nav class="dz-week" aria-label="Dni">
+  <a class="dz-link dz-tap" href="dzis?dzien={{ prev_day.isoformat() }}">
+    <svg class="dz-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>Wcześniej</a>
+  <span class="dz-num">{{ day_name }} {{ v.day.day }}.{{ '%02d' % v.day.month }}.{{ v.day.year }}{% if not is_today %} · inny dzień{% endif %}</span>
+  <span class="dz-week-links">
+    {% if not is_today %}<a class="dz-link dz-tap" href="dzis">Dziś</a>{% endif %}
+    <a class="dz-link dz-tap" href="dzis?dzien={{ next_day.isoformat() }}">Dalej
+      <svg class="dz-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg></a>
+  </span>
+</nav>
+
+{% if not (v.people[0] or v.people[1]) %}
+<section class="dz-card">
+  <p class="dz-sub">Uzupełnij profile (kcal i wagę), żeby zobaczyć cele.</p>
+  <a class="dz-link" href="./">Przejdź do profili</a>
+</section>
+{% endif %}
+
+{% if v.plan_status is none %}
+<p class="dz-sub">Brak planu na ten tydzień. <a class="dz-link" href="plan?tydzien={{ week.isoformat() }}">Otwórz plan</a></p>
+{% elif v.plan_status != 'approved' %}
+<p class="dz-sub">Plan tygodnia jest w szkicu. <a class="dz-link" href="plan?tydzien={{ week.isoformat() }}">Zatwierdź go</a>, żeby odhaczać posiłki.</p>
+{% endif %}
+
+{% if v.people[0] or v.people[1] %}
+<section class="dz-card" aria-label="Bilans dnia">
+  <h2 class="dz-eyebrow dz-eyebrow--flush">Bilans dnia</h2>
+  {% for p in v.people if p %}
+  {% set pct = [(p.eaten_kcal / p.target_kcal * 100) if p.target_kcal else 0, 100] | min | round | int %}
+  <div class="dz-sum-row">
+    <span class="dz-num">{{ p.label }}: {{ kc(p.eaten_kcal) }} / {{ kc(p.target_kcal) }} kcal</span>
+    <span class="dz-bar-kcal" aria-hidden="true"><i style="width:{{ pct }}%"></i></span>
+    {% if p.unanswered %}<span class="dz-chip dz-chip--plain">bez odpowiedzi: {{ p.unanswered }}</span>{% endif %}
+  </div>
+  <p class="dz-sub dz-num">Białko {{ por(p.eaten_protein) }} g · tłuszcz {{ por(p.eaten_fat) }} g · węglowodany {{ por(p.eaten_carbs) }} g</p>
+  {% endfor %}
+</section>
+{% endif %}
+
+{% if v.meals %}
+<section class="dz-card" aria-label="Posiłki dnia">
+<ol class="dz-meal-log">
+{% for m in v.meals %}
+  <li>
+    <span class="dz-eyebrow">{{ m.slot_label }}{% if m.session_days > 1 %} · sesja {{ m.session_days }} dni{% endif %}</span>
+    <b class="dz-meal-title"><a class="dz-link" href="katalog/{{ m.recipe_id }}">{{ m.title }}</a></b>
+    {% for idx in range(2) %}
+      {% set mp = m.per_person[idx] %}
+      {% if mp is not none %}
+      <div class="dz-log-row">
+        <span class="dz-num">{{ labels[idx] }} · {{ por(mp.portions) }} porcji · {{ kc(mp.planned_kcal) }} kcal</span>
+        <span class="dz-state">
+          {% if mp.status is none %}<span class="dz-chip dz-chip--plain">bez odpowiedzi</span>
+          {% elif mp.status == 'eaten' %}<span class="dz-chip">zjedzone · {{ kc(mp.logged_kcal or 0) }} kcal</span>
+          {% elif mp.status == 'skipped' %}<span class="dz-chip dz-chip--plain">pominięte</span>
+          {% else %}<span class="dz-chip">zamiennik: {{ mp.sub_name }} · {{ kc(mp.logged_kcal or 0) }} kcal</span>{% endif %}
+        </span>
+        {% if v.editable %}
+        <div class="dz-log-actions">
+          <form method="post" action="dzis/odhacz">
+            {{ hidden(pids[idx], m.slot) }}
+            <button class="dz-btn dz-tap" type="submit" name="stan" value="zjedzone">Zjedzone</button>
+            <button class="dz-btn dz-btn--ghost dz-tap" type="submit" name="stan" value="pominiete">Pominięte</button>
+            <button class="dz-btn dz-btn--ghost dz-tap" type="submit" name="stan" value="reset">Cofnij</button>
+          </form>
+          <details class="dz-sub-form">
+            <summary class="dz-btn dz-btn--ghost dz-tap">Zamiennik</summary>
+            <form method="post" action="dzis/odhacz">
+              {{ hidden(pids[idx], m.slot) }}
+              <label>Nazwa zamiennika <input name="nazwa" maxlength="80" required></label>
+              <label>kcal <input name="kcal" inputmode="decimal" required></label>
+              <label>Białko (g) <input name="bialko" inputmode="decimal"></label>
+              <label>Tłuszcz (g) <input name="tluszcz" inputmode="decimal"></label>
+              <label>Węglowodany (g) <input name="wegle" inputmode="decimal"></label>
+              <button class="dz-btn dz-tap" type="submit" name="stan" value="zamiennik">Zapisz zamiennik</button>
+            </form>
+          </details>
+        </div>
+        {% else %}
+        <p class="dz-sub">{% if v.plan_status != 'approved' %}Zatwierdź plan tygodnia, żeby odhaczać.{% else %}Poza oknem edycji (dziś i 7 dni wstecz).{% endif %}</p>
+        {% endif %}
+      </div>
+      {% endif %}
+    {% endfor %}
+  </li>
+{% endfor %}
+</ol>
+</section>
+{% else %}
+<p class="dz-sub">Brak posiłków tego dnia.</p>
+{% endif %}
+{% endblock %}

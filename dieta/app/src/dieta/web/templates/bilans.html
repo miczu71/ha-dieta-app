@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% macro por(x) %}{{ ('%.1f' % x).replace('.', ',') }}{% endmacro %}
+{% macro kc(x) %}{{ '%.0f' % x }}{% endmacro %}
+{% block content %}
+<nav class="dz-week" aria-label="Tygodnie">
+  <a class="dz-link dz-tap" href="bilans?tydzien={{ v.prev_week.isoformat() }}">Poprzedni tydzień</a>
+  <span class="dz-num">Tydzień od {{ v.week_start.isoformat() }}</span>
+  <a class="dz-link dz-tap" href="bilans?tydzien={{ v.next_week.isoformat() }}">Następny tydzień</a>
+</nav>
+
+{% if v.plan_status is none %}
+<p class="dz-sub">Brak planu na ten tydzień.</p>
+{% elif v.plan_status != 'approved' %}
+<p class="dz-sub">Plan jest w szkicu. Odhaczenia są liczone, ale plan nie jest zatwierdzony.</p>
+{% endif %}
+
+{% if not (v.people[0] or v.people[1]) %}
+<section class="dz-card">
+  <p class="dz-sub">Uzupełnij profile (kcal i wagę), żeby zobaczyć bilans.</p>
+  <a class="dz-link" href="./">Przejdź do profili</a>
+</section>
+{% else %}
+{% set cols = v.people | select | list %}
+<section class="dz-card" aria-label="Bilans tygodnia">
+<table class="dz-table">
+  <caption class="dz-sub">Zjedzone / cel kcal, dzień po dniu</caption>
+  <thead>
+    <tr>
+      <th scope="col">Dzień</th>
+      {% for pw in cols %}<th scope="col">{{ pw.label }}</th>{% endfor %}
+    </tr>
+  </thead>
+  <tbody>
+  {% for i in range(7) %}
+    {% set d0 = cols[0].days[i] %}
+    <tr{% if d0.future %} class="dz-future"{% endif %}>
+      <th scope="row">{{ d0.name }} {{ d0.date.day }}.{{ '%02d' % d0.date.month }}</th>
+      {% for pw in cols %}
+        {% set t = pw.days[i] %}
+        <td>
+          {% if t.future %}
+          <span class="dz-num">cel {{ kc(t.target_kcal) }}</span>
+          {% else %}
+          <span class="dz-num">{{ kc(t.eaten_kcal) }} / {{ kc(t.target_kcal) }}</span>
+          {% endif %}
+          {% if t.unanswered %}<span class="dz-sub">bez odp.: {{ t.unanswered }}</span>{% endif %}
+        </td>
+      {% endfor %}
+    </tr>
+  {% endfor %}
+  </tbody>
+  <tfoot>
+    <tr>
+      <th scope="row">Tydzień</th>
+      {% for pw in cols %}
+      <td>
+        <span class="dz-num">{{ kc(pw.eaten_kcal) }} / {{ kc(pw.target_kcal) }}</span>
+        {% if pw.target_kcal %}<span class="dz-sub dz-num">odchylenie {{ '%+.0f' % ((pw.eaten_kcal - pw.target_kcal) / pw.target_kcal * 100) }} %</span>{% endif %}
+      </td>
+      {% endfor %}
+    </tr>
+    <tr>
+      <th scope="row">Bez odpowiedzi</th>
+      {% for pw in cols %}<td class="dz-num">{{ pw.unanswered }}</td>{% endfor %}
+    </tr>
+    <tr>
+      <th scope="row">Zostało porcji</th>
+      {% for pw in cols %}<td class="dz-num">{{ por(pw.leftover_portions) }}</td>{% endfor %}
+    </tr>
+  </tfoot>
+</table>
+</section>
+{% endif %}
+{% endblock %}
