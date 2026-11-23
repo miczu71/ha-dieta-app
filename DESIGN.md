@@ -38,3 +38,8 @@ Zakładka `.dz-nav` „Katalog”. Karta przepisu `.dz-recipe` (tytuł, serce i 
 makro w `.dz-leg` na porcję, `.dz-know` z paskiem znajomości, „brakuje: …”). Plakietka „brak kcal” to `.dz-chip`. Odrzucone mają `.is-dismissed`
 (przyciemnione, tylko z filtrem „Pokaż odrzucone”). Filtry w `.dz-filters` (siatka auto-fit, bez przewijania poziomego na 390 px); szczegóły przepisu: składniki
 z plakietkami „w domu” (`.dz-chip--home`), „znane” (`.dz-chip--plain`), „brak” (`.dz-chip`). Tylko tokeny, bez literałów kolorów.
+
+## E6b.4: ceny z kilku źródeł
+- Plakietka źródła ceny przy pozycji listy (paragon, stary paragon, Biedronka, promocja „do <data>”, szacunek), ten sam komponent małej plakietki co w Katalogu; „≈” przed kwotą szacunku, „—” zamiast „bez ceny”.
+- Pasek kosztu: linia „w tym: paragony 40% · Biedronka 20% · szacunek 15%” pod kwotą (`split_coverage` w `web/lista.py`, jedno miejsce etykiet `SOURCE_LABEL`).
+- „Do zatwierdzenia”: kolejka mapowań katalogu Frisco jako kolejna sekcja listy z dwiema akcjami (zatwierdź składnik / „To nie ten składnik”).

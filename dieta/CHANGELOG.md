@@ -1,22 +1,26 @@
 # Dziennik zmian
 
-## Niewydane (E6b.4)
+## 0.4.0 — ceny: katalog Frisco, Biedronka po EAN, plakietki źródeł (wymaga Zakupów 1.12.0)
+
+- Wydanie zbiorcze E6b.2–E6b.4 (poniżej). Przy wydaniu: jeden GET półki Biedronki zamiast dwóch, kolejka EAN odrzuca niepoprawne EAN-y (Zakupy odrzucają całe zlecenie), podział pokrycia liczony w Pythonie.
+
+### E6b.4
 - Lista zakupów: plakietka źródła ceny (paragon, stary paragon, Biedronka, promocja „do <data>”, szacunek), „≈” przed kosztem szacunku, „—” zamiast „bez ceny”; pasek kosztu pokazuje podział pokrycia wg źródeł (plan tygodnia też, chip sesji bez cen to „—”).
 - Komunikaty todo: „Wysłano X z Y pozycji” (także przy częściowej porażce).
 - Ekran „Do zatwierdzenia”: kolejka mapowań katalogu Frisco (`pending`) — zatwierdź składnik albo „To nie ten składnik”; liczona w chipie kolejki.
 
-## Niewydane (E6b.3b)
+### E6b.3b
 - Nocna kolejka odczytu cen Biedronki: składniki zatwierdzonego planu (bieżący i następny tydzień), potem katalog; zlecenie `POST /api/v1/shelf` w Zakupach (do 100 EAN, bez świeżych ≤7 dni i „brak w Biedronce”). Zakupy 1.12.0 muszą wyjść przed tą wersją Diety (bez POST Dieta dostaje 405 i zapisuje błąd w meta, nic się nie psuje).
 - Przycisk „Odśwież ceny planu” na ekranie „Co kupujemy” zleca odczyt tylko cen planu (wynik przyjdzie nocą lub przy następnym odświeżeniu).
 - Lista „brak w Biedronce” (`absent` z `GET /api/v1/shelf`) zapisywana w meta; nie jest pobierana ręcznym odświeżeniem katalogu.
 
-## Niewydane (E6b.3)
+### E6b.3
 - Koszt planu i lista zakupów liczą cenę składnika kaskadą: paragon z ostatnich 30 dni (ostatnia cena; gdy < 0,8 × mediany to promocja/kupon, więc mediana) → cache cen Biedronki z Zakupów (do 7 dni; promocja tylko gdy okno przecina tydzień planu i nie „tylko z kartą”) → starszy paragon (do 180 dni, mediana) → Frisco ≈ (× współczynnik; oznaczone jako szacunek). Każda cena niesie źródło i datę (UI w E6b.4, do tego czasu koszt może różnić się od 0.3.0).
 - Migracja bazy v9 (tabela `shelf_item`, cache Biedronki z `GET /api/v1/shelf`; przed nią kopia `dieta.db.pre-v9`).
 - Katalog Frisco odświeża się z nocnej pętli raz na 7 dni; przycisk odświeżenia zakupów pobiera go od razu. Cache Biedronki jest pobierany przy każdym odświeżeniu (tani GET).
 - Współczynnik Frisco liczy też pakowane bez gramatury (z masy sztuki składnika).
 
-## Niewydane (E6b.2)
+### E6b.2
 - Katalog cen Frisco (z Zakupów, `/api/v1/catalog`): migracja bazy v8 (tabele `catalog_item`, `catalog_map`; przed nią kopia `dieta.db.pre-v8`), mapowanie produktów na składniki przepisów (ścisłe = `rule`, luźne przez AI = `ai`/`excluded`/`pending`; bez LLM luźne czekają), współczynnik „cena z paragonu / cena Frisco” (mediana z par EAN, `meta.frisco_factor_json`). Synchronizacja po przycisku odświeżenia zakupów. Ceny nie wchodzą jeszcze do kosztu planu ani UI (E6b.3/E6b.4).
 
 ## 0.3.0 (2026-11-23)
