@@ -31,11 +31,11 @@ Repo `/config/addons/ha-dieta-app` (PUBLIC), `main`, kod `dieta/app/src/dieta/`.
 
 ## Kroki
 1. Kopia planu → `docs/PLAN_E3c.md`, wpis „E3c PLAN GOTOWY” w `docs/ROADMAP.md`, commit.
-2. **Ja (Opus), przed workerami:** tabela `dieta/seed/nutrition_basic.json`.
+2. **Ja (Opus), przed workerami:** tabela `dieta/app/src/dieta/seed/nutrition_basic.json` (182 pozycji, format w `_comment`; dopasowanie: nazwa/alias dokładnie, potem najdłuższy alias jako cała fraza).
    - Zakres: ~150 podstawowych produktów, w tym wszystkie 133 nazwy ogólne słownika i najczęstsze składniki przepisów z żywego katalogu (odczyt `GET /katalog`).
    - Pola: kcal, białko, węglowodany, tłuszcz /100 g; `piece_g` dla produktów na sztuki; `density` dla płynów.
    - Wartości typowe z polskich tabel składu (IŻŻ) / USDA, zaokrąglone. Plik ma nagłówek ze źródłem.
-   - Tabela miar `dieta/seed/measures.json`: łyżka 15 ml, łyżeczka 5 ml, szklanka 250 ml, szczypta 0,5 g, opakowanie/puszka per składnik, jeśli znane.
+   - Tabela miar `dieta/app/src/dieta/seed/measures.json` (masy, miary objętościowe, `free_words`, `count_units`): łyżka 15 ml, łyżeczka 5 ml, szklanka 250 ml, szczypta 0,5 g, opakowanie/puszka per składnik, jeśli znane.
 3. `wt new` ×2, BASELINE; **W1 ‖ W2a**, potem **W2b**, potem **W3**. Po każdej paczce `claimcheck` → `verifier`.
 4. `wt land`, pełne `uv run pytest`, ruff, mypy.
 5. Pomiar walidacji na kopii bazy:
@@ -81,7 +81,7 @@ Repo `/config/addons/ha-dieta-app` (PUBLIC), `main`, kod `dieta/app/src/dieta/`.
   1. tabela (seed, po nazwie znormalizowanej `normalize_name`);
   2. OFF: `https://world.openfoodfacts.org/api/v2/search` (`fields=product_name,nutriments`, `countries_tags=poland`), przez istniejący `fetcher` (allowlista hosta), tempo ≥ 6 s/zapytanie, `User-Agent: ha-dieta-app/<wersja>` bez danych osobowych. Trafienie przyjmuję tylko z kompletnymi `energy-kcal_100g` i makro, przy medianie z top 5 wyników w pasie ±25%; inaczej przechodzę do kroku 3;
   3. LLM przez `make_llm_ask`: paczki po 20, JSON {kcal, protein, carbs, fat, piece_g, confidence}. Ten sam prompt zwraca gramy dla linii bez ilości (`grams_assumed`).
-- Walidacja wartości: kcal ≤ 900, |4p + 4c + 9f − kcal| ≤ 20% → inaczej `confidence=low`, `status=pending`.
+- Walidacja wartości: kcal ≤ 900, |4p + 4c + 9f − kcal| ≤ max(20% kcal, 15 kcal) (błonnik, alkohol) → inaczej `confidence=low`, `status=pending`.
 - `pipeline.py`: krok `estimate_nutrition(store, ask, fetch)` po `map_recipe_ingredients`, tylko dla przepisów bez kcal ze źródła. Wynik idzie przez `estimate_recipe`.
   - Ustawia `est_status`: `auto` przy pokryciu ≥ 0,85, bez składnika `pending` i przy zgodności z `kcal_100g` (±25%, jeśli jest); inaczej `pending`.
   - Przepis z `est_status='auto'` lub `approved` traktowany jak „z kcal” w `has_nutrition`/filtrach.
