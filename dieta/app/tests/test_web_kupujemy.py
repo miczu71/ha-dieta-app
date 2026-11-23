@@ -64,13 +64,13 @@ def test_top_ingredients_with_at_home_flag(tmp_path: Path) -> None:
 
 
 def test_refresh_runs_sync_and_redirects_relative(tmp_path: Path) -> None:
-    calls: list[int] = []
-    client, store = _client(tmp_path, runner=lambda: calls.append(1) or 5)
+    calls: list[bool] = []
+    client, store = _client(tmp_path, runner=lambda force=False: calls.append(force) or 5)
     r = client.post("/kupujemy/odswiez")
-    assert calls == [1]
+    assert calls == [True]  # ręczne odświeżenie omija tygodniową bramkę katalogu
     assert r.status_code == 303 and r.headers["location"] == "../kupujemy?notice=ok"
     store.set_meta("last_sync_error", "Zakupy odrzuciły token")
-    client2, store2 = _client(tmp_path, runner=lambda: 0)
+    client2, store2 = _client(tmp_path, runner=lambda force=False: 0)
     store2.set_meta("last_sync_error", "Zakupy odrzuciły token")
     r = client2.post("/kupujemy/odswiez")
     assert r.headers["location"] == "../kupujemy?error=sync"
@@ -148,7 +148,7 @@ def test_review_form_requires_choosing_durability(tmp_path: Path) -> None:
 
 
 def test_refresh_survives_runner_exception(tmp_path: Path) -> None:
-    def boom() -> int:
+    def boom(force: bool = False) -> int:
         raise ValueError("Bearer secret-token")
 
     client, store = _client(tmp_path, runner=boom)
@@ -162,10 +162,17 @@ def test_default_runner_calls_sync_catalog_after_sync(tmp_path: Path, monkeypatc
 
     calls: list[str] = []
     monkeypatch.setattr(kupujemy, "sync", lambda *a, **k: calls.append("sync") or 5)
-    monkeypatch.setattr(kupujemy, "sync_catalog", lambda *a, **k: calls.append("catalog") or 1)
+    forced: list[bool] = []
+    monkeypatch.setattr(
+        kupujemy, "sync_catalog", lambda *a, **k: (calls.append("catalog"), forced.append(k["force"]), 1)[2]
+    )
+    monkeypatch.setattr(kupujemy, "sync_shelf", lambda *a, **k: calls.append("shelf") or 1)
     s = Settings(data_dir=tmp_path, log_level="info", dev=True, zakupy_url="http://z:1", zakupy_token="x")
     assert kupujemy.default_runner(s, Store(s.db_path))() == 5
-    assert calls == ["sync", "catalog"]
+    assert calls == ["sync", "catalog", "shelf"]
+
+    assert kupujemy.default_runner(s, Store(s.db_path))(force=True) == 5
+    assert forced == [False, True]
 
     calls.clear()
     s2 = Settings(data_dir=tmp_path, log_level="info", dev=True, zakupy_url="", zakupy_token="")

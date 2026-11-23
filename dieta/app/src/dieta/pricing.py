@@ -8,10 +8,11 @@ from __future__ import annotations
 
 import re
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
+from datetime import date, timedelta
 from statistics import median
 
-from dieta.zakupy_client import CatalogItem, Purchase
+from dieta.zakupy_client import CatalogItem, Purchase, ShelfItem
 
 # opcjonalny mnożnik „6x", liczba, jednostka; lookbehind odcina liczby sklejone z poprzednim tokenem
 _PACK_RE = re.compile(
@@ -28,6 +29,10 @@ class IngredientPrice:
     price100: float  # zł za 100 g
     pack_g: float | None  # typowe opakowanie (mediana gramatur z nazw), gdy znane
     codes: tuple[str, ...]  # kody zakupu, z których policzono cenę
+    source: str = "receipt"  # receipt | receipt_old | shelf | promo | frisco
+    as_of: date | None = None  # data ceny (zakupu, pobrania cache albo katalogu)
+    promo_to: str | None = None  # koniec promocji (source == "promo")
+    estimate: bool = False  # cena przybliżona (Frisco × współczynnik)
 
 
 def _pack_from_name(name: str) -> float | None:
@@ -183,4 +188,148 @@ def frisco_prices(
         durability = (durability_by_ingredient or {}).get(ingredient)
         multiplier = factor.by_durability.get(durability, factor.value) if durability else factor.value
         result[ingredient] = FriscoPrice(float(median(values)) * multiplier, len(values))
+    return result
+
+
+RECEIPT_FRESH_DAYS = 30
+RECEIPT_MAX_DAYS = 180
+SHELF_FRESH_DAYS = 7
+PROMO_RATIO = 0.8  # ostatnia cena < 0,8 × mediana = promocja/kupon, nie cena typowa
+_SHELF_KG_UNITS = ("Kilogram", "Litre")
+
+
+def _fresh_receipt100(purchase: Purchase, piece_g: float | None) -> float | None:
+    """Świeża cena kodu: ostatnia płacona, chyba że to promocja (poniżej 0,8 × mediany)."""
+    last, typical = purchase.last_unit_price, purchase.unit_price
+    if last is not None and last > 0 and (typical is None or last >= PROMO_RATIO * typical):
+        return price_per_100g(replace(purchase, unit_price=last), piece_g)
+    return price_per_100g(purchase, piece_g)
+
+
+def _shelf_price100(item: ShelfItem, price: float) -> float | None:
+    if item.size_unit in _SHELF_KG_UNITS and item.size is not None and item.size > 0:
+        return price / (item.size * 1000) * 100
+    pack = parse_pack_g([item.name]) if item.name else None
+    return price / pack * 100 if pack else None
+
+
+def _day(value: str | None) -> date | None:
+    try:
+        return date.fromisoformat(value[:10]) if value else None
+    except ValueError:
+        return None
+
+
+def _promo_applies(item: ShelfItem, week_start: date, week_end: date) -> bool:
+    if not item.is_promotion or item.card_only:
+        return False
+    start, end = _day(item.promo_from), _day(item.promo_to)
+    return (start is None or start <= week_end) and (end is None or end >= week_start)
+
+
+def _shelf_prices(
+    shelf: Sequence[ShelfItem],
+    ean_to_ingredient: Mapping[str, str],
+    today: date,
+    week_start: date,
+    week_end: date,
+) -> dict[str, IngredientPrice]:
+    best: dict[str, IngredientPrice] = {}
+    for item in shelf:
+        ingredient = ean_to_ingredient.get(item.ean)
+        fetched = _day(item.fetched_at)
+        if ingredient is None or fetched is None or fetched < today - timedelta(days=SHELF_FRESH_DAYS):
+            continue
+        promo = _promo_applies(item, week_start, week_end)
+        price100 = _shelf_price100(item, item.price if promo else (item.regular or item.price))
+        if price100 is None:
+            continue
+        current = best.get(ingredient)
+        if current is None or price100 < current.price100:
+            best[ingredient] = IngredientPrice(
+                price100,
+                None,
+                (f"b:{item.ean}",),
+                source="promo" if promo else "shelf",
+                as_of=fetched,
+                promo_to=item.promo_to if promo else None,
+            )
+    return best
+
+
+def cascade_prices(
+    purchases: Sequence[Purchase],
+    mapping: Mapping[str, str],
+    piece_g_by_ingredient: Mapping[str, float],
+    *,
+    frisco: Mapping[str, FriscoPrice],
+    shelf: Sequence[ShelfItem],
+    today: date,
+    week_start: date,
+    week_end: date,
+    shelf_map: Mapping[str, str] | None = None,
+    frisco_as_of: date | None = None,
+) -> dict[str, IngredientPrice]:
+    """Cena składnika kaskadą: paragon ≤30 dni → Biedronka (cache ≤7 dni) → paragon ≤180 dni → Frisco ≈.
+
+    ``mapping``: kod zakupu → składnik; ``shelf_map``: EAN → składnik (``catalog_map``); EAN Biedronki bez
+    wpisu w ``shelf_map`` bierze składnik z kodu zakupu ``b:{ean}``. Gdy brak Frisco, a jest starszy paragon
+    (>180 dni), zwraca go jako ``receipt_old``. ``pack_g`` zawsze z paragonów, gdy znane.
+    """
+    base = ingredient_prices(purchases, mapping, piece_g_by_ingredient)
+    fresh: dict[str, list[tuple[float, date]]] = {}
+    for purchase in sorted(purchases, key=lambda p: p.code):
+        ingredient = mapping.get(purchase.code)
+        if ingredient is None or purchase.last < today - timedelta(days=RECEIPT_FRESH_DAYS):
+            continue
+        price100 = _fresh_receipt100(purchase, piece_g_by_ingredient.get(ingredient))
+        if price100 is not None:
+            fresh.setdefault(ingredient, []).append((price100, purchase.last))
+
+    def _old(low: date | None, high: date | None) -> dict[str, IngredientPrice]:
+        subset = [p for p in purchases if (low is None or p.last >= low) and (high is None or p.last <= high)]
+        found = ingredient_prices(subset, mapping, piece_g_by_ingredient)
+        result: dict[str, IngredientPrice] = {}
+        for ingredient, price in found.items():
+            latest = max(p.last for p in subset if p.code in price.codes)
+            result[ingredient] = replace(price, source="receipt_old", as_of=latest)
+        return result
+
+    ean_map = {code.split(":", 1)[1]: ing for code, ing in mapping.items() if code.startswith("b:")}
+    ean_map.update(shelf_map or {})
+    shelf_best = _shelf_prices(shelf, ean_map, today, week_start, week_end)
+    mid = _old(today - timedelta(days=RECEIPT_MAX_DAYS), today - timedelta(days=RECEIPT_FRESH_DAYS + 1))
+    ancient = _old(None, today - timedelta(days=RECEIPT_MAX_DAYS + 1))
+
+    result: dict[str, IngredientPrice] = {}
+    for ingredient in {*base, *fresh, *shelf_best, *mid, *frisco, *ancient}:
+        chosen: IngredientPrice | None = None
+        if ingredient in fresh:
+            values = fresh[ingredient]
+            chosen = IngredientPrice(
+                float(median(v for v, _ in values)),
+                None,
+                tuple(base[ingredient].codes) if ingredient in base else (),
+                source="receipt",
+                as_of=max(d for _, d in values),
+            )
+        elif ingredient in shelf_best:
+            chosen = shelf_best[ingredient]
+        elif ingredient in mid:
+            chosen = mid[ingredient]
+        elif ingredient in frisco:
+            chosen = IngredientPrice(
+                frisco[ingredient].price100,
+                None,
+                (),
+                source="frisco",
+                as_of=frisco_as_of,
+                estimate=True,
+            )
+        elif ingredient in ancient:
+            chosen = ancient[ingredient]
+        if chosen is None:
+            continue
+        pack_g = base[ingredient].pack_g if ingredient in base else None
+        result[ingredient] = replace(chosen, pack_g=pack_g)
     return result

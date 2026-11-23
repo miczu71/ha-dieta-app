@@ -7,6 +7,7 @@ Linie bez ``ingredient_id`` pomijamy (brak klucza dla ceny i stanu listy).
 
 from __future__ import annotations
 
+import json
 import math
 from dataclasses import dataclass
 from datetime import date, timedelta
@@ -26,7 +27,7 @@ from dieta.estimate import (
     to_grams,
 )
 from dieta.match import DEFAULT_BASICS
-from dieta.pricing import IngredientPrice, ingredient_prices
+from dieta.pricing import Factor, IngredientPrice, cascade_prices, frisco_prices
 from dieta.settings import Settings
 from dieta.store import PlanMeal, PlanSession, RecipeLine, Store
 from dieta.sync import stats
@@ -34,6 +35,7 @@ from dieta.sync import stats
 Notice = Literal["ok", "no_plan", "not_approved", "past_week", "no_prices"]
 WEEK_DAYS = 7
 PRICED_MAPPING_STATUSES = ("rule", "seed", "ai", "approved")
+CATALOG_PRICED_STATUSES = ("rule", "ai", "approved")
 
 
 @dataclass(frozen=True)
@@ -109,7 +111,32 @@ def _seed() -> NutritionSeed:
     return load_nutrition_seed()
 
 
-def build_context(store: Store) -> Context:
+def _frisco_factor(store: Store) -> Factor:
+    try:
+        raw = json.loads(store.get_meta("frisco_factor_json") or "{}")
+        return Factor(float(raw["value"]), int(raw["n"]), dict(raw.get("by_durability") or {}))
+    except (ValueError, KeyError, TypeError):
+        return Factor(1.0, 0, {})
+
+
+def build_context(store: Store, today: date | None = None, week: date | None = None) -> Context:
+    """Kontekst cen i wartości odżywczych; wynik memoizowany do kolejnego zapisu w bazie.
+
+    ``week`` = poniedziałek tygodnia planu (okno promocji Biedronki to ``week`` … ``week`` + 6 dni);
+    bez niego okno zaczyna się dziś.
+    """
+    today = today or date.today()
+    week_start = week or today
+    key = (store.data_version, today, week_start)
+    cached = store.cache.get("context")
+    if cached is not None and cached[0] == key:
+        return cached[1]  # type: ignore[no-any-return]
+    ctx = _build_context(store, today, week_start)
+    store.cache["context"] = (key, ctx)
+    return ctx
+
+
+def _build_context(store: Store, today: date, week_start: date) -> Context:
     seed = _seed()
     per100: dict[int, Per100] = {}
     piece_by_name: dict[str, float] = {}
@@ -133,7 +160,36 @@ def build_context(store: Store) -> Context:
         for m in store.mappings()
         if m.status in PRICED_MAPPING_STATUSES and m.ingredient is not None
     }
-    return Context(_measures(), per100, ingredient_prices(store.purchases(), mapping, piece_by_name))
+    shelf_map = {
+        r.ean: r.ingredient
+        for r in store.catalog_map_rows()
+        if r.status in CATALOG_PRICED_STATUSES and r.ingredient is not None
+    }
+    frisco_as_of = _iso_date(store.get_meta("catalog_sync_at"))
+    durability_by_name = {
+        m.ingredient: m.durability for m in store.mappings() if m.ingredient and m.durability
+    }
+    frisco = frisco_prices(store.catalog_items(), shelf_map, _frisco_factor(store), durability_by_name)
+    prices = cascade_prices(
+        store.purchases(),
+        mapping,
+        piece_by_name,
+        frisco=frisco,
+        shelf=store.shelf_items(),
+        today=today,
+        week_start=week_start,
+        week_end=week_start + timedelta(days=WEEK_DAYS - 1),
+        shelf_map=shelf_map,
+        frisco_as_of=frisco_as_of,
+    )
+    return Context(_measures(), per100, prices)
+
+
+def _iso_date(value: str | None) -> date | None:
+    try:
+        return date.fromisoformat(value) if value else None
+    except ValueError:
+        return None
 
 
 def line_grams(ln: RecipeLine, ctx: Context) -> tuple[int, str, float | None] | None:
@@ -224,7 +280,7 @@ def plan_cost(store: Store, settings: Settings, week_start: date) -> PlanCost:
     plan = store.plan(week_start)
     if plan is None:
         return PlanCost(0.0, 0.0, ())
-    ctx = build_context(store)
+    ctx = build_context(store, week=week_start)
     sessions: list[SessionCost] = []
     every: list[_Mass] = []
     for item in _all_masses(store, ctx, plan.id):
@@ -261,7 +317,7 @@ def shopping_list(store: Store, settings: Settings, week_start: date, today: dat
     if today >= week_start + timedelta(days=WEEK_DAYS):
         return _empty(week_start, "past_week")
 
-    ctx = build_context(store)
+    ctx = build_context(store, today, week_start)
     min_start_day = max(0, (today - week_start).days)
     merged: dict[int, tuple[str, float | None]] = {}
     for item in _all_masses(store, ctx, plan.id, min_start_day):

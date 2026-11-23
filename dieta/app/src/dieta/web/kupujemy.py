@@ -8,6 +8,7 @@ import threading
 from collections.abc import Callable
 from dataclasses import replace
 from datetime import date, datetime, timedelta
+from functools import partial
 from typing import cast
 
 from fastapi import APIRouter, Form, Request
@@ -21,7 +22,7 @@ from ..nutrition_lookup import MAX_KCAL_100G
 from ..pipeline import estimate_nutrition
 from ..settings import Settings
 from ..store import MEAL_CATEGORIES, IngredientNutrition, MappingRow, PendingRecipeMeta, RecipeRow, Store
-from ..sync import map_recipe_ingredients, stats, sync, sync_catalog
+from ..sync import map_recipe_ingredients, stats, sync, sync_catalog, sync_shelf
 from ..zakupy_client import fetch_purchases
 
 log = logging.getLogger(__name__)
@@ -41,7 +42,7 @@ MEAL_LABELS: dict[str, str] = {
 }
 TOP_LIMIT = 40
 ING_PREFIX = "ing:"
-SyncRunner = Callable[[], int]
+SyncRunner = Callable[..., int]  # runner(force=False); ręczne odświeżenie woła z force=True
 
 
 def seconds_until(now: datetime, clock: str) -> float:
@@ -58,11 +59,11 @@ def default_runner(settings: Settings, store: Store) -> SyncRunner:
 
     lock = threading.Lock()  # ręczny refresh i nocna pętla nie mogą pisać do Store równolegle
 
-    def run() -> int:
+    def run(force: bool = False) -> int:
         with lock:
-            return _run()
+            return _run(force)
 
-    def _run() -> int:
+    def _run(force: bool) -> int:
         count = sync(store, settings, date.today(), fetch=fetch_purchases, ask=llm_ask_from(settings))
         if settings.zakupy_url:
             sync_catalog(
@@ -70,7 +71,9 @@ def default_runner(settings: Settings, store: Store) -> SyncRunner:
                 settings,
                 date.today(),
                 ask=llm_ask_from(settings, CATALOG_ASK_PROMPT),
+                force=force,
             )
+            sync_shelf(store, settings, date.today())
         return count
 
     return run
@@ -166,7 +169,7 @@ def make_router(
     @router.post("/kupujemy/odswiez")
     async def refresh() -> Response:
         try:
-            count = await run_in_threadpool(runner)
+            count = await run_in_threadpool(partial(runner, force=True))
         except Exception as exc:  # noqa: BLE001 — logujemy tylko typ (komunikat może zawierać nagłówki z tokenem)
             log.warning("ręczny sync zakończony błędem: %s", type(exc).__name__)
             store.set_meta("last_sync_error", "Nieoczekiwany błąd synchronizacji (szczegóły w logu add-onu).")

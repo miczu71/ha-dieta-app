@@ -63,12 +63,12 @@ def test_migration_v4_to_v5_keeps_data_and_adds_plan_tables(tmp_path: Path) -> N
     )
     conn.commit()
     conn.close()
-    assert len(_MIGRATIONS) == 8
+    assert len(_MIGRATIONS) == 9
 
     store = Store(path)
 
     check = sqlite3.connect(path)
-    assert check.execute("PRAGMA user_version").fetchone()[0] == 8
+    assert check.execute("PRAGMA user_version").fetchone()[0] == 9
     tables = {r[0] for r in check.execute("SELECT name FROM sqlite_master WHERE type='table'")}
     assert {"plan", "plan_session", "plan_meal", "plan_undo"} <= tables
     assert check.execute("SELECT title FROM recipe WHERE id = 7").fetchone() == ("Stary",)

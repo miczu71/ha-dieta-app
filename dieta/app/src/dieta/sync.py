@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Callable
-from datetime import date
+from datetime import date, timedelta
 
 from dieta.catalog_map import map_catalog
 from dieta.dictionary import (
@@ -20,14 +20,24 @@ from dieta.dictionary import (
     map_with_llm,
     normalize_name,
 )
+from dieta.estimate import load_nutrition_seed
 from dieta.pricing import receipt_to_frisco_factor
 from dieta.profile import IngredientStat, build_stats
 from dieta.settings import Settings
 from dieta.store import MappingStatus, Store
-from dieta.zakupy_client import CatalogItem, Purchase, ZakupyError, fetch_catalog
+from dieta.zakupy_client import (
+    CatalogItem,
+    Purchase,
+    ShelfItem,
+    ZakupyError,
+    fetch_catalog,
+    fetch_shelf,
+)
 
 FetchFn = Callable[[str, str], list[Purchase]]
 CatalogFetchFn = Callable[[str, str], list[CatalogItem]]
+ShelfFetchFn = Callable[[str, str], list[ShelfItem]]
+CATALOG_REFRESH_DAYS = 7
 MISSING_CONFIG = "Brak adresu albo tokena Zakupów w opcjach Diety."
 
 
@@ -112,6 +122,28 @@ def sync(
     return len(purchases)
 
 
+def _piece_g_by_ingredient(store: Store) -> dict[str, float]:
+    """Masa sztuki składnika (baza, w razie braku tabela startowa) — do ceny pakowanych bez gramatury."""
+    seed = load_nutrition_seed()
+    result: dict[str, float] = {}
+    for row in store.ingredient_nutrition().values():
+        found = seed.find(row.name)
+        piece_g = row.piece_g if row.piece_g is not None else (found[1].piece_g if found else None)
+        if piece_g:
+            result[row.name] = piece_g
+    return result
+
+
+def _catalog_fresh(store: Store, today: date) -> bool:
+    last = store.get_meta("catalog_sync_at")
+    if not last:
+        return False
+    try:
+        return date.fromisoformat(last) >= today - timedelta(days=CATALOG_REFRESH_DAYS)
+    except ValueError:
+        return False
+
+
 def sync_catalog(
     store: Store,
     settings: Settings,
@@ -119,12 +151,18 @@ def sync_catalog(
     *,
     fetch: CatalogFetchFn = fetch_catalog,
     ask: AskFn | None = None,
+    force: bool = False,
 ) -> int:
     """Pobiera katalog Frisco, upsertuje snapshot, mapuje nowe EAN i przelicza współczynnik cen.
+
+    Bez ``force`` nic nie robi (zwraca 0, nie rusza ``catalog_sync_error``), gdy poprzednie pobranie
+    było najwyżej 7 dni temu — nocna pętla odświeża katalog raz w tygodniu.
 
     Wiersze nieobecne w odpowiedzi zostają (``observed_at`` mówi o świeżości). Zwraca liczbę produktów;
     0 przy błędzie (wtedy ``meta.catalog_sync_error`` jest ustawione, bez wyjątku).
     """
+    if not force and _catalog_fresh(store, today):
+        return 0
     url, token = settings.zakupy_url, settings.zakupy_token
     if not url or not token:
         store.set_meta("catalog_sync_error", MISSING_CONFIG)
@@ -143,6 +181,8 @@ def sync_catalog(
     factor = receipt_to_frisco_factor(
         store.purchases(),
         store.catalog_items(),
+        _piece_g_by_ingredient(store),
+        ingredient_by_code={r.code: r.ingredient for r in mappings if r.ingredient is not None},
         durability_by_code={r.code: r.durability for r in mappings if r.durability is not None},
     )
     store.set_meta(
@@ -151,6 +191,32 @@ def sync_catalog(
     )
     store.set_meta("catalog_sync_at", today.isoformat())
     store.set_meta("catalog_sync_error", "")
+    return len(items)
+
+
+def sync_shelf(
+    store: Store,
+    settings: Settings,
+    today: date,
+    *,
+    fetch: ShelfFetchFn = fetch_shelf,
+) -> int:
+    """Pobiera cache cen Biedronki z Zakupów (tani GET) i upsertuje snapshot.
+
+    Zwraca liczbę wierszy; 0 przy błędzie (``meta.shelf_sync_error``, bez wyjątku).
+    """
+    url, token = settings.zakupy_url, settings.zakupy_token
+    if not url or not token:
+        store.set_meta("shelf_sync_error", MISSING_CONFIG)
+        return 0
+    try:
+        items = fetch(url, token)
+    except ZakupyError as exc:
+        store.set_meta("shelf_sync_error", str(exc))
+        return 0
+    store.upsert_shelf_items(items)
+    store.set_meta("shelf_sync_at", today.isoformat())
+    store.set_meta("shelf_sync_error", "")
     return len(items)
 
 

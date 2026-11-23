@@ -1,12 +1,12 @@
 import json
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 
 from dieta.settings import Settings
 from dieta.sources.base import RawIngredient, Recipe
 from dieta.store import RecipeMeta, Store
-from dieta.sync import sync_catalog
-from dieta.zakupy_client import CatalogItem, Purchase, ZakupyError, fetch_catalog
+from dieta.sync import sync_catalog, sync_shelf
+from dieta.zakupy_client import CatalogItem, Purchase, ShelfItem, ZakupyError, fetch_catalog
 
 TODAY = date(2026, 11, 22)
 FIXTURE = Path(__file__).parent / "fixtures" / "frisco_catalog_small.json"
@@ -146,5 +146,69 @@ def test_missing_config_sets_error(tmp_path: Path) -> None:
 def test_stale_rows_stay_after_resync(tmp_path: Path) -> None:
     store = _store(tmp_path)
     sync_catalog(store, _settings(tmp_path), TODAY, fetch=_fetch)
-    sync_catalog(store, _settings(tmp_path), TODAY, fetch=lambda u, t: [], ask=None)
+    sync_catalog(store, _settings(tmp_path), TODAY, fetch=lambda u, t: [], ask=None, force=True)
     assert len(store.catalog_items()) == 18
+
+
+def test_weekly_gate_skips_fetch_unless_forced(tmp_path: Path) -> None:
+    store = _store(tmp_path)
+    calls: list[int] = []
+
+    def fetch(url: str, token: str) -> list[CatalogItem]:
+        calls.append(1)
+        return _fetch(url, token)
+
+    sync_catalog(store, _settings(tmp_path), TODAY, fetch=fetch)
+    store.set_meta("catalog_sync_error", "stary błąd")
+    assert sync_catalog(store, _settings(tmp_path), TODAY + timedelta(days=7), fetch=fetch) == 0
+    assert calls == [1]
+    assert store.get_meta("catalog_sync_error") == "stary błąd"  # bramka nie rusza błędu
+    assert sync_catalog(store, _settings(tmp_path), TODAY + timedelta(days=7), fetch=fetch, force=True) > 0
+    assert calls == [1, 1]
+    assert sync_catalog(store, _settings(tmp_path), TODAY + timedelta(days=15), fetch=fetch) > 0
+    assert calls == [1, 1, 1]
+
+
+def test_factor_uses_piece_mass_for_packed_without_grams(tmp_path: Path) -> None:
+    store = _store(tmp_path)
+    store.replace_purchases([_packed("b:5900000000002", "Pomidory luz", 1.6)])  # 1,6 zł/szt., bez gramatury
+    ing = store.upsert_ingredient("pomidory", None)
+    store.set_mapping("b:5900000000002", "approved", "pomidory", None, "x")
+    store.save_ingredient_nutrition(
+        ing, kcal=18, protein=1, carbs=3, fat=0.2, piece_g=200.0,
+        source="table", confidence="high", status="auto",
+    )  # fmt: skip
+    sync_catalog(store, _settings(tmp_path), TODAY, fetch=_fetch)
+    factor = json.loads(store.get_meta("frisco_factor_json") or "{}")
+    assert factor["n"] == 1
+    assert abs(factor["value"] - 1.0) < 1e-9  # 1,6/200 g = 0,8 zł/100 g = Frisco 0,8
+
+
+def _packed(code: str, name: str, price: float) -> Purchase:
+    day = TODAY
+    return Purchase(code, "biedronka", name, (name,), 1, price, day, day, (day,), "food",
+                    unit_price=price, is_weight=False)  # fmt: skip
+
+
+def _shelf(url: str, token: str) -> list[ShelfItem]:
+    return [ShelfItem("5900000000002", "Pomidory", 1.0, "Kilogram", 6.0, None, None, None, False, False,
+                      "2026-11-23T03:00:00")]  # fmt: skip
+
+
+def test_sync_shelf_stores_rows_and_meta(tmp_path: Path) -> None:
+    store = _store(tmp_path)
+    assert sync_shelf(store, _settings(tmp_path), TODAY, fetch=_shelf) == 1
+    assert len(store.shelf_items()) == 1
+    assert store.get_meta("shelf_sync_at") == TODAY.isoformat() and store.get_meta("shelf_sync_error") == ""
+
+
+def test_sync_shelf_error_goes_to_meta_without_raising(tmp_path: Path) -> None:
+    store = _store(tmp_path)
+
+    def boom(url: str, token: str) -> list[ShelfItem]:
+        raise ZakupyError("Brak połączenia z Zakupami.")
+
+    assert sync_shelf(store, _settings(tmp_path), TODAY, fetch=boom) == 0
+    assert store.get_meta("shelf_sync_error") == "Brak połączenia z Zakupami."
+    assert sync_shelf(store, _settings(tmp_path, url=""), TODAY, fetch=_shelf) == 0
+    assert store.get_meta("shelf_sync_error")

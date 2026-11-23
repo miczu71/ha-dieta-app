@@ -6,7 +6,14 @@ from typing import Any
 
 import pytest
 
-from dieta.zakupy_client import CatalogItem, Purchase, ZakupyError, fetch_catalog, fetch_purchases
+from dieta.zakupy_client import (
+    CatalogItem,
+    Purchase,
+    ZakupyError,
+    fetch_catalog,
+    fetch_purchases,
+    fetch_shelf,
+)
 
 TOKEN = "TOKEN-TESTOWY-987"
 
@@ -192,3 +199,58 @@ def test_fetch_catalog_401_hides_token() -> None:
 def test_fetch_catalog_invalid_payload() -> None:
     with pytest.raises(ZakupyError):
         fetch_catalog("http://x:8099", TOKEN, opener=_Recorder(b'{"nope": 1}'))
+
+
+SHELF_PAYLOAD: dict[str, Any] = {
+    "generated_at": "2026-11-23T04:00:00",
+    "store": "biedronka",
+    "items": [
+        {
+            "ean": "5900001",
+            "price": 5.99,
+            "regular": 7.49,
+            "omnibus": 6.0,
+            "promo_from": "2026-11-23",
+            "promo_to": "2026-11-29",
+            "is_promotion": True,
+            "card_only": False,
+            "fetched_at": "2026-11-23T03:00:00",
+            "stock": None,
+            "product": {"name": "Masło 200 g", "brand": "X", "size": 0.2, "size_unit": "Kilogram"},
+        },
+        {"ean": "5900002", "price": 0, "fetched_at": "2026-11-23T03:00:00", "product": None},
+        {
+            "ean": "5900003",
+            "price": 2.5,
+            "regular": None,
+            "is_promotion": False,
+            "card_only": True,
+            "fetched_at": "2026-11-23T03:00:00",
+            "product": None,
+        },
+    ],
+}
+
+
+def test_fetch_shelf_parses_skips_priceless_and_null_product() -> None:
+    opener = _Recorder(json.dumps(SHELF_PAYLOAD).encode())
+    items = fetch_shelf("http://z:8099", TOKEN, opener=opener)
+    assert opener.requests[0].full_url == "http://z:8099/api/v1/shelf"
+    assert opener.requests[0].get_header("Authorization") == f"Bearer {TOKEN}"
+    assert [i.ean for i in items] == ["5900001", "5900003"]
+    butter, bare = items
+    assert (butter.name, butter.size, butter.size_unit) == ("Masło 200 g", 0.2, "Kilogram")
+    assert butter.price == 5.99 and butter.regular == 7.49 and butter.is_promotion and not butter.card_only
+    assert butter.promo_to == "2026-11-29" and butter.fetched_at == "2026-11-23T03:00:00"
+    assert bare.name is None and bare.size is None and bare.card_only and bare.regular is None
+
+
+def test_fetch_shelf_errors() -> None:
+    with pytest.raises(ZakupyError, match="Nieprawidłowa odpowiedź"):
+        fetch_shelf("http://z:8099", TOKEN, opener=_Recorder(b'{"nope": 1}'))
+    with pytest.raises(ZakupyError, match="Brak tokena"):
+        fetch_shelf("http://z:8099", "", opener=_Recorder(b"{}"))
+    err = urllib.error.HTTPError("http://z", 401, "x", None, None)  # type: ignore[arg-type]
+    with pytest.raises(ZakupyError) as info:
+        fetch_shelf("http://z:8099", TOKEN, opener=_Recorder(error=err))
+    assert TOKEN not in str(info.value)

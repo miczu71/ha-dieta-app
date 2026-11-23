@@ -50,6 +50,23 @@ class CatalogItem:
     observed_at: str
 
 
+@dataclass(frozen=True)
+class ShelfItem:
+    """Cena z półki Biedronki (cache Zakupów, `/api/v1/shelf`)."""
+
+    ean: str
+    name: str | None
+    size: float | None
+    size_unit: str | None
+    price: float
+    regular: float | None
+    promo_from: str | None
+    promo_to: str | None
+    is_promotion: bool
+    card_only: bool
+    fetched_at: str
+
+
 Opener = Callable[[urllib.request.Request], Any]
 
 
@@ -144,6 +161,40 @@ def fetch_catalog(
     payload = _get_json(base_url, token, f"/api/v1/catalog?{query}", opener)
     try:
         items = (_parse_catalog_item(row, source) for row in payload["products"])
+        return [item for item in items if item is not None]
+    except (ValueError, KeyError, TypeError, AttributeError):
+        raise ZakupyError("Nieprawidłowa odpowiedź Zakupów.") from None
+
+
+def _opt_str(value: object) -> str | None:
+    return None if value is None else str(value)
+
+
+def _parse_shelf_item(row: dict[str, Any]) -> ShelfItem | None:
+    price = _opt_float(row.get("price"))
+    if price is None or price <= 0:
+        return None
+    product = row.get("product") or {}
+    return ShelfItem(
+        ean=str(row["ean"]),
+        name=_opt_str(product.get("name")),
+        size=_opt_float(product.get("size")),
+        size_unit=_opt_str(product.get("size_unit")),
+        price=price,
+        regular=_opt_float(row.get("regular")),
+        promo_from=_opt_str(row.get("promo_from")),
+        promo_to=_opt_str(row.get("promo_to")),
+        is_promotion=bool(row.get("is_promotion")),
+        card_only=bool(row.get("card_only")),
+        fetched_at=str(row["fetched_at"]),
+    )
+
+
+def fetch_shelf(base_url: str, token: str, *, opener: Opener | None = None) -> list[ShelfItem]:
+    """Cache cen Biedronki (`/api/v1/shelf`); wiersze bez ceny > 0 są pomijane."""
+    payload = _get_json(base_url, token, "/api/v1/shelf", opener)
+    try:
+        items = (_parse_shelf_item(row) for row in payload["items"])
         return [item for item in items if item is not None]
     except (ValueError, KeyError, TypeError, AttributeError):
         raise ZakupyError("Nieprawidłowa odpowiedź Zakupów.") from None

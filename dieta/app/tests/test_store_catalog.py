@@ -18,12 +18,12 @@ def _v7_db(path: Path) -> None:
     conn.close()
 
 
-def test_migration_v7_to_v8_creates_tables_and_backup(tmp_path: Path) -> None:
+def test_migration_v7_to_v9_creates_tables_and_backup(tmp_path: Path) -> None:
     path = tmp_path / "dieta.db"
     _v7_db(path)
     store = Store(path)
     with sqlite3.connect(path) as check:
-        assert check.execute("PRAGMA user_version").fetchone()[0] == 8
+        assert check.execute("PRAGMA user_version").fetchone()[0] == 9
         tables = {r[0] for r in check.execute("SELECT name FROM sqlite_master WHERE type='table'")}
     assert {"catalog_item", "catalog_map"} <= tables
     assert store.ingredient_durability("ryż") == "dry"

@@ -214,3 +214,55 @@ def test_plan_cost_without_prices_has_zero_coverage(tmp_path: Path) -> None:
     result = plan_cost(store, settings, WEEK)
     assert result.total == 0.0 and result.coverage == 0.0
     assert all(s.cost == 0.0 and s.coverage == 0.0 for s in result.sessions)
+
+
+def test_build_context_cascades_frisco_and_caches_per_request(tmp_path: Path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    from dieta import shopping
+    from dieta.pricing import cascade_prices
+    from dieta.zakupy_client import CatalogItem
+
+    store, settings, ids = _setup(tmp_path, prices=False)  # paragony bez cen
+    store.upsert_catalog_items(
+        [CatalogItem("590001", "Kurczak", None, 1.0, "Kilogram", 24.0, "2026-11-20")], "2026-11-22"
+    )
+    store.set_catalog_map("590001", "approved", "kurczak", "x")
+    store.set_meta("frisco_factor_json", '{"value": 0.5, "n": 3, "by_durability": {}}')
+    calls: list[int] = []
+
+    def spy(*a, **k):  # type: ignore[no-untyped-def]
+        calls.append(1)
+        return cascade_prices(*a, **k)
+
+    monkeypatch.setattr(shopping, "cascade_prices", spy)
+    ctx = shopping.build_context(store, TODAY, WEEK)
+    assert shopping.build_context(store, TODAY, WEEK) is ctx and len(calls) == 1
+    price = ctx.prices["kurczak"]
+    assert price.source == "frisco" and price.estimate and price.price100 == pytest.approx(1.2)
+    store.set_meta("frisco_factor_json", '{"value": 1.0, "n": 3, "by_durability": {}}')
+    assert shopping.build_context(store, TODAY, WEEK).prices["kurczak"].price100 == pytest.approx(2.4)
+    assert len(calls) == 2  # zapis unieważnia cache
+
+
+def test_plan_cost_and_list_call_cascade_once_per_request(tmp_path: Path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    from dieta import shopping
+
+    store, settings, _ = _setup(tmp_path)
+    calls: list[int] = []
+    real = shopping.cascade_prices
+    monkeypatch.setattr(shopping, "cascade_prices", lambda *a, **k: calls.append(1) or real(*a, **k))
+    plan_cost(store, settings, WEEK)
+    shopping_list(store, settings, WEEK, TODAY)
+    assert len(calls) == 1
+
+
+def test_cheaper_mode_plan_still_builds_with_cascade(tmp_path: Path) -> None:
+    from dataclasses import replace
+
+    from dieta import plan_service
+
+    store, settings, _ = _setup(tmp_path)
+    ctx = plan_service.build_context(store)
+    assert ctx.prices["kurczak"].source in ("receipt", "receipt_old")
+    stat_map = {s.ingredient: s for s in plan_service.stats(store, settings, TODAY)}
+    ratio = plan_service._home_ratio_fn(store, replace(settings, cheaper_mode=True), stat_map)
+    assert 0.0 <= ratio(1) <= 1.0

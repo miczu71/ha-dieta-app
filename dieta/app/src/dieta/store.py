@@ -12,13 +12,13 @@ from contextlib import closing
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from pathlib import Path
-from typing import Literal, cast
+from typing import Any, Literal, cast
 
 from dieta.dictionary import Durability, normalize_name
 from dieta.match import Familiarity, familiarity
 from dieta.profile import IngredientStat
 from dieta.sources.base import Recipe
-from dieta.zakupy_client import CatalogItem, Purchase
+from dieta.zakupy_client import CatalogItem, Purchase, ShelfItem
 
 PERSON_IDS = (1, 2)
 CatalogStatus = Literal["rule", "ai", "pending", "approved", "excluded"]
@@ -238,8 +238,26 @@ _MIGRATIONS: list[str] = [
         source_name TEXT NOT NULL DEFAULT ''
     );
     """,
+    # v9 (E6b.3): snapshot cache cen Biedronki (`/api/v1/shelf` Zakupów); tylko dodaje tabelę.
+    """
+    CREATE TABLE shelf_item (
+        ean TEXT PRIMARY KEY,
+        name TEXT,
+        size REAL,
+        size_unit TEXT,
+        price REAL NOT NULL,
+        regular REAL,
+        promo_from TEXT,
+        promo_to TEXT,
+        is_promotion INTEGER NOT NULL,
+        card_only INTEGER NOT NULL,
+        fetched_at TEXT NOT NULL,
+        store TEXT
+    );
+    """,
 ]
-BACKUP_BEFORE_VERSION = 8  # migracja v8 (katalog Frisco): kopia pliku bazy przed pierwszym uruchomieniem
+# migracje v8 (katalog Frisco) i v9 (cache Biedronki): kopia pliku bazy przed pierwszym uruchomieniem
+BACKUP_BEFORE_VERSIONS = (8, 9)
 
 
 @dataclass(frozen=True)
@@ -465,6 +483,17 @@ def _check_person(person_id: int) -> None:
         raise ValueError(f"person_id must be one of {PERSON_IDS}, got {person_id}")
 
 
+class _CountingConnection(sqlite3.Connection):
+    """Połączenie liczące zatwierdzone bloki ``with conn`` (zapisy), do unieważniania cache."""
+
+    commits = 0
+
+    def __exit__(self, *args: Any) -> Literal[False]:
+        super().__exit__(*args)
+        _CountingConnection.commits += 1
+        return False
+
+
 def _migrate(conn: sqlite3.Connection) -> None:
     current = conn.execute("PRAGMA user_version").fetchone()[0]
     for version, script in enumerate(_MIGRATIONS, start=1):
@@ -476,17 +505,24 @@ def _migrate(conn: sqlite3.Connection) -> None:
 class Store:
     def __init__(self, path: Path) -> None:
         self._path = path
+        self.cache: dict[str, Any] = {}  # wyniki liczone z bazy, kluczowane ``data_version``
         path.parent.mkdir(parents=True, exist_ok=True)
         existed = path.exists() and path.stat().st_size > 0
         with closing(self._connect()) as conn:
             version = conn.execute("PRAGMA user_version").fetchone()[0]
-            backup = path.with_name(path.name + f".pre-v{BACKUP_BEFORE_VERSION}")
-            if existed and 0 < version < BACKUP_BEFORE_VERSION and not backup.exists():
-                shutil.copy2(path, backup)
+            for target in BACKUP_BEFORE_VERSIONS:
+                backup = path.with_name(path.name + f".pre-v{target}")
+                if existed and 0 < version < target and not backup.exists():
+                    shutil.copy2(path, backup)
             _migrate(conn)
 
     def _connect(self) -> sqlite3.Connection:
-        return sqlite3.connect(self._path)
+        return sqlite3.connect(self._path, factory=_CountingConnection)
+
+    @property
+    def data_version(self) -> int:
+        """Licznik zapisów (commitów) w tym procesie; klucz cache wyników liczonych z bazy."""
+        return _CountingConnection.commits
 
     def profile(self, person_id: int) -> Profile | None:
         _check_person(person_id)
@@ -736,6 +772,49 @@ class Store:
                 "SELECT ean, name, brand, size, size_unit, price, observed_at FROM catalog_item ORDER BY ean"
             ).fetchall()
         return [CatalogItem(*row) for row in rows]
+
+    # --- Cache Biedronki (migracja v9) ---
+
+    def upsert_shelf_items(self, items: Iterable[ShelfItem], store: str | None = None) -> None:
+        rows = [
+            (
+                i.ean,
+                i.name,
+                i.size,
+                i.size_unit,
+                i.price,
+                i.regular,
+                i.promo_from,
+                i.promo_to,
+                int(i.is_promotion),
+                int(i.card_only),
+                i.fetched_at,
+                store,
+            )
+            for i in items
+        ]
+        with closing(self._connect()) as conn, conn:
+            conn.executemany(
+                "INSERT INTO shelf_item (ean, name, size, size_unit, price, regular, promo_from, promo_to, "
+                "is_promotion, card_only, fetched_at, store) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
+                "ON CONFLICT(ean) DO UPDATE SET name = excluded.name, size = excluded.size, "
+                "size_unit = excluded.size_unit, price = excluded.price, regular = excluded.regular, "
+                "promo_from = excluded.promo_from, promo_to = excluded.promo_to, "
+                "is_promotion = excluded.is_promotion, card_only = excluded.card_only, "
+                "fetched_at = excluded.fetched_at, store = excluded.store",
+                rows,
+            )
+
+    def shelf_items(self) -> list[ShelfItem]:
+        with closing(self._connect()) as conn:
+            rows = conn.execute(
+                "SELECT ean, name, size, size_unit, price, regular, promo_from, promo_to, is_promotion, "
+                "card_only, fetched_at FROM shelf_item ORDER BY ean"
+            ).fetchall()
+        return [
+            ShelfItem(r[0], r[1], r[2], r[3], r[4], r[5], r[6], r[7], bool(r[8]), bool(r[9]), r[10])
+            for r in rows
+        ]
 
     def catalog_map_rows(self) -> list[CatalogMapRow]:
         with closing(self._connect()) as conn:
