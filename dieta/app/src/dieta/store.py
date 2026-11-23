@@ -207,6 +207,17 @@ _MIGRATIONS: list[str] = [
         PRIMARY KEY (day, person_id, slot)
     );
     """,
+    """
+    ALTER TABLE purchase ADD COLUMN unit_price REAL;
+    ALTER TABLE purchase ADD COLUMN is_weight INTEGER;
+    ALTER TABLE purchase ADD COLUMN last_unit_price REAL;
+    CREATE TABLE shopping_state (
+        week_start TEXT NOT NULL,
+        ingredient_id INTEGER NOT NULL,
+        state TEXT NOT NULL CHECK(state IN ('force','checked','sent')),
+        PRIMARY KEY (week_start, ingredient_id, state)
+    );
+    """,
 ]
 
 
@@ -531,18 +542,26 @@ class Store:
                 json.dumps([d.isoformat() for d in p.dates]),
                 p.category,
                 stamp,
+                p.unit_price,
+                None if p.is_weight is None else int(p.is_weight),
+                p.last_unit_price,
             )
             for p in purchases
         ]
         with closing(self._connect()) as conn, conn:
             conn.execute("DELETE FROM purchase")
-            conn.executemany("INSERT INTO purchase VALUES (?,?,?,?,?,?,?,?,?,?,?)", rows)
+            conn.executemany(
+                "INSERT INTO purchase (code, chain, name, names_json, purchases, spend, first, last, "
+                "dates_json, category, fetched_at, unit_price, is_weight, last_unit_price) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                rows,
+            )
 
     def purchases(self) -> list[Purchase]:
         with closing(self._connect()) as conn:
             rows = conn.execute(
-                "SELECT code, chain, name, names_json, purchases, spend, first, last, dates_json, category "
-                "FROM purchase ORDER BY code"
+                "SELECT code, chain, name, names_json, purchases, spend, first, last, dates_json, category, "
+                "unit_price, is_weight, last_unit_price FROM purchase ORDER BY code"
             ).fetchall()
         return [
             Purchase(
@@ -556,8 +575,25 @@ class Store:
                 last=date.fromisoformat(last),
                 dates=tuple(date.fromisoformat(d) for d in json.loads(dates_json)),
                 category=category,
+                unit_price=unit_price,
+                is_weight=None if is_weight is None else bool(is_weight),
+                last_unit_price=last_unit_price,
             )
-            for code, chain, name, names_json, purchases_n, spend, first, last, dates_json, category in rows
+            for (
+                code,
+                chain,
+                name,
+                names_json,
+                purchases_n,
+                spend,
+                first,
+                last,
+                dates_json,
+                category,
+                unit_price,
+                is_weight,
+                last_unit_price,
+            ) in rows
         ]
 
     def mapped_codes(self) -> set[str]:
@@ -1305,3 +1341,31 @@ class Store:
                 (day_from.isoformat(), day_to.isoformat()),
             ).fetchall()
         return [MealLogEntry(date.fromisoformat(r[0]), *r[1:]) for r in rows]
+
+    # --- stan listy zakupów (migracja v7) ---
+
+    def shopping_states(self, week_start: str) -> dict[str, set[int]]:
+        """Stan → zbiór składników dla tygodnia (``force``/``checked``/``sent``); puste stany pomijane."""
+        with closing(self._connect()) as conn:
+            rows = conn.execute(
+                "SELECT state, ingredient_id FROM shopping_state WHERE week_start = ?", (week_start,)
+            ).fetchall()
+        result: dict[str, set[int]] = {}
+        for state, ingredient_id in rows:
+            result.setdefault(state, set()).add(int(ingredient_id))
+        return result
+
+    def set_shopping_state(self, week_start: str, ingredient_id: int, state: str) -> None:
+        with closing(self._connect()) as conn, conn:
+            conn.execute(
+                "INSERT INTO shopping_state (week_start, ingredient_id, state) VALUES (?,?,?) "
+                "ON CONFLICT DO NOTHING",
+                (week_start, ingredient_id, state),
+            )
+
+    def clear_shopping_state(self, week_start: str, ingredient_id: int, state: str) -> None:
+        with closing(self._connect()) as conn, conn:
+            conn.execute(
+                "DELETE FROM shopping_state WHERE week_start = ? AND ingredient_id = ? AND state = ?",
+                (week_start, ingredient_id, state),
+            )

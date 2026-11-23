@@ -117,3 +117,18 @@ def test_empty_token_fails_before_network() -> None:
 def test_non_http_scheme_is_rejected() -> None:
     with pytest.raises(ZakupyError):
         fetch_purchases("file:///etc/passwd", TOKEN, opener=_Recorder(b"{}"))
+
+
+def test_old_zakupy_response_has_no_prices() -> None:
+    rec = _Recorder(body=json.dumps(PAYLOAD).encode())
+    [p] = fetch_purchases("http://z:8099", TOKEN, opener=rec)
+    assert (p.unit_price, p.is_weight, p.last_unit_price) == (None, None, None)
+
+
+def test_new_zakupy_response_parses_prices() -> None:
+    row = dict(PAYLOAD["products"][0], unit_price=24.9, is_weight=True, last_unit_price=26.5)
+    other = dict(PAYLOAD["products"][0], code="x", unit_price=None, is_weight=False, last_unit_price=None)
+    body = json.dumps({"products": [row, other]}).encode()
+    a, b = fetch_purchases("http://z:8099", TOKEN, opener=_Recorder(body=body))
+    assert (a.unit_price, a.is_weight, a.last_unit_price) == (24.9, True, 26.5)
+    assert (b.unit_price, b.is_weight, b.last_unit_price) == (None, False, None)

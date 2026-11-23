@@ -36,12 +36,12 @@ def test_migration_v5_to_v6_keeps_data_and_adds_meal_log(tmp_path: Path) -> None
     )
     conn.commit()
     conn.close()
-    assert len(_MIGRATIONS) == 6
+    assert len(_MIGRATIONS) == 7
 
     store = Store(path)
 
     check = sqlite3.connect(path)
-    assert check.execute("PRAGMA user_version").fetchone()[0] == 6
+    assert check.execute("PRAGMA user_version").fetchone()[0] == 7
     assert check.execute("SELECT COUNT(*) FROM meal_log").fetchone()[0] == 0
     assert check.execute("SELECT COUNT(*) FROM plan").fetchone()[0] == 1
     assert store.latest_weight(1) == 80.0

@@ -77,3 +77,9 @@ configuration:
   discovery:
     name: Discovery (0-3)
     description: How many sessions per week come from recipes not bought yet (0 = familiar only).
+  todo_entity:
+    name: Home Assistant todo list
+    description: Todo entity (e.g. todo.shopping) that the "Send to todo" button on the List screen adds items to. Empty = button hidden.
+  cheaper_mode:
+    name: Cheaper mode
+    description: The planner favours recipes made of ingredients you probably already have at home. Off = plan unchanged.

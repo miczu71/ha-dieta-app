@@ -49,6 +49,8 @@ options:
   max_minutes_weekday: 45
   session_days_max: 4
   discovery: 1
+  todo_entity: ""
+  cheaper_mode: false
 schema:
   log_level: "list(debug|info|warning|error)"
   person_1_name: "str?"
@@ -78,3 +80,5 @@ schema:
   max_minutes_weekday: "int(10,240)"
   session_days_max: "int(1,7)"
   discovery: "int(0,3)"
+  todo_entity: "match(^(todo\\.[a-z0-9_]+)?$)?"
+  cheaper_mode: bool

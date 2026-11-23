@@ -58,6 +58,8 @@ class Settings:
     max_minutes_weekday: int = 45
     session_days_max: int = 4
     discovery: int = 1
+    todo_entity: str = ""
+    cheaper_mode: bool = False
 
     @property
     def db_path(self) -> Path:
@@ -145,4 +147,6 @@ def load_settings() -> Settings:
         max_minutes_weekday=_bounded(options, "max_minutes_weekday", 45, 10, 240),
         session_days_max=_bounded(options, "session_days_max", 4, 1, 7),
         discovery=_bounded(options, "discovery", 1, 0, 3),
+        todo_entity=str(options.get("todo_entity") or "").strip(),
+        cheaper_mode=options.get("cheaper_mode") is True,
     )

@@ -1,7 +1,10 @@
 import sqlite3
+from dataclasses import replace
 from datetime import date, timedelta
 from pathlib import Path
 from typing import Any
+
+import pytest
 
 from dieta.settings import Settings
 from dieta.store import _MIGRATIONS, Profile, Store
@@ -221,3 +224,53 @@ def test_upsert_and_meta_roundtrip(tmp_path: Path) -> None:
     store.set_mapping("zz", "pending", None, None, "src")
     assert store.mapped_codes() == {"zz"}
     assert store.ingredient_durability("nieistnieje") is None
+
+
+def test_migration_v6_to_v7_keeps_data_and_adds_columns(tmp_path: Path) -> None:
+    path = tmp_path / "v6.db"
+    conn = sqlite3.connect(path)
+    for version, script in enumerate(_MIGRATIONS[:6], start=1):
+        conn.executescript(f"BEGIN;{script}PRAGMA user_version = {version};COMMIT;")
+    conn.execute(
+        "INSERT INTO purchase VALUES ('c1','lidl','Mleko','[\"Mleko 1l\"]',3,9.0,"
+        "'2026-01-01','2026-11-01','[\"2026-01-01\"]','food','x')"
+    )
+    conn.commit()
+    conn.close()
+    assert len(_MIGRATIONS) == 7
+
+    store = Store(path)
+
+    [p] = store.purchases()
+    assert p.code == "c1" and p.spend == 9.0
+    assert (p.unit_price, p.is_weight, p.last_unit_price) == (None, None, None)
+    with sqlite3.connect(path) as check:
+        assert check.execute("PRAGMA user_version").fetchone()[0] == 7
+        tables = {r[0] for r in check.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+        assert "shopping_state" in tables
+
+
+def test_replace_purchases_roundtrips_prices_and_old_response(tmp_path: Path) -> None:
+    store = Store(tmp_path / "dieta.db")
+    new = replace(_buy("c1", "Kurczak"), unit_price=24.9, is_weight=True, last_unit_price=26.0)
+    store.replace_purchases([new, _buy("c2", "Mleko")])
+    got = {p.code: p for p in store.purchases()}
+    assert (got["c1"].unit_price, got["c1"].is_weight, got["c1"].last_unit_price) == (24.9, True, 26.0)
+    assert (got["c2"].unit_price, got["c2"].is_weight, got["c2"].last_unit_price) == (None, None, None)
+    store.replace_purchases([replace(new, is_weight=False)])
+    assert store.purchases()[0].is_weight is False
+
+
+def test_shopping_state_set_clear_and_isolated_by_week(tmp_path: Path) -> None:
+    store = Store(tmp_path / "dieta.db")
+    assert store.shopping_states("2026-11-23") == {}
+    store.set_shopping_state("2026-11-23", 5, "force")
+    store.set_shopping_state("2026-11-23", 5, "force")  # idempotentne
+    store.set_shopping_state("2026-11-23", 6, "checked")
+    store.set_shopping_state("2026-11-30", 7, "sent")
+    assert store.shopping_states("2026-11-23") == {"force": {5}, "checked": {6}}
+    store.clear_shopping_state("2026-11-23", 5, "force")
+    assert store.shopping_states("2026-11-23") == {"checked": {6}}
+    assert store.shopping_states("2026-11-30") == {"sent": {7}}
+    with pytest.raises(sqlite3.IntegrityError):
+        store.set_shopping_state("2026-11-23", 1, "bogus")

@@ -34,6 +34,9 @@ class Purchase:
     last: date
     dates: tuple[date, ...]
     category: str
+    unit_price: float | None = None  # mediana płaconej ceny (zł/kg gdy is_weight, inaczej zł/szt.)
+    is_weight: bool | None = None  # None = stary Zakupy bez pól cen
+    last_unit_price: float | None = None
 
 
 Opener = Callable[[urllib.request.Request], Any]
@@ -41,6 +44,10 @@ Opener = Callable[[urllib.request.Request], Any]
 
 def _open(req: urllib.request.Request) -> Any:
     return urllib.request.urlopen(req, timeout=TIMEOUT_S)
+
+
+def _opt_float(value: object) -> float | None:
+    return None if value is None else float(str(value))
 
 
 def _parse_product(row: dict[str, Any]) -> Purchase:
@@ -55,6 +62,9 @@ def _parse_product(row: dict[str, Any]) -> Purchase:
         last=date.fromisoformat(str(row["last"])),
         dates=tuple(date.fromisoformat(str(d)) for d in row["dates"]),
         category=str(row.get("category") or "food"),
+        unit_price=_opt_float(row.get("unit_price")),
+        is_weight=None if row.get("is_weight") is None else bool(row["is_weight"]),
+        last_unit_price=_opt_float(row.get("last_unit_price")),
     )
 
 

@@ -77,3 +77,9 @@ configuration:
   discovery:
     name: Odkrywanie (0–3)
     description: Ile sesji w tygodniu wybrać spośród przepisów jeszcze niekupowanych (0 = tylko znajome).
+  todo_entity:
+    name: Lista todo w Home Assistant
+    description: Encja todo (np. todo.zakupy), do której przycisk „Wyślij do todo" na ekranie Lista dodaje pozycje. Puste = przycisk ukryty.
+  cheaper_mode:
+    name: Tryb „taniej"
+    description: Planer premiuje przepisy ze składników, które prawdopodobnie masz już w domu. Wyłączone = plan bez zmian.

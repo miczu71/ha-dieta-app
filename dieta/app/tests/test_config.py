@@ -52,3 +52,10 @@ def test_new_options_are_bounded(tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     loaded = load_settings()
     assert (loaded.crawl_daily_limit, loaded.familiar_threshold) == (150, 50)
     assert loaded.sources == ("lidl",)
+
+
+def test_e6_options_in_config(config: dict[str, object]) -> None:
+    assert config["options"]["todo_entity"] == ""  # type: ignore[index]
+    assert config["options"]["cheaper_mode"] is False  # type: ignore[index]
+    assert config["schema"]["cheaper_mode"] == "bool"  # type: ignore[index]
+    assert config["schema"]["todo_entity"] == "match(^(todo\\.[a-z0-9_]+)?$)?"  # type: ignore[index]

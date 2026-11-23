@@ -128,3 +128,13 @@ def test_bad_push_time_falls_back_without_touching_refresh_time(
     loaded = load_settings()
     assert loaded.push_time == "07:00"
     assert loaded.refresh_time == "03:30"
+
+
+def test_e6_option_defaults(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    s = _load(tmp_path, monkeypatch, {})
+    assert s.todo_entity == "" and s.cheaper_mode is False
+
+
+def test_e6_options_are_read(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    s = _load(tmp_path, monkeypatch, {"todo_entity": " todo.zakupy ", "cheaper_mode": True})
+    assert s.todo_entity == "todo.zakupy" and s.cheaper_mode is True
