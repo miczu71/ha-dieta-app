@@ -61,6 +61,12 @@ def test_price_per_100g_packed_without_grammage_uses_piece_g() -> None:
     assert price_per_100g(_p("a", ("Cebula",), 1.0, False), 100.0) == pytest.approx(1.0)
 
 
+def test_price_per_100g_multi_piece_pack_is_not_priced_by_piece_mass() -> None:
+    # „10 szt." za 12 zł: masa jednej sztuki (60 g) nie jest masą opakowania
+    assert price_per_100g(_p("a", ("Jajka M 10 szt.",), 12.0, False), 60.0) is None
+    assert price_per_100g(_p("a", ("Jajko 1 szt.",), 1.0, False), 60.0) == pytest.approx(1.0 / 60 * 100)
+
+
 def test_price_per_100g_none_cases() -> None:
     assert price_per_100g(_p("a", ("Cebula",), 1.0, False), None) is None
     assert price_per_100g(_p("a", ("Cebula 100g",), None, None), 100.0) is None

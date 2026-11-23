@@ -6,6 +6,7 @@ Każda zmiana to POST + redirect 303 na ``../plan?tydzien=…``; ostrzeżenia pl
 
 from __future__ import annotations
 
+import logging
 from datetime import date
 from urllib.parse import urlencode
 
@@ -19,6 +20,8 @@ from ..settings import Settings
 from ..shopping import plan_cost
 from ..store import Store
 from .kupujemy import queue_size
+
+log = logging.getLogger(__name__)
 
 MAX_WARNINGS = 5
 MAX_WARNING_CHARS = 200
@@ -64,7 +67,12 @@ def make_plan_router(settings: Settings, store: Store, templates: Jinja2Template
         week = week_of(tydzien)
         warnings = request.query_params.getlist("w")
         view = svc.view(store, settings, week)
-        cost = plan_cost(store, settings, week) if view.plan is not None else None
+        cost = None
+        if view.plan is not None:
+            try:
+                cost = plan_cost(store, settings, week)
+            except Exception:  # koszt to panel poboczny — nie blokuje planu
+                log.exception("Koszt planu niedostępny (tydzień %s)", week)
         base = {
             "version": request.app.state.version,
             "queue_size": queue_size(store),

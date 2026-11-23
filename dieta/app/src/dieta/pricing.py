@@ -18,6 +18,8 @@ _PACK_RE = re.compile(
     r"(?<![\w.,])(?:(\d+)\s*[x×]\s*)?(\d+(?:[.,]\d+)?)\s*(kg|g|ml|l)\b",
     re.IGNORECASE,
 )
+# „10 szt.", „6 sztuk": opakowanie wielosztukowe — masa jednej sztuki nie jest masą opakowania
+_COUNT_RE = re.compile(r"(?<![\w.,])(\d+)\s*(?:szt|sztuk)\b", re.IGNORECASE)
 _UNIT_G = {"kg": 1000.0, "g": 1.0, "l": 1000.0, "ml": 1.0}  # litr/mililitr → gramy przy gęstości 1
 
 
@@ -53,7 +55,8 @@ def price_per_100g(purchase: Purchase, piece_g: float | None) -> float | None:
     pack = parse_pack_g(purchase.names)
     if pack is not None:
         return price / pack * 100
-    if piece_g is not None and piece_g > 0:
+    multi_piece = any(int(m.group(1)) > 1 for n in purchase.names if (m := _COUNT_RE.search(n)))
+    if piece_g is not None and piece_g > 0 and not multi_piece:
         return price / piece_g * 100
     return None
 
