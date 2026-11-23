@@ -106,13 +106,17 @@ class PlanView:
     days: tuple[DayView, ...]
 
 
+def monday(day: date) -> date:
+    return day - timedelta(days=day.weekday())
+
+
 def monday_of(raw: str | None, today: date) -> date:
     """Poniedziałek tygodnia zawierającego ``raw`` (ISO); brak albo zły format → tydzień ``today``."""
     try:
         day = date.fromisoformat(raw) if raw else today
     except ValueError:
         day = today
-    return day - timedelta(days=day.weekday())
+    return monday(day)
 
 
 def _kcal_ok(r: RecipeRow) -> bool:
@@ -148,10 +152,23 @@ def _candidate(store: Store, r: RecipeRow) -> planner.Candidate:
     )
 
 
+def _stat_map(store: Store, settings: Settings) -> dict[str, IngredientStat]:
+    return {s.ingredient: s for s in stats(store, settings, date.today())}
+
+
+def candidates_for(
+    store: Store, settings: Settings, recipe_ids: Iterable[int]
+) -> dict[int, planner.Candidate]:
+    """Kandydaci tylko dla podanych przepisów (bilans/odhaczanie), bez ładowania całego katalogu."""
+    stat_map = _stat_map(store, settings)
+    rows = {rid: store.recipe(rid, stat_map, DEFAULT_BASICS) for rid in set(recipe_ids)}
+    return {rid: _candidate(store, row) for rid, row in rows.items() if row is not None}
+
+
 def build_pool(store: Store, settings: Settings, extra_ids: Iterable[int] = ()) -> Pool:
     """Pula do planera. ``extra_ids`` (przepisy już w planie) dołączane zawsze, nawet gdy odrzucone,
     żeby wymiana i bilans nie padały na przepisie, który później odrzucono w katalogu."""
-    stat_map: dict[str, IngredientStat] = {s.ingredient: s for s in stats(store, settings, date.today())}
+    stat_map = _stat_map(store, settings)
     items: list[planner.Candidate] = []
     estimated: set[int] = set()
     for r in store.recipes(stat_map, DEFAULT_BASICS):

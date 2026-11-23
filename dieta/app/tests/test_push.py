@@ -65,7 +65,7 @@ def _store(tmp_path: Path, *, approve: bool = True) -> tuple[Store, Settings]:
 
 
 def test_compose_formats_message() -> None:
-    title, message = push.compose(_day_log(), {1: 2, 2: 1}, LABELS, "/app/x")
+    title, message = push.compose(_day_log(), {1: 2, 2: 1}, LABELS)
     assert title == "Plan na dziś"
     assert "Obiad: Owsianka — Ala 1,4 (520 kcal), Olek 1,0 (370 kcal)" in message
     assert "Cel: Ala 2000 kcal, Olek 2400 kcal" in message
@@ -90,7 +90,7 @@ def test_compose_skips_missing_person_and_zero_unanswered() -> None:
         (PersonDayLog("Ala", 2000.0, 0.0, 0.0, 0.0, 0.0, 0), None),
         meals,
     )
-    _, message = push.compose(day, {1: 0, 2: 0}, LABELS, "/app/x")
+    _, message = push.compose(day, {1: 0, 2: 0}, LABELS)
     assert "Kolacja: Zupa — Ala 1,0 (300 kcal)" in message
     assert "Olek" not in message
     assert "Wczoraj" not in message
@@ -99,7 +99,7 @@ def test_compose_skips_missing_person_and_zero_unanswered() -> None:
 def test_compose_truncates_long_message() -> None:
     long_title = "Z" * 1500
     meals = (MealLog("lunch", "Obiad", long_title, 1, 1, (MealPerson(1.0, 500.0, None, None, None), None)),)
-    _, message = push.compose(_day_log(meals), {1: 0, 2: 0}, LABELS, "/app/x")
+    _, message = push.compose(_day_log(meals), {1: 0, 2: 0}, LABELS)
     assert len(message) == push.MAX_CHARS
     assert message.endswith("…")
 

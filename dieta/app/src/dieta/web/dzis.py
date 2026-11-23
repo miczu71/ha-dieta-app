@@ -83,10 +83,10 @@ def make_dzis_router(settings: Settings, store: Store, templates: Jinja2Template
                 "page_title": "Dziś",
                 "v": view,
                 "is_today": day == today,
-                "week": day - timedelta(days=day.weekday()),
+                "week": svc.monday(day),
                 "prev_day": day - timedelta(days=1),
                 "next_day": day + timedelta(days=1),
-                "day_name": rz.DAY_NAMES[day.weekday()],
+                "day_name": svc.DAY_NAMES[day.weekday()],
                 "labels": labels,
                 "pids": PERSON_IDS,
                 "notice_text": NOTICE_TEXT.get(notice, ""),
@@ -111,7 +111,7 @@ def make_dzis_router(settings: Settings, store: Store, templates: Jinja2Template
             return go(today, rz.NOTICE_BAD)
         person = int(osoba) if osoba.isdecimal() else 0
         if stan == "reset":
-            return go(day, rz.clear(store, settings, day, person, slot, today).notice)
+            return go(day, rz.clear(store, day, person, slot, today).notice)
         status = STATUS_BY_STATE.get(stan)
         ok_kcal, kcal_value = _number(kcal)
         ok_protein, protein = _number(bialko)

@@ -56,9 +56,9 @@ def test_overwrite_and_clear(tmp_path: Path) -> None:
     rz.mark(store, settings, WEEK, 1, "lunch", "skipped", TODAY)
     (row,) = store.meal_log(WEEK, WEEK)
     assert (row.status, row.kcal, row.protein) == ("skipped", 0.0, None)
-    assert rz.clear(store, settings, WEEK, 1, "lunch", TODAY).notice == rz.NOTICE_OK
+    assert rz.clear(store, WEEK, 1, "lunch", TODAY).notice == rz.NOTICE_OK
     assert store.meal_log(WEEK, WEEK) == []
-    assert rz.clear(store, settings, WEEK, 1, "lunch", TODAY).notice == rz.NOTICE_OK
+    assert rz.clear(store, WEEK, 1, "lunch", TODAY).notice == rz.NOTICE_OK
 
 
 def test_snapshot_survives_plan_change(tmp_path: Path) -> None:
@@ -90,7 +90,7 @@ def test_window(tmp_path: Path) -> None:
         rz.mark(store, settings, TODAY + timedelta(days=1), 1, "lunch", "skipped", TODAY).notice
         == "out_of_window"
     )
-    assert rz.clear(store, settings, TODAY + timedelta(days=1), 1, "lunch", TODAY).notice == "out_of_window"
+    assert rz.clear(store, TODAY + timedelta(days=1), 1, "lunch", TODAY).notice == "out_of_window"
 
 
 def test_draft_and_no_plan(tmp_path: Path) -> None:
@@ -173,8 +173,8 @@ def test_day_balance_and_unanswered(tmp_path: Path) -> None:
     assert by_slot["lunch"].per_person[0].status == "skipped"  # type: ignore[union-attr]
     assert by_slot["dinner"].per_person[0].sub_name == "Pizza"  # type: ignore[union-attr]
     assert by_slot["lunch"].per_person[1].status is None  # type: ignore[union-attr]
-    assert rz.unanswered_for(store, settings, day, TODAY) == {1: 0, 2: 3}
-    assert rz.unanswered_for(store, settings, TODAY + timedelta(days=1), TODAY) == {1: 0, 2: 0}
+    assert rz.unanswered_for(store, day, TODAY) == {1: 0, 2: 3}
+    assert rz.unanswered_for(store, TODAY + timedelta(days=1), TODAY) == {1: 0, 2: 0}
 
 
 def test_day_log_without_profile_has_no_person(tmp_path: Path) -> None:

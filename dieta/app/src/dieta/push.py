@@ -43,10 +43,8 @@ def compose(
     day: DayLog,
     yesterday_unanswered: Mapping[int, int],
     labels: Mapping[int, str],
-    panel_path: str,
 ) -> tuple[str, str]:
-    """Tytuł i treść wiadomości; ``panel_path`` nieużywany w treści (link idzie w ``data`` przy wysyłce)."""
-    del panel_path
+    """Tytuł i treść wiadomości (link do panelu idzie w ``data`` przy wysyłce)."""
     lines: list[str] = []
     for meal in day.meals:
         parts = []
@@ -92,18 +90,14 @@ def send(service: str, title: str, message: str, path: str) -> bool:
         headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
     )
     try:
-        with urllib.request.urlopen(request, timeout=TIMEOUT_S) as response:
-            status = int(response.status)
+        with urllib.request.urlopen(request, timeout=TIMEOUT_S):
+            return True
     except urllib.error.HTTPError as exc:
         _log.warning("push nieudany: HTTP %s", exc.code)
         return False
     except (urllib.error.URLError, OSError, ValueError) as exc:
         _log.warning("push nieudany: %s", type(exc).__name__)
         return False
-    if status >= 400:
-        _log.warning("push nieudany: HTTP %s", status)
-        return False
-    return True
 
 
 def run_once(
@@ -120,11 +114,10 @@ def run_once(
     day = realization.day_log(store, settings, today, today)
     if day.plan_status != "approved" or not day.meals:
         return "no_plan"
-    yesterday = realization.unanswered_for(store, settings, today - timedelta(days=1), today)
+    yesterday = realization.unanswered_for(store, today - timedelta(days=1), today)
     labels = {pid: settings.person_name(pid) for pid in PERSON_IDS}
-    path = _panel_path()
-    title, message = compose(day, yesterday, labels, path)
-    if not sender(settings.push_notify, title, message, path):
+    title, message = compose(day, yesterday, labels)
+    if not sender(settings.push_notify, title, message, _panel_path()):
         return "failed"
     store.set_meta(META_LAST, today.isoformat())
     return "sent"
