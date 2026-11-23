@@ -245,3 +245,9 @@ Tagi `v0.1.2` (logi przebiegu), `v0.1.3` (cooldown), non-draft, CI zielone, 164 
 
 ## E3b PLAN GOTOWY 2026-11-23 (przed E4)
 Decyzja usera: domyślny próg znajomości 50% + szersze źródła. Plan: `docs/PLAN_E3b.md`. W1 = konektor Aniagotuje + próg 50%, W2 = Policzona przez kanał Atom (`/blogs/przepisy.atom?page=N`, omija 429). Wydanie 0.1.4 po etapie, potem pomiar znajomości per źródło; następny E4 (planer).
+
+## E3b — wydanie 0.1.4 (2026-11-23): kod ZROBIONY, pomiar CZEKA
+Tag `v0.1.4` non-draft, CI zielone, 180 testów, ruff/mypy czyste, pubguard: 2 flagi = publiczna treść bloga w fixturze (bez danych osobowych); zainstalowane (Supervisor). Review: 0 blokujących; poprawki po review (host/schemat linków z kanału, wpisy bez treści, przyczyna błędu listowania, przepis bez składników, testy prefetch) w `16721b6`.
+Opcje na żywo ustawione (`familiar_threshold: 50`, `sources` + `aniagotuje`), status `pending_restart`: **user restartuje add-on Dieta**.
+Dalej: „Odśwież teraz” dla `policzona` i `aniagotuje` → po zakończeniu mapowania LLM pomiar (`pomiar`): przepisy per źródło, % z kcal, odsetek ≥70/60/50% ogółem i per źródło; ≥50% nadal <10% → stop i pytanie. Potem E4 (planer, wywiad `grill-me`).
+Znane (nieblokujące): Aniagotuje bez kcal na porcję („brak kcal”, poza planerem); sitemapy bez kontroli hosta URL-i (dług sprzed 0.1.4); `totalTime` Aniagotuje liczy moczenie.
