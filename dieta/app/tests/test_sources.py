@@ -298,6 +298,35 @@ def test_aniagotuje_microdata_przepis() -> None:
     )
 
 
+def test_aniagotuje_kcal_100g_z_microdata_calories() -> None:
+    url = "https://aniagotuje.pl/przepis/kotlety-z-ciecierzycy"
+    r = AniagotujeSource().parse(url, _page("aniagotuje_kotlety.html"))
+
+    assert r is not None
+    assert r.kcal_100g is not None and 50 <= r.kcal_100g <= 600
+    assert r.kcal_100g == 168.0
+    assert r.kcal is None
+
+
+def test_aniagotuje_bez_bloku_wartosci_daje_kcal_100g_none() -> None:
+    page = (
+        '<html><body><article itemscope itemtype="https://schema.org/Recipe">'
+        '<h1 itemprop="name">Test</h1>'
+        '<span itemprop="recipeIngredient">200 g mąki</span>'
+        "</article></body></html>"
+    )
+    r = AniagotujeSource().parse("https://aniagotuje.pl/przepis/test", page)
+
+    assert r is not None
+    assert r.kcal_100g is None
+
+
+def test_inne_konektory_nie_ustawiaja_kcal_100g() -> None:
+    r = RespoSource().parse("https://centrumrespo.pl/przepis/x", _page("respo_salatka.html"))
+    assert r is not None
+    assert r.kcal_100g is None
+
+
 def test_aniagotuje_strona_bez_recipe_to_none() -> None:
     page = '<html><body><h1 itemprop="name">Blog</h1><p>tekst bez przepisu</p></body></html>'
     assert AniagotujeSource().parse("https://aniagotuje.pl/przepis/x", page) is None

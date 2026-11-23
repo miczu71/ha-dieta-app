@@ -34,6 +34,8 @@ class Recipe:
     tags: tuple[str, ...]
     category_hint: str | None
     ingredients: tuple[RawIngredient, ...]
+    # kcal na 100 g gotowego dania, tylko kontrola szacunku; nie jest kcal na porcję
+    kcal_100g: float | None = None
 
 
 class RecipeSource(Protocol):

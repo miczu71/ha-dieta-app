@@ -127,4 +127,5 @@ class AniagotujeSource:
             tags=strings(_first(props, "keywords")),
             category_hint=_first(props, "recipeCategory"),
             ingredients=ingredients,
+            kcal_100g=parse_number(_first(props, "calories")),
         )
