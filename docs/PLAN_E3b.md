@@ -11,6 +11,10 @@ znajomość 58%), `robots.txt` Allow /, `sitemap.xml` płaska, 2302 URL-e `/prze
 
 Repo: `/config/addons/ha-dieta-app` (PUBLIC), gałąź `main`, kod `dieta/app/src/dieta/`.
 
+## KOREKTA 2026-11-23 (po raportach workerów — moje błędy w założeniach planu)
+- Policzona: `?page=N` kanału Atom NIE paginuje (każda strona = te same 30 najnowszych wpisów; wcześniejsze „60 wpisów” to 30 policzone dwa razy). Kontrakt W2 → wariant (c): kanał (dedupe, kończy na stronie bez nowych URL-i) + sitemapa dla zaległości; reszta przez dotychczasowe `fetch` (429 → cooldown jak dotąd). Spodziewane: ~29 nowych przepisów bez 429, zaległości stopniowo.
+- Aniagotuje: strona NIE ma JSON-LD Recipe (tylko WebSite/WebPage), przepis jest w microdata (`itemtype=Recipe`, `itemprop=recipeIngredient`). Kontrakt W1 → własny parser microdata w `sources/aniagotuje.py` zamiast `JsonLdSource`.
+
 ## Kroki
 1. Skopiować plan do `docs/PLAN_E3b.md` (z sekcją Wykonawca poniżej), wpis w `docs/ROADMAP.md`, commit.
 2. `wt new` ×2, BASELINE `git status --short`; **W1 ‖ W2** (`haiku-worker`), potem `claimcheck` → `verifier` per paczka.
