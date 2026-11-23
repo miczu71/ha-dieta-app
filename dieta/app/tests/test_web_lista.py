@@ -189,7 +189,7 @@ def test_todo_sends_only_unsent_unchecked_and_not_at_home(
 
     resp = client.post("/lista/todo", data={"tydzien": WEEK_ISO})
     assert resp.status_code == 303
-    assert _location(resp)["notice"] == ["todo_ok"]
+    assert _location(resp)["notice"] == [f"todo_ok-{len(expected)}-{len(expected)}"]
     texts = [item for item, _ in sent]
     assert len(texts) == len(expected)
     for name in expected:
@@ -211,3 +211,65 @@ def test_todo_not_ok_records_nothing(tmp_path: Path, monkeypatch: pytest.MonkeyP
     assert resp.status_code == 303
     assert _location(resp)["notice"] == [f"todo_{result}"]
     assert "sent" not in store.shopping_states(WEEK_ISO)
+
+
+def test_lista_shows_source_chips_estimate_and_dash(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from dieta.pricing import IngredientPrice
+
+    prices = {
+        "kurczak": IngredientPrice(2.0, None, ("k1",), source="promo", as_of=TODAY, promo_to="2026-11-30"),
+        "ryż": IngredientPrice(0.8, 400.0, ("r1",), source="frisco", as_of=TODAY, estimate=True),
+    }
+    monkeypatch.setattr("dieta.shopping.cascade_prices", lambda *a, **k: prices)
+    client, _, _ = _world(tmp_path)
+    text = client.get("/lista", params={"tydzien": WEEK_ISO}).text
+    assert "promocja do 30.11" in text
+    assert "szacunek" in text
+    assert "≈ " in text  # koszt szacunku (ryż, pewnie masz) — w tym widoku ryż jest w „Pewnie masz”
+    assert "bez ceny" not in text and " · —" in text  # cebula bez ceny
+    assert "w tym: promocja" in text
+
+
+def test_lista_real_prices_show_receipt_chip_and_split(tmp_path: Path) -> None:
+    client, _, _ = _world(tmp_path)
+    text = client.get("/lista", params={"tydzien": WEEK_ISO}).text
+    assert ">paragon<" in text
+    assert "w tym: paragony " in text
+
+
+@pytest.mark.parametrize(
+    ("code", "expected"),
+    [
+        ("todo_ok-3-3", "Wysłano 3 z 3 pozycji do listy todo."),
+        ("todo_partial-2-3", "Wysłano 2 z 3 pozycji, reszta się nie udała — szczegóły w logu."),
+    ],
+)
+def test_todo_count_notices_are_shown(tmp_path: Path, code: str, expected: str) -> None:
+    client, _, _ = _world(tmp_path)
+    assert expected in client.get("/lista", params={"tydzien": WEEK_ISO, "notice": code}).text
+
+
+@pytest.mark.parametrize("code", ["todo_ok-5-3", "todo_ok-x-3", "todo_partial-2-3-9", "todo_ok-03-3x"])
+def test_malformed_todo_count_notice_is_ignored(tmp_path: Path, code: str) -> None:
+    client, _, _ = _world(tmp_path)
+    assert "Wysłano" not in client.get("/lista", params={"tydzien": WEEK_ISO, "notice": code}).text
+
+
+def test_todo_partial_after_two_of_three_counts_sent(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    client, store, ids = _world(tmp_path, todo_entity="todo.zakupy")
+    # ryż z „Pewnie masz” do listy → trzy pozycje: kurczak, ryż, cebula
+    client.post("/lista/jednak", data={"tydzien": WEEK_ISO, "skladnik": str(ids["ryż"])})
+    calls: list[int] = []
+
+    def fake(settings: Settings, items: Any, opener: Any = None) -> str:
+        calls.append(1)
+        return "ok" if len(calls) <= 2 else "failed"
+
+    monkeypatch.setattr("dieta.web.lista.send_items", fake)
+    resp = client.post("/lista/todo", data={"tydzien": WEEK_ISO})
+    assert _location(resp)["notice"] == ["todo_partial-2-3"]
+    assert len(store.shopping_states(WEEK_ISO)["sent"]) == 2
+    assert (
+        "Wysłano 2 z 3"
+        in client.get("/lista", params={"tydzien": WEEK_ISO, "notice": "todo_partial-2-3"}).text
+    )

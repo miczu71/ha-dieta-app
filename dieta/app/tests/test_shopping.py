@@ -4,6 +4,7 @@ from pathlib import Path
 import pytest
 
 from dieta.estimate import SERVING_G
+from dieta.pricing import IngredientPrice
 from dieta.settings import Settings
 from dieta.shopping import plan_cost, shopping_list
 from dieta.sources.base import RawIngredient, Recipe
@@ -266,3 +267,35 @@ def test_cheaper_mode_plan_still_builds_with_cascade(tmp_path: Path) -> None:
     stat_map = {s.ingredient: s for s in plan_service.stats(store, settings, TODAY)}
     ratio = plan_service._home_ratio_fn(store, replace(settings, cheaper_mode=True), stat_map)
     assert 0.0 <= ratio(1) <= 1.0
+
+
+def test_lines_carry_price_source_and_coverage_by_source_sums_to_coverage(tmp_path: Path) -> None:
+    store, settings, _ = _setup(tmp_path)
+    result = shopping_list(store, settings, WEEK, TODAY)
+    [kurczak] = result.to_buy
+    assert (kurczak.source, kurczak.estimate, kurczak.promo_to) == ("receipt", False, None)
+    assert kurczak.as_of is not None
+    assert result.coverage_by_source == pytest.approx({"receipt": result.coverage})
+    plan = plan_cost(store, settings, WEEK)
+    assert plan.coverage_by_source == pytest.approx({"receipt": plan.coverage})
+
+
+def test_promo_and_frisco_sources_reach_lines_and_split_shares(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    store, settings, _ = _setup(tmp_path)
+    prices = {
+        "kurczak": IngredientPrice(2.0, None, ("k1",), source="promo", as_of=TODAY, promo_to="2026-11-30"),
+        "ryż": IngredientPrice(0.8, 400.0, ("r1",), source="frisco", as_of=TODAY, estimate=True),
+    }
+    monkeypatch.setattr("dieta.shopping.cascade_prices", lambda *a, **k: prices)
+    result = shopping_list(store, settings, WEEK, TODAY)
+    [kurczak] = result.to_buy
+    assert (kurczak.source, kurczak.estimate, kurczak.promo_to) == ("promo", False, "2026-11-30")
+    [ryz] = result.at_home
+    assert (ryz.source, ryz.estimate) == ("frisco", True)
+    # ryż jest w domu, więc do udziału wchodzi tylko kurczak (promocja)
+    assert result.coverage_by_source == pytest.approx({"promo": result.coverage})
+    plan = plan_cost(store, settings, WEEK)
+    assert set(plan.coverage_by_source) == {"promo", "frisco"}
+    assert sum(plan.coverage_by_source.values()) == pytest.approx(plan.coverage, abs=1e-9)

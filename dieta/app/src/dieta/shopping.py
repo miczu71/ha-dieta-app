@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import json
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date, timedelta
 from functools import lru_cache
 from typing import Literal
@@ -49,6 +49,10 @@ class ShoppingLine:
     cost: float | None
     priced: bool
     at_home: bool
+    source: str | None = None  # receipt | receipt_old | shelf | promo | frisco (z IngredientPrice)
+    estimate: bool = False
+    as_of: date | None = None
+    promo_to: str | None = None
 
 
 @dataclass(frozen=True)
@@ -60,6 +64,9 @@ class ShoppingList:
     unpriced: tuple[ShoppingLine, ...]
     cost_total: float
     coverage: float
+    coverage_by_source: dict[str, float] = field(
+        default_factory=dict
+    )  # udział masy per źródło; suma = coverage
 
 
 @dataclass(frozen=True)
@@ -77,6 +84,9 @@ class PlanCost:
     total: float
     coverage: float
     sessions: tuple[SessionCost, ...]
+    coverage_by_source: dict[str, float] = field(
+        default_factory=dict
+    )  # udział masy per źródło; suma = coverage
 
 
 @dataclass(frozen=True)
@@ -275,6 +285,20 @@ def _coverage(masses: list[_Mass], prices: dict[str, IngredientPrice]) -> float:
     return sum(m.grams or 0.0 for m in known if m.name in prices) / total
 
 
+def _coverage_by_source(masses: list[_Mass], prices: dict[str, IngredientPrice]) -> dict[str, float]:
+    """Jak ``_coverage``, ale udział per źródło ceny; suma = ``_coverage``, bez źródeł bez masy."""
+    total = sum(m.grams or 0.0 for m in masses if m.grams is not None)
+    if total <= 0:
+        return {}
+    shares: dict[str, float] = {}
+    for m in masses:
+        if not m.grams or m.name not in prices:
+            continue
+        source = prices[m.name].source
+        shares[source] = shares.get(source, 0.0) + m.grams / total
+    return shares
+
+
 def plan_cost(store: Store, settings: Settings, week_start: date) -> PlanCost:
     """Koszt gotowania dla domu (wszystkie sesje tygodnia, także szkicu), bez odejmowania „w domu"."""
     plan = store.plan(week_start)
@@ -300,6 +324,7 @@ def plan_cost(store: Store, settings: Settings, week_start: date) -> PlanCost:
         total=round(sum(s.cost for s in sessions), 2),
         coverage=_coverage(every, ctx.prices),
         sessions=tuple(sessions),
+        coverage_by_source=_coverage_by_source(every, ctx.prices),
     )
 
 
@@ -335,6 +360,7 @@ def shopping_list(store: Store, settings: Settings, week_start: date, today: dat
     at_home: list[ShoppingLine] = []
     unpriced: list[ShoppingLine] = []
     priced_g = unpriced_g = cost_total = 0.0
+    priced_src: dict[str, float] = {}
     for ingredient_id, (name, grams) in sorted(merged.items(), key=lambda kv: kv[1][0]):
         price = ctx.prices.get(name)
         per = ctx.per100.get(ingredient_id)
@@ -351,6 +377,10 @@ def shopping_list(store: Store, settings: Settings, week_start: date, today: dat
             cost=cost,
             priced=cost is not None,
             at_home=home,
+            source=price.source if price else None,
+            estimate=price.estimate if price else False,
+            as_of=price.as_of if price else None,
+            promo_to=price.promo_to if price else None,
         )
         if home:
             at_home.append(line)
@@ -362,6 +392,8 @@ def shopping_list(store: Store, settings: Settings, week_start: date, today: dat
             to_buy.append(line)
             priced_g += grams or 0.0
             cost_total += cost
+            if price is not None and grams:
+                priced_src[price.source] = priced_src.get(price.source, 0.0) + grams
     known_g = priced_g + unpriced_g
     return ShoppingList(
         week_start=week_start,
@@ -371,4 +403,7 @@ def shopping_list(store: Store, settings: Settings, week_start: date, today: dat
         unpriced=tuple(unpriced),
         cost_total=round(cost_total, 2),
         coverage=priced_g / known_g if known_g > 0 else 0.0,
+        coverage_by_source=(
+            {src: g / known_g for src, g in priced_src.items() if g > 0} if known_g > 0 else {}
+        ),
     )

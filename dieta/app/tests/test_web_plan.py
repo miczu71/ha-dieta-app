@@ -2,6 +2,7 @@ from datetime import date, timedelta
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
+import pytest
 from fastapi.testclient import TestClient
 
 from dieta.settings import Settings
@@ -254,3 +255,25 @@ def test_cost_bar_with_prices_shows_total_coverage_and_session(tmp_path: Path) -
     assert "Koszt tygodnia" in resp.text
     assert "pokrycie cen" in resp.text
     assert "zł/porcja" in resp.text
+
+
+def test_session_chip_without_coverage_shows_dash(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from dieta.shopping import PlanCost, SessionCost
+
+    client, store = _client(tmp_path)
+    _demo(store)
+    _approved_plan(client)
+    plan = store.plan(date.fromisoformat(WEEK))
+    assert plan is not None
+
+    def fake(store_: Store, settings: Settings, week: date) -> PlanCost:
+        sessions = tuple(
+            SessionCost(s.id, s.recipe_id, "Test", 0.0, 0.0, 0.0) for s in store_.plan_sessions(plan.id)
+        )
+        return PlanCost(10.0, 0.5, sessions, coverage_by_source={"receipt": 0.5})
+
+    monkeypatch.setattr("dieta.web.plan.plan_cost", fake)
+    resp = client.get("/plan", params={"tydzien": WEEK})
+    assert resp.status_code == 200
+    assert "sesja —" in resp.text
+    assert "w tym: paragony 50%" in resp.text

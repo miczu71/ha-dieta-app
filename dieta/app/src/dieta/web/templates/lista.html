@@ -5,8 +5,9 @@
 <li class="dz-li{{ ' dz-li--done' if r.checked }}">
   <div class="dz-li-main">
     <b class="dz-li-name">{{ r.title }}</b>
-    <span class="dz-meal-meta dz-num">{{ r.qty }}{% if r.priced %} · {{ money(r.cost) }}{% else %} · bez ceny{% endif %}</span>
+    <span class="dz-meal-meta dz-num">{{ r.qty }}{% if r.priced %} · {{ '≈ ' if r.estimate }}{{ money(r.cost) }}{% else %} · —{% endif %}</span>
     <span class="dz-meal-tags">
+      {% if r.source_label %}<span class="dz-chip dz-chip--plain">{{ r.source_label }}{% if r.promo_to %} do {{ r.promo_to }}{% endif %}</span>{% endif %}
       {% if r.sent %}<span class="dz-chip dz-chip--plain">wysłano do todo</span>{% endif %}
       {% if r.forced %}<span class="dz-chip dz-chip--plain">dodane mimo spiżarni</span>{% endif %}
     </span>
@@ -47,6 +48,7 @@
 {% if shown %}
 <section class="dz-card dz-bar" aria-label="Koszt listy">
   <p class="dz-num">Do kupienia: <b>{{ money(lst.cost_total) }}</b> · pokrycie cen {{ pct(lst.coverage) }}</p>
+  {% if split %}<p class="dz-sub dz-num">w tym: {{ split }}</p>{% endif %}
   {% if show_todo %}
   <form method="post" action="lista/todo">
     <input type="hidden" name="tydzien" value="{{ week.isoformat() }}">
