@@ -1,5 +1,10 @@
 # Dziennik zmian
 
+## Niewydane (E6b.4)
+- Lista zakupów: plakietka źródła ceny (paragon, stary paragon, Biedronka, promocja „do <data>”, szacunek), „≈” przed kosztem szacunku, „—” zamiast „bez ceny”; pasek kosztu pokazuje podział pokrycia wg źródeł (plan tygodnia też, chip sesji bez cen to „—”).
+- Komunikaty todo: „Wysłano X z Y pozycji” (także przy częściowej porażce).
+- Ekran „Do zatwierdzenia”: kolejka mapowań katalogu Frisco (`pending`) — zatwierdź składnik albo „To nie ten składnik”; liczona w chipie kolejki.
+
 ## Niewydane (E6b.3b)
 - Nocna kolejka odczytu cen Biedronki: składniki zatwierdzonego planu (bieżący i następny tydzień), potem katalog; zlecenie `POST /api/v1/shelf` w Zakupach (do 100 EAN, bez świeżych ≤7 dni i „brak w Biedronce”). Zakupy 1.12.0 muszą wyjść przed tą wersją Diety (bez POST Dieta dostaje 405 i zapisuje błąd w meta, nic się nie psuje).
 - Przycisk „Odśwież ceny planu” na ekranie „Co kupujemy” zleca odczyt tylko cen planu (wynik przyjdzie nocą lub przy następnym odświeżeniu).
