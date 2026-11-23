@@ -35,7 +35,9 @@ from dieta.nutrition_lookup import (
     OFF_INTERVAL_S,
     NutritionValue,
     OffClient,
+    describe_error,
     fill_ingredient_nutrition,
+    is_implausible,
     lookup_assumed_grams,
     make_off_fetch,
 )
@@ -200,15 +202,20 @@ def estimate_nutrition(
     try:
         counts = fill_ingredient_nutrition(ingredients, seed, off, ask, save)
         stats.table, stats.off, stats.llm, stats.failed = counts.table, counts.off, counts.llm, counts.failed
-    except Exception:
-        log.warning("Szacunek kcal: uzupełnianie składników przerwane", exc_info=True)
+    except Exception as exc:
+        log.warning(
+            "Szacunek kcal: uzupełnianie składników przerwane (%s)", describe_error(exc), exc_info=True
+        )
 
     nutrition = store.ingredient_nutrition()
     per100: dict[int, Per100] = {}
     for ingredient_id, row in nutrition.items():
         per = _per100(row.name, row, seed)
-        if per is not None:
-            per100[ingredient_id] = per
+        if per is None:
+            continue
+        if row.status == "pending" and is_implausible(row.name, per.kcal, per.protein, per.carbs, per.fat):
+            continue  # jawnie niewiarygodne wartości liczą się jak nieznany składnik
+        per100[ingredient_id] = per
 
     if ask_grams is not None:
         try:
@@ -242,8 +249,8 @@ def estimate_nutrition(
             for index, grams in answers.items():
                 store.set_grams_assumed(lines[index].recipe_id, lines[index].pos, grams)
                 stats.grams += 1
-        except Exception:
-            log.warning("Szacunek kcal: ilości domyślne przerwane", exc_info=True)
+        except Exception as exc:
+            log.warning("Szacunek kcal: ilości domyślne przerwane (%s)", describe_error(exc), exc_info=True)
 
     for recipe in store.recipes_to_estimate():
         try:
@@ -263,7 +270,10 @@ def estimate_nutrition(
             ]
             est = estimate_recipe(est_lines, per100, recipe.servings, measures=measures)
             consistent = True
-            if recipe.kcal_100g:
+            # kcal/100 g ze strony dotyczy całego dania, także wody/lodu/octu, których est.total_g nie
+            # liczy; przy linii „free” z ilością masa jest niepełna, więc kontroli nie da się uczciwie zrobić
+            free_mass_skipped = any(is_free(ln.name, measures) and ln.amount is not None for ln in est_lines)
+            if recipe.kcal_100g and not free_mass_skipped:
                 if est.total_g <= 0:
                     consistent = False
                 else:
@@ -272,7 +282,7 @@ def estimate_nutrition(
             auto = est.coverage >= COVERAGE_OK and consistent
             has_values = est.known > 0
             auto = auto and has_values
-            store.save_recipe_estimate(
+            saved = store.save_recipe_estimate(
                 recipe.id,
                 kcal=est.kcal if has_values else None,
                 protein=est.protein if has_values else None,
@@ -284,11 +294,12 @@ def estimate_nutrition(
                 unknown=est.unknown_names,
                 assumed=est.assumed_lines,
             )
-            stats.recipes += 1
-            if auto:
-                stats.auto += 1
-            else:
-                stats.pending += 1
+            if saved:
+                stats.recipes += 1
+                if auto:
+                    stats.auto += 1
+                else:
+                    stats.pending += 1
         except Exception:
             stats.errors += 1
             log.warning("Szacunek kcal: błąd przepisu %d (%s)", recipe.id, recipe.title, exc_info=True)

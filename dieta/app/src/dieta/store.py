@@ -994,11 +994,12 @@ class Store:
             )
         return cur.rowcount > 0
 
-    def set_recipe_estimate_status(self, recipe_id: int, status: EstStatus) -> None:
+    def set_recipe_estimate_status(self, recipe_id: int, status: EstStatus) -> bool:
         """Zmiana statusu szacunku (np. zatwierdzenie); ``has_nutrition`` podąża za statusem."""
         with closing(self._connect()) as conn, conn:
-            conn.execute(
+            cur = conn.execute(
                 "UPDATE recipe SET est_status=?, has_nutrition=? "
                 "WHERE id=? AND kcal_source = 'estimate' AND kcal IS NOT NULL",
                 (status, int(status in ("auto", "approved")), recipe_id),
             )
+        return cur.rowcount > 0

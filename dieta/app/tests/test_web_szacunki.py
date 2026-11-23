@@ -274,3 +274,41 @@ def test_kcal_100g_from_source_on_pending_card(tmp_path: Path) -> None:
     assert "Ze strony: 180 kcal/100 g" in text
     with sqlite3.connect(s.db_path) as conn:
         assert conn.execute("SELECT kcal_100g FROM recipe WHERE id=?", (rid,)).fetchone()[0] == 180.0
+
+
+def test_ingredient_approval_does_not_recalculate_approved_or_source_recipe(tmp_path: Path) -> None:
+    client, store, _ = _client(tmp_path)
+    meta = RecipeMeta("lunch", 3, True, "rule")
+    appr = store.upsert_recipe(_rec("ap", "Hummus Approved", None), meta)
+    src = store.upsert_recipe(_rec("sr", "Hummus Source", 400.0), meta)
+    store.link_recipe_ingredient("tahini", "tahini", None)
+    _estimate(store, appr, kcal=310.0, status="approved", coverage=0.95)
+    ing_id = store.upsert_ingredient("tahini", None)
+    store.save_ingredient_nutrition(
+        ing_id,
+        kcal=600.0,
+        protein=17.0,
+        carbs=21.0,
+        fat=54.0,
+        piece_g=None,
+        source="llm",
+        confidence="low",
+        status="pending",
+    )
+    r = client.post(
+        "/kupujemy/zatwierdz-skladnik",
+        data={"ingredient_id": ing_id, "kcal": "600", "protein": "17", "carbs": "21", "fat": "54"},
+    )
+    assert r.status_code == 303
+    approved = store.recipe(appr, {}, frozenset())
+    assert approved is not None and approved.kcal == 310.0 and approved.est_status == "approved"
+    source = store.recipe(src, {}, frozenset())
+    assert source is not None and source.kcal == 400.0 and source.kcal_source == "source"
+
+
+def test_estimate_approve_failure_redirects_with_error(tmp_path: Path) -> None:
+    client, store, _ = _client(tmp_path)
+    ids = _scene(store)
+    # pending bez kcal: store nie zatwierdza (False) → błąd formularza
+    r = client.post("/kupujemy/zatwierdz-szacunek", data={"recipe_id": ids["pending0"], "action": "approve"})
+    assert r.headers["location"].endswith("error=dane")

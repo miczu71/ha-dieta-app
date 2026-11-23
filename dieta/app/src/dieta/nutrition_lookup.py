@@ -14,13 +14,14 @@ import time
 import urllib.parse
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, replace
+from functools import lru_cache
 from importlib import metadata
 from statistics import median
 from typing import Literal, cast
 
 from dieta.dictionary import AskFn, normalize_name
-from dieta.estimate import NutritionSeed
-from dieta.fetcher import make_fetch
+from dieta.estimate import Measures, NutritionSeed, is_free, load_measures
+from dieta.fetcher import FetchError, make_fetch
 from dieta.sources.base import Fetch
 from dieta.store import EstStatus, NutritionSource
 
@@ -32,6 +33,7 @@ OFF_PAGE_SIZE = 5
 OFF_MIN_COMPLETE = 3
 OFF_BAND = 0.25
 BATCH_SIZE = 20
+OFF_MAX_FAILURES = 3  # kolejnych awarii OFF, po których reszta składników idzie od razu do LLM
 OFF_MAX_PER_RUN = 40  # zapytań do OFF w jednym przebiegu; reszta idzie wprost do LLM
 MAX_KCAL_100G = 900.0
 MAX_ASSUMED_G = 2000.0
@@ -72,6 +74,13 @@ MAX_LIQUID_KCAL = 400.0
 _LIQUID_RE = re.compile(r"(?<!\w)(?:" + "|".join(LIQUID_WORDS) + r")")
 
 
+def describe_error(exc: BaseException) -> str:
+    """Typ błędu do logu; dla FetchError/KeyError/ValueError też komunikat (bez części po ``?``)."""
+    if isinstance(exc, (FetchError, KeyError, ValueError)):
+        return f"{type(exc).__name__}: {str(exc).split('?', 1)[0][:200]}"
+    return type(exc).__name__
+
+
 def app_user_agent() -> str:
     """``ha-dieta-app/<wersja>``; bez danych osobowych."""
     try:
@@ -98,6 +107,27 @@ class NutritionValue:
     status: EstStatus
 
 
+@lru_cache(maxsize=1)
+def _default_measures() -> Measures:
+    return load_measures()
+
+
+def is_suspect_zero(name: str, kcal: float, protein: float, carbs: float, fat: float) -> bool:
+    """Same zera dla składnika, który nie jest wodą/płynem ani darmowym (nie do zaufania)."""
+    if any((kcal, protein, carbs, fat)):
+        return False
+    return not is_free(name, _default_measures()) and _LIQUID_RE.search(normalize_name(name)) is None
+
+
+def is_implausible(name: str, kcal: float, protein: float, carbs: float, fat: float) -> bool:
+    """Twarde reguły: kcal ponad limit, wartość ujemna albo podejrzane same zera."""
+    return (
+        kcal > MAX_KCAL_100G
+        or any(v < 0 for v in (kcal, protein, carbs, fat))
+        or is_suspect_zero(name, kcal, protein, carbs, fat)
+    )
+
+
 def finalize(
     kcal: float,
     protein: float,
@@ -107,10 +137,13 @@ def finalize(
     *,
     source: NutritionSource,
     confidence: Literal["high", "low"],
+    name: str | None = None,
 ) -> NutritionValue:
     """Walidacja wartości: odstające lub niespójne → confidence=low, status=pending."""
     values = (kcal, protein, carbs, fat)
     ok = confidence == "high" and all(v >= 0 for v in values) and kcal <= MAX_KCAL_100G
+    if ok and name is not None and source in ("llm", "off") and is_suspect_zero(name, *values):
+        ok = False
     if ok:
         macro_kcal = 4 * protein + 4 * carbs + 9 * fat
         ok = abs(macro_kcal - kcal) <= max(0.2 * kcal, 15.0)
@@ -218,6 +251,7 @@ class OffClient:
             None,
             source="off",
             confidence="high",
+            name=name,
         )
 
 
@@ -236,6 +270,10 @@ def _by_index(reply: list[dict[str, object]], batch: Sequence[str]) -> dict[int,
             continue
         idx = item.get("i")
         if isinstance(idx, int) and not isinstance(idx, bool) and 0 <= idx < len(batch):
+            answered = item.get("name")
+            if isinstance(answered, str) and normalize_name(answered) != normalize_name(batch[idx]):
+                log.warning("Wartości odżywcze: nazwa w odpowiedzi LLM nie pasuje do indeksu %d", idx)
+                continue
             by_index[idx] = item
             continue
         name = item.get("name")
@@ -281,6 +319,7 @@ def lookup_llm(names: Sequence[str], ask: AskFn) -> dict[str, NutritionValue]:
                 piece if piece is not None and piece > 0 else None,
                 source="llm",
                 confidence=confidence,
+                name=name,
             )
             if kcal > MAX_LIQUID_KCAL and _LIQUID_RE.search(normalize_name(name)):
                 value = replace(value, confidence="low", status="pending")
@@ -308,6 +347,8 @@ def fill_ingredient_nutrition(
     for_llm: list[tuple[int, str]] = []
     off_queries = 0
     over_limit = 0
+    off_failures = 0  # kolejne awarie OFF; po OFF_MAX_FAILURES wyłącznik do końca przebiegu
+    off_tripped = False
     for ingredient_id, name in ingredients:
         value = from_table(name, seed)
         if value is not None:
@@ -316,15 +357,25 @@ def fill_ingredient_nutrition(
             continue
         if off is not None and off_queries >= OFF_MAX_PER_RUN:
             over_limit += 1
-        elif off is not None:
+        elif off is not None and not off_tripped:
             off_queries += 1
             try:
                 value = off.lookup(name)
+                off_failures = 0
             except Exception as exc:
-                log.warning(
-                    "Wartości odżywcze: Open Food Facts zawiódł (%s); próbuję LLM", type(exc).__name__
-                )
+                off_failures += 1
                 value = None
+                if off_failures >= OFF_MAX_FAILURES:
+                    off_tripped = True
+                    log.warning(
+                        "Wartości odżywcze: OFF niedostępny, pomijam do końca przebiegu (%s)",
+                        describe_error(exc),
+                    )
+                else:
+                    log.warning(
+                        "Wartości odżywcze: Open Food Facts zawiódł (%s); próbuję LLM",
+                        describe_error(exc),
+                    )
             if value is not None:
                 save(ingredient_id, value)
                 counts.off += 1
@@ -370,7 +421,7 @@ def lookup_assumed_grams(
         if reply is None:
             log.warning("Ilości domyślne: brak odpowiedzi LLM dla paczki %d linii", len(batch))
             continue
-        for offset, item in _by_index_only(reply, len(batch)).items():
+        for offset, item in _by_index_only(reply, batch).items():
             grams = _number(item.get("grams"))
             if grams is None or not 0 < grams <= MAX_ASSUMED_G:
                 continue
@@ -379,10 +430,14 @@ def lookup_assumed_grams(
     return result
 
 
-def _by_index_only(reply: list[dict[str, object]], size: int) -> Mapping[int, dict[str, object]]:
+def _by_index_only(reply: list[dict[str, object]], batch: Sequence[str]) -> Mapping[int, dict[str, object]]:
     out: dict[int, dict[str, object]] = {}
     for item in reply:
         idx = item.get("i") if isinstance(item, dict) else None
-        if isinstance(idx, int) and not isinstance(idx, bool) and 0 <= idx < size:
+        if isinstance(idx, int) and not isinstance(idx, bool) and 0 <= idx < len(batch):
+            answered = item.get("name")
+            if isinstance(answered, str) and normalize_name(answered) != normalize_name(batch[idx]):
+                log.warning("Ilości domyślne: nazwa w odpowiedzi LLM nie pasuje do indeksu %d", idx)
+                continue
             out[idx] = item
     return out

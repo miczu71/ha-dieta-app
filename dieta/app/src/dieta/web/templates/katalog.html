@@ -56,7 +56,7 @@
       <span><s class="p"></s><b>{{ '%.0f'|format(r.protein or 0) }} g</b> B</span>
       <span><s class="c"></s><b>{{ '%.0f'|format(r.carbs or 0) }} g</b> W</span>
       <span><s class="f"></s><b>{{ '%.0f'|format(r.fat or 0) }} g</b> T</span>
-      <span class="dz-item-meta">na porcję {{ kcal_note(r) }}</span>
+      <span class="dz-item-meta">na porcję</span>
     </p>
     {% elif r.has_nutrition %}
     <p class="dz-leg">

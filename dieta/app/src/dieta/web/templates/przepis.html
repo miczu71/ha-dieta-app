@@ -19,7 +19,7 @@
     <span><s class="p"></s>Białko <b>{{ '%.0f'|format(r.protein or 0) }} g</b></span>
     <span><s class="c"></s>Węglowodany <b>{{ '%.0f'|format(r.carbs or 0) }} g</b></span>
     <span><s class="f"></s>Tłuszcz <b>{{ '%.0f'|format(r.fat or 0) }} g</b></span>
-    <span class="dz-item-meta">na porcję {{ kcal_note(r) }}</span>
+    <span class="dz-item-meta">na porcję</span>
   </p>
   <p class="dz-item-meta">pokrycie {{ ((r.est_coverage or 0) * 100)|round|int }}%</p>
   {% if r.est_unknown %}<p class="dz-item-meta">nieznane składniki: {{ r.est_unknown|join(', ') }}</p>{% endif %}

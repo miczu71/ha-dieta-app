@@ -253,7 +253,8 @@ def make_router(
         if not store.is_estimate_pending(recipe_id):
             return back("zatwierdz", error="nieznany")
         if action == "approve":
-            store.set_recipe_estimate_status(recipe_id, "approved")
+            if not store.set_recipe_estimate_status(recipe_id, "approved"):
+                return back("zatwierdz", error="dane")
         elif action == "dismiss":
             store.set_flag(recipe_id, "dismissed", True)
         else:

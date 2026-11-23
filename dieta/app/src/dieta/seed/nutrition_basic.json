@@ -2181,6 +2181,64 @@
    "protein": 0,
    "carbs": 0,
    "fat": 0
+  },
+  {
+   "name": "pomidory suszone",
+   "aliases": [],
+   "kcal": 258,
+   "protein": 14,
+   "carbs": 44,
+   "fat": 3
+  },
+  {
+   "name": "mleko w proszku",
+   "aliases": [],
+   "kcal": 496,
+   "protein": 26,
+   "carbs": 38,
+   "fat": 27
+  },
+  {
+   "name": "mleko skondensowane",
+   "aliases": [],
+   "kcal": 321,
+   "protein": 8,
+   "carbs": 54,
+   "fat": 9,
+   "density_g_ml": 1.03
+  },
+  {
+   "name": "mleko migdałowe",
+   "aliases": [],
+   "kcal": 24,
+   "protein": 0.7,
+   "carbs": 2.5,
+   "fat": 1.1,
+   "density_g_ml": 1.03
+  },
+  {
+   "name": "papryka słodka mielona",
+   "aliases": [],
+   "kcal": 282,
+   "protein": 14,
+   "carbs": 35,
+   "fat": 13
+  },
+  {
+   "name": "mąka migdałowa",
+   "aliases": [],
+   "kcal": 600,
+   "protein": 21,
+   "carbs": 10,
+   "fat": 54
+  },
+  {
+   "name": "mąka kukurydziana",
+   "aliases": [],
+   "kcal": 361,
+   "protein": 7,
+   "carbs": 77,
+   "fat": 4
   }
  ]
 }

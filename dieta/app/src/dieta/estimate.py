@@ -58,8 +58,12 @@ def _phrase_re(key: str) -> re.Pattern[str]:
 class NutritionSeed:
     """Słownik składników z wartościami na 100 g."""
 
-    def __init__(self, entries: Sequence[_Entry]) -> None:
+    def __init__(self, entries: Sequence[_Entry], qualifiers: Sequence[str] = ()) -> None:
         self._entries = tuple(entries)
+        self._qualifiers = tuple(normalize_name(q) for q in qualifiers)
+
+    def _qualifiers_in(self, text: str) -> set[str]:
+        return {q for q in self._qualifiers if re.search(rf"(?<!\w){re.escape(q)}", text)}
 
     def find(self, name: str) -> tuple[str, Per100] | None:
         """(kanoniczna nazwa, wartości) dla nazwy; najpierw dokładne dopasowanie, potem najdłuższa fraza."""
@@ -71,9 +75,14 @@ class NutritionSeed:
                 return entry.name, entry.values
         best: _Entry | None = None
         best_len = 0
+        wanted = self._qualifiers_in(norm)
         for entry in self._entries:
             for key in entry.keys:
                 if len(key) > best_len and _phrase_re(key).search(norm):
+                    # słowo kwalifikujące (suszone, w proszku…) z wejścia musi być też w aliasie,
+                    # inaczej skrócony alias trafiłby w inny produkt (pomidory suszone → świeże)
+                    if wanted and not wanted <= self._qualifiers_in(key):
+                        continue
                     best, best_len = entry, len(key)
         if best is None:
             return None
@@ -126,7 +135,10 @@ def load_nutrition_seed(path: Path | None = None) -> NutritionSeed:
             unit_g={str(k): float(v) for k, v in item.get("unit_g", {}).items()},
         )
         entries.append(_Entry(name=item["name"], keys=keys, values=values))
-    return NutritionSeed(entries)
+    qualifiers: list[str] = []
+    if DEFAULT_MEASURES.exists():
+        qualifiers = list(json.loads(DEFAULT_MEASURES.read_text(encoding="utf-8")).get("qualifier_words", []))
+    return NutritionSeed(entries, qualifiers)
 
 
 def load_measures(path: Path | None = None) -> Measures:

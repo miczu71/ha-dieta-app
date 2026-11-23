@@ -789,3 +789,191 @@ def test_table_value_with_alcohol_is_auto_despite_macro_gap() -> None:
     value = from_table("wino białe", load_nutrition_seed())
     assert value is not None
     assert value.status == "auto" and value.confidence == "high"
+
+
+# --- poprawki po recenzji ---------------------------------------------------------------------------
+
+
+def test_implausible_pending_value_counts_as_unknown(tmp_path: Path) -> None:
+    store = Store(tmp_path / "d.db")
+    rid = _add(store, _recipe("a", [("banany", 100, "g"), ("dziwadło", 100, "g")]))
+    bad = {"kcal": 1200, "protein": 10, "carbs": 10, "fat": 130, "confidence": "high"}
+    estimate_nutrition(store, _llm({"dziwadło": bad}), None)
+    row = _row(store, rid)
+    assert row["est_status"] == "pending" and row["est_coverage"] < 0.85
+    assert json.loads(row["est_unknown_json"]) == ["dziwadło"]
+    assert [n.name for n in store.pending_ingredient_nutrition()] == ["dziwadło"]
+
+
+def test_implausible_zero_and_negative_pending_are_excluded(tmp_path: Path) -> None:
+    store = Store(tmp_path / "d.db")
+    rid = _add(store, _recipe("a", [("banany", 100, "g"), ("dziwadło", 100, "g"), ("zorblax", 100, "g")]))
+    zeros = {"kcal": 0, "protein": 0, "carbs": 0, "fat": 0, "confidence": "high"}
+    neg = {"kcal": 100, "protein": -5, "carbs": 10, "fat": 2, "confidence": "high"}
+    estimate_nutrition(store, _llm({"dziwadło": zeros, "zorblax": neg}), None)
+    unknown = json.loads(_row(store, rid)["est_unknown_json"])
+    assert sorted(unknown) == ["dziwadło", "zorblax"]
+
+
+def test_finalize_all_zero_needs_name_outside_free_and_liquid() -> None:
+    kw = {"source": "llm", "confidence": "high"}
+    sus = finalize(0, 0, 0, 0, None, name="dziwadło", **kw)  # type: ignore[arg-type]
+    assert (sus.confidence, sus.status) == ("low", "pending")
+    for name in ("woda", "sok jabłkowy", "sól"):
+        ok = finalize(0, 0, 0, 0, None, name=name, **kw)  # type: ignore[arg-type]
+        assert ok.status == "auto", name
+    assert finalize(0, 0, 0, 0, None, **kw).status == "auto"  # type: ignore[arg-type]
+    table = finalize(0, 0, 0, 0, None, name="dziwadło", source="table", confidence="high")
+    assert table.status == "auto"
+
+
+def test_llm_zero_values_pending_via_lookup() -> None:
+    zeros = {"kcal": 0, "protein": 0, "carbs": 0, "fat": 0, "confidence": "high"}
+    out = lookup_llm(["dziwadło"], _llm({"dziwadło": zeros}))
+    assert out["dziwadło"].status == "pending"
+
+
+def test_by_index_rejects_shifted_numbering(caplog: pytest.LogCaptureFixture) -> None:
+    def shifted(names: list[str]) -> list[dict[str, object]]:
+        return [{"i": 1, "name": names[0], **GOOD}, {"i": 0, "name": "inny składnik", **GOOD}]
+
+    with caplog.at_level(logging.WARNING):
+        out = lookup_llm(["alfa", "beta"], shifted)
+    assert out == {}
+    assert "alfa" not in caplog.text and "beta" not in caplog.text
+
+
+def test_by_index_without_name_field_still_accepted() -> None:
+    out = lookup_llm(["alfa"], lambda names: [{"i": 0, **GOOD}])
+    assert out["alfa"].status == "auto"
+
+
+def test_assumed_grams_rejects_name_mismatch() -> None:
+    def ask(batch: list[str]) -> list[dict[str, object]]:
+        return [{"i": 0, "name": "zupełnie coś innego", "grams": 50}, {"i": 1, "grams": 20}]
+
+    out = lookup_assumed_grams([("a", "T"), ("b", "T")], ask)
+    assert out == {1: 20.0}
+
+
+def test_off_failure_logs_message_without_query_string(caplog: pytest.LogCaptureFixture) -> None:
+    from dieta.fetcher import FetchError
+
+    def fetch(url: str) -> str:
+        raise FetchError("błąd http://x/api?token=sekret")
+
+    with caplog.at_level(logging.WARNING):
+        fill_ingredient_nutrition(
+            [(1, "dziwadło")], SEED, OffClient(fetch, sleep=lambda s: None), None, lambda i, v: None
+        )
+    assert "FetchError: błąd http://x/api" in caplog.text and "sekret" not in caplog.text
+
+
+def test_estimate_counters_only_when_saved(tmp_path: Path) -> None:
+    store = Store(tmp_path / "d.db")
+    _add(store, _recipe("a", [("banany", 4, "szt")]))
+    store.save_recipe_estimate = lambda *a, **k: False  # type: ignore[method-assign]
+    stats = estimate_nutrition(store, None, None)
+    assert (stats.recipes, stats.auto, stats.pending) == (0, 0, 0)
+
+
+def _nut(store: Store, ing: int, kcal: float, source: str, status: str) -> None:
+    store.save_ingredient_nutrition(
+        ing,
+        kcal=kcal,
+        protein=1.0,
+        carbs=1.0,
+        fat=1.0,
+        piece_g=None,
+        source=source,  # type: ignore[arg-type]
+        confidence="high",
+        status=status,  # type: ignore[arg-type]
+    )
+
+
+def test_auto_save_does_not_overwrite_manual_or_approved(tmp_path: Path) -> None:
+    store = Store(tmp_path / "d.db")
+    ing = store.upsert_ingredient("dziwadło", None)
+    _nut(store, ing, 100, "manual", "approved")
+    _nut(store, ing, 500, "llm", "auto")
+    assert store.ingredient_nutrition()[ing].kcal == 100
+    _nut(store, ing, 600, "off", "pending")
+    assert store.ingredient_nutrition()[ing].kcal == 100
+    _nut(store, ing, 200, "manual", "approved")
+    assert store.ingredient_nutrition()[ing].kcal == 200
+
+
+def test_kcal_100g_zero_means_no_check_and_lines_without_amount_pending(tmp_path: Path) -> None:
+    store = Store(tmp_path / "d.db")
+    zero = _add(store, _recipe("z", [("banany", 4, "szt")], kcal_100g=0, source="aniagotuje"))
+    noamt = _add(store, _recipe("n", [("sól", None, None)], kcal_100g=100, source="aniagotuje"))
+    estimate_nutrition(store, None, None)
+    assert _row(store, zero)["est_status"] == "auto"
+    assert _row(store, noamt)["est_status"] == "pending"
+
+
+def test_dismissed_pending_estimate_not_counted(tmp_path: Path) -> None:
+    store = Store(tmp_path / "d.db")
+    rid = _add(store, _recipe("a", [("dziwadło", 100, "g")]))
+    estimate_nutrition(store, None, None)
+    assert store.count_pending_estimates() == 1
+    store.set_flag(rid, "dismissed", True)
+    assert store.count_pending_estimates() == 0
+
+
+@pytest.mark.parametrize(
+    ("name", "expected"),
+    [
+        ("pomidory suszone", "pomidory suszone"),
+        ("mleko w proszku", "mleko w proszku"),
+        ("mleko skondensowane", "mleko skondensowane"),
+        ("mleko migdałowe", "mleko migdałowe"),
+        ("papryka słodka mielona", "papryka słodka mielona"),
+        ("mąka migdałowa", "mąka migdałowa"),
+        ("mąka kukurydziana", "mąka kukurydziana"),
+        ("pomidory", "pomidory"),
+        ("mleko", "mleko"),
+        ("mleko 2% 200 ml", "mleko"),
+        ("mięso mielone wieprzowe", "mięso mielone wołowe"),
+        ("czosnek mielony", "czosnek"),
+        ("imbir mielony", "imbir"),
+        ("słodka papryka", "papryka czerwona"),
+    ],
+)
+def test_seed_qualifier_does_not_match_fresh_counterpart(name: str, expected: str) -> None:
+    found = SEED.find(name)
+    assert found is not None and found[0] == expected
+
+
+@pytest.mark.parametrize("name", ["mleko sojowe w proszku"])
+def test_seed_qualifier_fallback_returns_none(name: str) -> None:
+    assert SEED.find(name) is None
+
+
+def test_kcal_100g_check_skipped_when_free_line_with_amount(tmp_path: Path) -> None:
+    store = Store(tmp_path / "d.db")
+    rid = _add(
+        store,
+        _recipe("z", [("woda", 2000, "ml"), ("banany", 300, "g")], kcal_100g=40, source="aniagotuje"),
+    )
+    estimate_nutrition(store, None, None)
+    assert _row(store, rid)["est_status"] == "auto"
+
+
+def test_off_circuit_breaker_after_three_failures(caplog: pytest.LogCaptureFixture) -> None:
+    calls: list[str] = []
+
+    def fetch(url: str) -> str:
+        calls.append(url)
+        raise OSError("x")
+
+    names = [(i, f"dziwadło {i}") for i in range(6)]
+    ask = _llm({n: GOOD for _, n in names})
+    saved: list[int] = []
+    with caplog.at_level(logging.WARNING):
+        counts = fill_ingredient_nutrition(
+            names, SEED, OffClient(fetch, sleep=lambda s: None), ask, lambda i, v: saved.append(i)
+        )
+    assert len(calls) == 3 and counts.llm == 6
+    assert caplog.text.count("OFF niedostępny, pomijam do końca przebiegu") == 1
+    assert caplog.text.count("Open Food Facts zawiódł") == 2
