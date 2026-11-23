@@ -20,10 +20,13 @@ from dieta.estimate import (
     Measures,
     NutritionSeed,
     Per100,
+    assumed_cap,
     estimate_recipe,
     is_free,
+    is_noise,
     load_measures,
     load_nutrition_seed,
+    to_grams,
 )
 from dieta.fetcher import make_fetch
 from dieta.nutrition_lookup import (
@@ -42,7 +45,7 @@ from dieta.sources.base import Fetch, RecipeSource
 from dieta.sources.lidl import LidlSource
 from dieta.sources.policzona import PolicznaSource
 from dieta.sources.respo import RespoSource
-from dieta.store import IngredientNutrition, Store
+from dieta.store import IngredientNutrition, RecipeLine, Store
 from dieta.sync import map_recipe_ingredients
 
 KCAL_100G_TOLERANCE = 0.25
@@ -200,26 +203,48 @@ def estimate_nutrition(
     except Exception:
         log.warning("Szacunek kcal: uzupełnianie składników przerwane", exc_info=True)
 
-    if ask_grams is not None:
-        try:
-            lines = [
-                ln
-                for ln in store.lines_without_amount()
-                if not is_free(ln.ingredient_name or ln.name, measures)
-            ]
-            answers = lookup_assumed_grams([(ln.text, ln.recipe_title) for ln in lines], ask_grams)
-            for index, grams in answers.items():
-                store.set_grams_assumed(lines[index].recipe_id, lines[index].pos, grams)
-                stats.grams += 1
-        except Exception:
-            log.warning("Szacunek kcal: ilości domyślne przerwane", exc_info=True)
-
     nutrition = store.ingredient_nutrition()
     per100: dict[int, Per100] = {}
     for ingredient_id, row in nutrition.items():
         per = _per100(row.name, row, seed)
         if per is not None:
             per100[ingredient_id] = per
+
+    if ask_grams is not None:
+        try:
+            candidates: list[tuple[RecipeLine, str]] = []
+            for ln in store.lines_without_amount():
+                name = ln.ingredient_name or ln.name
+                if not is_free(name, measures) and not is_noise(name, ln.text, measures):
+                    candidates.append((ln, ln.text))
+            for ln in store.lines_with_amount_unassumed():
+                name = ln.ingredient_name or ln.name
+                per = per100.get(ln.ingredient_id) if ln.ingredient_id is not None else None
+                if per is None or is_free(name, measures):
+                    continue
+                grams, _ = to_grams(
+                    ln.amount,
+                    ln.unit,
+                    measures=measures,
+                    piece_g=per.piece_g,
+                    density_g_ml=per.density_g_ml,
+                    unit_g=per.unit_g,
+                )
+                if grams is None:
+                    desc = " ".join(p for p in (f"{ln.amount:g}", ln.unit, name) if p)
+                    candidates.append((ln, desc))
+            lines = [ln for ln, _ in candidates]
+            caps = [
+                assumed_cap(ln.ingredient_name or ln.name, measures) if ln.amount is None else None
+                for ln in lines
+            ]
+            answers = lookup_assumed_grams([(d, ln.recipe_title) for ln, d in candidates], ask_grams, caps)
+            for index, grams in answers.items():
+                store.set_grams_assumed(lines[index].recipe_id, lines[index].pos, grams)
+                stats.grams += 1
+        except Exception:
+            log.warning("Szacunek kcal: ilości domyślne przerwane", exc_info=True)
+
     for recipe in store.recipes_to_estimate():
         try:
             stored = store.recipe_lines(recipe.id)
@@ -232,17 +257,11 @@ def estimate_nutrition(
                     unit=ln.unit,
                     ingredient_id=ln.ingredient_id,
                     grams_assumed=ln.grams_assumed,
+                    text=ln.text,
                 )
                 for ln in stored
             ]
             est = estimate_recipe(est_lines, per100, recipe.servings, measures=measures)
-            pending_ingredient = any(
-                ln.ingredient_id is not None
-                and ln.ingredient_id in nutrition
-                and nutrition[ln.ingredient_id].status == "pending"
-                and not is_free(ln.ingredient_name or ln.name, measures)
-                for ln in stored
-            )
             consistent = True
             if recipe.kcal_100g:
                 if est.total_g <= 0:
@@ -250,7 +269,7 @@ def estimate_nutrition(
                 else:
                     computed = est.kcal * est.servings / est.total_g * 100
                     consistent = abs(computed - recipe.kcal_100g) / recipe.kcal_100g <= KCAL_100G_TOLERANCE
-            auto = est.coverage >= COVERAGE_OK and not pending_ingredient and consistent
+            auto = est.coverage >= COVERAGE_OK and consistent
             has_values = est.known > 0
             store.save_recipe_estimate(
                 recipe.id,

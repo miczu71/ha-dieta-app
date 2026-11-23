@@ -910,6 +910,26 @@ class Store:
             ).fetchall()
         return [RecipeLine(*r) for r in rows]
 
+    def lines_with_amount_unassumed(self) -> list[RecipeLine]:
+        """Linie z ilością i bez ``grams_assumed`` w przepisach do estymacji."""
+        with closing(self._connect()) as conn:
+            rows = conn.execute(
+                "SELECT ri.recipe_id, ri.pos, ri.text, ri.amount, ri.unit, ri.name, ri.ingredient_id, "
+                "i.name, ri.grams_assumed, r.title FROM recipe_ingredient ri "
+                "JOIN recipe r ON r.id = ri.recipe_id "
+                "LEFT JOIN ingredient i ON i.id = ri.ingredient_id "
+                "WHERE ri.amount IS NOT NULL AND ri.grams_assumed IS NULL "
+                "AND r.kcal_source IS NOT 'source' AND r.est_status IS NOT 'approved' "
+                "ORDER BY ri.recipe_id, ri.pos"
+            ).fetchall()
+        return [RecipeLine(*r) for r in rows]
+
+    def reset_llm_nutrition(self) -> int:
+        """Usuwa wpisy ``source='llm'`` ze statusem ``auto``; pozostałe zostają."""
+        with closing(self._connect()) as conn, conn:
+            cur = conn.execute("DELETE FROM ingredient_nutrition WHERE source = 'llm' AND status = 'auto'")
+            return cur.rowcount
+
     def set_grams_assumed(self, recipe_id: int, pos: int, grams: float) -> None:
         with closing(self._connect()) as conn, conn:
             conn.execute(

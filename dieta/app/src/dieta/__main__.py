@@ -32,8 +32,21 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="python -m dieta")
     sub = parser.add_subparsers(dest="command", required=True)
     est = sub.add_parser("estimate", help="pomiar szacunku kcal na przepisach z kcal ze źródła")
-    est.add_argument("--validate", metavar="DB", type=Path, required=True, help="baza SQLite (tylko odczyt)")
+    group = est.add_mutually_exclusive_group(required=True)
+    group.add_argument("--validate", metavar="DB", type=Path, help="baza SQLite (tylko odczyt)")
+    group.add_argument(
+        "--reset-llm", metavar="DB", type=Path, help="usuwa auto-wpisy składników z LLM (jednorazowo)"
+    )
     parsed = parser.parse_args(args)
+    if parsed.reset_llm is not None:
+        if not parsed.reset_llm.is_file():
+            print(f"Brak pliku bazy: {parsed.reset_llm}")
+            return 1
+        from .store import Store
+
+        removed = Store(parsed.reset_llm).reset_llm_nutrition()
+        print(f"Usunięto {removed} wpisów składników z LLM (status auto)")
+        return 0
     from .validate import validate
 
     return validate(parsed.validate, sys.stdout)

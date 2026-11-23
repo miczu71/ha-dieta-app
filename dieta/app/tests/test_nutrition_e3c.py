@@ -491,14 +491,14 @@ def test_status_pending_low_coverage(tmp_path: Path) -> None:
     assert row["kcal"] is not None  # częściowa suma jest zapisana, ale poza planerem
 
 
-def test_status_pending_when_ingredient_is_pending(tmp_path: Path) -> None:
+def test_status_auto_despite_pending_ingredient_when_coverage_ok(tmp_path: Path) -> None:
     store = Store(tmp_path / "d.db")
     rid = _add(store, _recipe("a", [("dziwadło", 100, "g")]))
     estimate_nutrition(store, _llm({"dziwadło": {**GOOD, "confidence": "low"}}), None)
     row = _row(store, rid)
     assert row["est_coverage"] == pytest.approx(1.0)
-    assert row["est_status"] == "pending" and row["has_nutrition"] == 0
-    assert [n.name for n in store.pending_ingredient_nutrition()] == ["dziwadło"]
+    assert row["est_status"] == "auto" and row["has_nutrition"] == 1
+    assert [n.name for n in store.pending_ingredient_nutrition()] == ["dziwadło"]  # nadal w kolejce
 
 
 def test_status_kcal_100g_consistency(tmp_path: Path) -> None:
@@ -632,3 +632,160 @@ def test_cli_validate_missing_file(tmp_path: Path, capsys: pytest.CaptureFixture
     assert main(["estimate", "--validate", str(tmp_path / "brak.db")]) == 1
     assert "Brak pliku bazy" in capsys.readouterr().out
     assert not (tmp_path / "brak.db").exists()
+
+
+# --- E3c poprawki po pomiarze NO-GO ------------------------------------------------------------------
+
+
+def test_headers_and_noise_are_skipped(tmp_path: Path) -> None:
+    store = Store(tmp_path / "d.db")
+    rid = _add(
+        store,
+        _recipe("a", [("banany", 2, "szt"), ("Ciasto:", None, None), ("tutaj", None, None), ("sos", 1, "g")]),
+    )
+    estimate_nutrition(store, None, None, ask_grams=lambda b: [])
+    row = _row(store, rid)
+    assert json.loads(row["est_unknown_json"]) == ["sos"]  # nagłówek i szum nie wchodzą do nieznanych
+    assert row["est_coverage"] == pytest.approx(240 / 241)  # total = 2 linie (banany + sos)
+
+
+def test_noise_lines_do_not_reach_llm(tmp_path: Path) -> None:
+    store = Store(tmp_path / "d.db")
+    _add(
+        store,
+        _recipe("a", [("banany", 2, "szt"), ("Do podania:", None, None), ("produkt dostępny", None, None)]),
+    )
+    asked: list[list[str]] = []
+
+    def ask_grams(batch: list[str]) -> list[dict[str, object]] | None:
+        asked.append(batch)
+        return []
+
+    estimate_nutrition(store, None, None, ask_grams=ask_grams)
+    assert asked == []
+
+
+def test_unit_line_goes_through_ask_grams_as_assumed(tmp_path: Path) -> None:
+    store = Store(tmp_path / "d.db")
+    rid = _add(store, _recipe("a", [("banany", 2, "szt"), ("banany", 2, "pęczek")]))
+    seen: list[list[str]] = []
+
+    def ask_grams(batch: list[str]) -> list[dict[str, object]] | None:
+        seen.append(batch)
+        return [{"i": 0, "grams": 60}]
+
+    stats = estimate_nutrition(store, None, None, ask_grams=ask_grams)
+    assert seen == [["2 pęczek banany (przepis: Przepis a)"]]
+    assert stats.grams == 1
+    row = _row(store, rid)
+    assert row["est_assumed"] == 1
+    assert row["est_coverage"] == pytest.approx((240 + 30) / 300)
+
+
+def test_assumed_cap_per_category() -> None:
+    from dieta.estimate import assumed_cap, load_measures
+
+    m = load_measures()
+    assert assumed_cap("olej rzepakowy", m) == 30
+    assert assumed_cap("pieprz cayenne", m) == 10
+    assert assumed_cap("mąka pszenna", m) is None
+    lines = [("olej rzepakowy", "T"), ("mąka", "T"), ("masło", "T")]
+    ask = lambda b: [{"i": 0, "grams": 500}, {"i": 1, "grams": 120}, {"i": 2, "grams": 20}]  # noqa: E731
+    out = lookup_assumed_grams(lines, ask, [30, None, 30])
+    assert out == {0: 30.0, 1: 120.0, 2: 20.0}
+
+
+def test_noise_words_missing_in_old_measures_file(tmp_path: Path) -> None:
+    from dieta.estimate import load_measures
+
+    data = json.loads(
+        (Path(__file__).parents[1] / "src/dieta/seed/measures.json").read_text(encoding="utf-8")
+    )
+    data.pop("noise_words")
+    data.pop("assumed_caps")
+    path = tmp_path / "m.json"
+    path.write_text(json.dumps(data), encoding="utf-8")
+    m = load_measures(path)
+    assert m.noise_words == () and m.assumed_caps == ()
+
+
+def test_liquid_over_400_kcal_is_pending() -> None:
+    ask = _llm(
+        {
+            "napar kawy": {"kcal": 355, "protein": 14, "carbs": 41, "fat": 14, "confidence": "high"},
+            "sok mocny": {"kcal": 450, "protein": 10, "carbs": 90, "fat": 8, "confidence": "high"},
+            "orzechy": {"kcal": 450, "protein": 10, "carbs": 90, "fat": 8, "confidence": "high"},
+        }
+    )
+    out = lookup_llm(["sok mocny", "orzechy"], ask)
+    assert (out["sok mocny"].confidence, out["sok mocny"].status) == ("low", "pending")
+    assert (out["orzechy"].confidence, out["orzechy"].status) == ("high", "auto")
+
+
+def test_new_seed_aliases() -> None:
+    for name, canon in [
+        ("ser wiejski", "serek wiejski"),
+        ("chleba żytniego (razowego)", "chleb żytni razowy"),
+        ("soku z limonki", "sok z cytryny"),
+        ("czekolady białej", "czekolada biała"),
+        ("czekolady mlecznej", "czekolada mleczna"),
+        ("bułek grahamek", "bułka grahamka"),
+        ("serek śmietankowy", "serek śmietankowy"),
+        ("budyń waniliowy (proszek)", "budyń waniliowy (proszek)"),
+        ("hummus", "hummus"),
+        ("wino białe wytrawne", "wino białe"),
+        ("piwo", "piwo"),
+        ("lody waniliowe", "lody waniliowe"),
+        ("napój sojowy", "napój sojowy"),
+        ("odżywka białkowa", "odżywka białkowa"),
+        ("kawa parzona", "napar kawy"),
+        ("tonik", "tonik"),
+        ("kostki lodu", "kostki lodu"),
+        ("bagietka", "bagietka"),
+    ]:
+        found = SEED.find(name)
+        assert found is not None and found[0] == canon, name
+    assert SEED.find("czosnek")[1].unit_g["główka"] == 40  # type: ignore[index]
+    assert SEED.find("natka pietruszki")[1].unit_g["pęczek"] == 30  # type: ignore[index]
+
+
+def test_reset_llm_keeps_other_sources(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    from dieta.__main__ import main
+
+    path = tmp_path / "d.db"
+    store = Store(path)
+    spec = {
+        "a": ("llm", "auto"),
+        "b": ("llm", "approved"),
+        "c": ("manual", "auto"),
+        "d": ("table", "auto"),
+        "e": ("off", "auto"),
+        "f": ("llm", "pending"),
+    }
+    ids = {}
+    for n, (source, status) in spec.items():
+        ids[n] = store.upsert_ingredient(n, None)
+        store.save_ingredient_nutrition(
+            ids[n],
+            kcal=1,
+            protein=0,
+            carbs=0,
+            fat=0,
+            piece_g=None,
+            source=source,  # type: ignore[arg-type]
+            confidence="high",
+            status=status,  # type: ignore[arg-type]
+        )
+    assert main(["estimate", "--reset-llm", str(path)]) == 0
+    assert "Usunięto 1" in capsys.readouterr().out
+    left = {r[0] for r in sqlite3.connect(path).execute("SELECT ingredient_id FROM ingredient_nutrition")}
+    assert left == {ids[n] for n in "bcdef"}
+
+
+def test_table_value_with_alcohol_is_auto_despite_macro_gap() -> None:
+    from dieta.estimate import load_nutrition_seed
+    from dieta.nutrition_lookup import from_table
+
+    value = from_table("wino białe", load_nutrition_seed())
+    assert value is not None
+    assert value.status == "auto" and value.confidence == "high"

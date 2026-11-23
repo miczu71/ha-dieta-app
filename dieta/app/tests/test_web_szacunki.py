@@ -214,7 +214,9 @@ def test_ingredient_approval_recalculates_recipe(tmp_path: Path) -> None:
         status="pending",
     )
     estimate_nutrition(store, None, None)
-    assert store.recipe(rid, {}, frozenset()).est_status == "pending"  # type: ignore[union-attr]
+    # pokrycie pełne → auto mimo składnika w kolejce; zatwierdzenie składnika nadal przelicza przepis
+    assert store.recipe(rid, {}, frozenset()).est_status == "auto"  # type: ignore[union-attr]
+    assert store.ingredient_nutrition()[ing_id].status == "pending"
 
     r = client.post(
         "/kupujemy/zatwierdz-skladnik",

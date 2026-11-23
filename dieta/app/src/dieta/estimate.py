@@ -89,6 +89,8 @@ class Measures:
     unit_aliases: Mapping[str, str]
     default_unit_g: Mapping[str, float]
     free_words: tuple[str, ...]
+    noise_words: tuple[str, ...] = ()
+    assumed_caps: tuple[tuple[float, tuple[str, ...]], ...] = ()
 
 
 def load_nutrition_seed(path: Path | None = None) -> NutritionSeed:
@@ -120,7 +122,26 @@ def load_measures(path: Path | None = None) -> Measures:
         unit_aliases={str(k): str(v) for k, v in data["unit_aliases"].items()},
         default_unit_g={str(k): float(v) for k, v in data["default_unit_g"].items()},
         free_words=tuple(data["free_words"]),
+        noise_words=tuple(normalize_name(w) for w in data.get("noise_words", [])),
+        assumed_caps=tuple(
+            (float(c["max_g"]), tuple(normalize_name(w) for w in c["words"]))
+            for c in data.get("assumed_caps", {}).values()
+        ),
     )
+
+
+def is_noise(name: str, text: str, measures: Measures) -> bool:
+    """Nagłówek (``Ciasto:``) albo słowo szumu (``tutaj``) zamiast składnika."""
+    if name.strip().endswith(":") or text.strip().endswith(":"):
+        return True
+    return normalize_name(name).rstrip(":").strip() in measures.noise_words
+
+
+def assumed_cap(name: str, measures: Measures) -> float | None:
+    """Sufit ilości zgadywanej (g) dla kategorii (tłuszcze, przyprawy) wg słów kluczowych nazwy."""
+    norm = normalize_name(name)
+    caps = [cap for cap, words in measures.assumed_caps if any(_phrase_re(w).search(norm) for w in words)]
+    return min(caps) if caps else None
 
 
 def is_free(name: str, measures: Measures) -> bool:
@@ -173,6 +194,7 @@ class Line:
     unit: str | None
     ingredient_id: int | None
     grams_assumed: float | None = None
+    text: str = ""
 
 
 @dataclass(frozen=True)
@@ -210,20 +232,20 @@ def estimate_recipe(
     for line in lines:
         if is_free(line.name, measures):
             continue
+        if line.amount is None and is_noise(line.name, line.text, measures):
+            continue
         per = per100.get(line.ingredient_id) if line.ingredient_id is not None else None
-        if line.amount is None and line.grams_assumed is not None:
-            grams: float | None = line.grams_assumed
-            method = "assumed"
-        else:
-            grams, kind = to_grams(
-                line.amount,
-                line.unit,
-                measures=measures,
-                piece_g=per.piece_g if per else None,
-                density_g_ml=per.density_g_ml if per else None,
-                unit_g=per.unit_g if per else None,
-            )
-            method = kind
+        grams, kind = to_grams(
+            line.amount,
+            line.unit,
+            measures=measures,
+            piece_g=per.piece_g if per else None,
+            density_g_ml=per.density_g_ml if per else None,
+            unit_g=per.unit_g if per else None,
+        )
+        method: str = kind
+        if grams is None and line.grams_assumed is not None:
+            grams, method = line.grams_assumed, "assumed"
         rows.append(_Row(line=line, grams=grams, method=method, per=per))
 
     total = len(rows)

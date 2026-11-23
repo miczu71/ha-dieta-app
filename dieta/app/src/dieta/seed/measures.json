@@ -54,7 +54,11 @@
   "pajda",
   "pajdy",
   "kawałek",
-  "kawałki"
+  "kawałki",
+  "kromka",
+  "kromki",
+  "kromek",
+  "główek"
  ],
  "unit_aliases": {
   "ząbki": "ząbek",
@@ -69,7 +73,10 @@
   "puszek": "puszka",
   "kostki": "kostka",
   "kostek": "kostka",
-  "główki": "główka"
+  "główki": "główka",
+  "kromki": "kromka",
+  "kromek": "kromka",
+  "główek": "główka"
  },
  "default_unit_g": {
   "kawałek": 50,
@@ -110,5 +117,44 @@
   "przyprawa",
   "przyprawy",
   "lód"
- ]
+ ],
+ "noise_words": [
+  "tutaj",
+  "produkt dostępny",
+  "do podania",
+  "dodatki",
+  "opcjonalnie",
+  "składniki"
+ ],
+ "assumed_caps": {
+  "tłuszcze": {
+   "max_g": 30,
+   "words": [
+    "olej",
+    "oleju",
+    "oliwa",
+    "oliwy",
+    "oliwie",
+    "masło",
+    "masła",
+    "smalec",
+    "smalcu",
+    "tłuszcz"
+   ]
+  },
+  "przyprawy": {
+   "max_g": 10,
+   "words": [
+    "przyprawa",
+    "przyprawy",
+    "przypraw",
+    "zioło",
+    "zioła",
+    "ziół",
+    "pieprz",
+    "papryka mielona",
+    "papryki mielonej"
+   ]
+  }
+ }
 }

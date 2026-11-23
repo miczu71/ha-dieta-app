@@ -87,13 +87,18 @@
   {
    "name": "sok z cytryny",
    "aliases": [
-    "sok cytrynowy"
+    "sok cytrynowy",
+    "sok z limonki",
+    "soku z limonki",
+    "soku z cytryny",
+    "lemoniada"
    ],
    "kcal": 22,
    "protein": 0.4,
    "carbs": 7,
    "fat": 0.2,
-   "density_g_ml": 1.03
+   "density_g_ml": 1.03,
+   "piece_g": 30
   },
   {
    "name": "grejpfrut",
@@ -303,7 +308,7 @@
    "fat": 0.3,
    "piece_g": 15,
    "unit_g": {
-    "pęczek": 50
+    "pęczek": 30
    }
   },
   {
@@ -317,7 +322,7 @@
    "fat": 0.5,
    "unit_g": {
     "ząbek": 4,
-    "główka": 50
+    "główka": 40
    }
   },
   {
@@ -747,7 +752,7 @@
    "carbs": 6,
    "fat": 0.8,
    "unit_g": {
-    "pęczek": 50
+    "pęczek": 30
    }
   },
   {
@@ -760,7 +765,7 @@
    "carbs": 7,
    "fat": 1.1,
    "unit_g": {
-    "pęczek": 50
+    "pęczek": 30
    }
   },
   {
@@ -775,7 +780,7 @@
    "carbs": 6,
    "fat": 0.7,
    "unit_g": {
-    "pęczek": 50
+    "pęczek": 30
    }
   },
   {
@@ -1223,7 +1228,8 @@
   {
    "name": "napój sojowy",
    "aliases": [
-    "mleko sojowe"
+    "mleko sojowe",
+    "napoju sojowego"
    ],
    "kcal": 40,
    "protein": 3.3,
@@ -1310,7 +1316,11 @@
   },
   {
    "name": "serek wiejski",
-   "aliases": [],
+   "aliases": [
+    "ser wiejski",
+    "sera wiejskiego",
+    "serka wiejskiego"
+   ],
    "kcal": 98,
    "protein": 11,
    "carbs": 3.4,
@@ -1488,24 +1498,35 @@
    "aliases": [
     "chleb razowy",
     "chleb żytni",
-    "chleb"
+    "chleb",
+    "chleba żytniego (razowego)",
+    "chleb żytni (razowy)",
+    "chleba żytniego",
+    "chleba razowego"
    ],
    "kcal": 250,
    "protein": 6,
    "carbs": 48,
    "fat": 1.5,
-   "piece_g": 35
+   "piece_g": 35,
+   "unit_g": {
+    "kromka": 30
+   }
   },
   {
    "name": "chleb pszenny",
    "aliases": [
-    "pieczywo pszenne"
+    "pieczywo pszenne",
+    "chleba pszennego"
    ],
    "kcal": 265,
    "protein": 8,
    "carbs": 50,
    "fat": 3,
-   "piece_g": 30
+   "piece_g": 30,
+   "unit_g": {
+    "kromka": 30
+   }
   },
   {
    "name": "bułka kajzerka",
@@ -1517,7 +1538,7 @@
    "protein": 9,
    "carbs": 52,
    "fat": 2,
-   "piece_g": 50
+   "piece_g": 60
   },
   {
    "name": "tortilla pełnoziarnista",
@@ -1880,7 +1901,9 @@
   {
    "name": "czekolada gorzka",
    "aliases": [
-    "czekolada"
+    "czekolada",
+    "czekolady gorzkiej",
+    "czekolada ciemna"
    ],
    "kcal": 550,
    "protein": 6,
@@ -1899,7 +1922,9 @@
   {
    "name": "wino białe",
    "aliases": [
-    "wino"
+    "wino",
+    "wino białe wytrawne",
+    "wina białego wytrawnego"
    ],
    "kcal": 82,
    "protein": 0.1,
@@ -2016,6 +2041,146 @@
    "protein": 18,
    "carbs": 23,
    "fat": 50
+  },
+  {
+   "name": "bułka grahamka",
+   "aliases": [
+    "bułek grahamek",
+    "bułki grahamki",
+    "grahamka",
+    "grahamki"
+   ],
+   "kcal": 265,
+   "protein": 9,
+   "carbs": 50,
+   "fat": 2,
+   "piece_g": 50
+  },
+  {
+   "name": "bagietka",
+   "aliases": [
+    "bagietki",
+    "bagietka francuska"
+   ],
+   "kcal": 270,
+   "protein": 9,
+   "carbs": 54,
+   "fat": 1.5,
+   "piece_g": 250
+  },
+  {
+   "name": "czekolada biała",
+   "aliases": [
+    "czekolady białej"
+   ],
+   "kcal": 540,
+   "protein": 6,
+   "carbs": 59,
+   "fat": 32
+  },
+  {
+   "name": "czekolada mleczna",
+   "aliases": [
+    "czekolady mlecznej"
+   ],
+   "kcal": 535,
+   "protein": 7.5,
+   "carbs": 58,
+   "fat": 30
+  },
+  {
+   "name": "budyń waniliowy (proszek)",
+   "aliases": [
+    "budyń waniliowy",
+    "budyń w proszku",
+    "budyń"
+   ],
+   "kcal": 350,
+   "protein": 0.5,
+   "carbs": 86,
+   "fat": 0.5
+  },
+  {
+   "name": "hummus",
+   "aliases": [
+    "humus"
+   ],
+   "kcal": 240,
+   "protein": 8,
+   "carbs": 14,
+   "fat": 18
+  },
+  {
+   "name": "piwo",
+   "aliases": [
+    "piwa",
+    "piwo jasne"
+   ],
+   "kcal": 43,
+   "protein": 0.5,
+   "carbs": 3.6,
+   "fat": 0,
+   "density_g_ml": 1.0
+  },
+  {
+   "name": "lody waniliowe",
+   "aliases": [
+    "lody śmietankowe",
+    "lody"
+   ],
+   "kcal": 207,
+   "protein": 3.5,
+   "carbs": 24,
+   "fat": 11
+  },
+  {
+   "name": "odżywka białkowa",
+   "aliases": [
+    "białko w proszku",
+    "proteina",
+    "odżywka proteinowa"
+   ],
+   "kcal": 380,
+   "protein": 75,
+   "carbs": 8,
+   "fat": 5
+  },
+  {
+   "name": "napar kawy",
+   "aliases": [
+    "kawa parzona",
+    "napar z kawy",
+    "kawa czarna",
+    "espresso"
+   ],
+   "kcal": 2,
+   "protein": 0.1,
+   "carbs": 0,
+   "fat": 0,
+   "density_g_ml": 1.0
+  },
+  {
+   "name": "tonik",
+   "aliases": [
+    "tonic",
+    "woda tonizowana"
+   ],
+   "kcal": 34,
+   "protein": 0,
+   "carbs": 8.5,
+   "fat": 0,
+   "density_g_ml": 1.0
+  },
+  {
+   "name": "kostki lodu",
+   "aliases": [
+    "lód w kostkach",
+    "kostka lodu"
+   ],
+   "kcal": 0,
+   "protein": 0,
+   "carbs": 0,
+   "fat": 0
   }
  ]
 }
