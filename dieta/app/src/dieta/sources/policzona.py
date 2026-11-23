@@ -12,6 +12,7 @@ import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
 from html import escape
 from html.parser import HTMLParser
+from urllib.parse import urlsplit
 
 from dieta.sources.base import Fetch, RawIngredient, Recipe
 from dieta.sources.jsonld import parse_ingredient, recipe_urls, sitemap_locs, split_amount_unit
@@ -19,6 +20,7 @@ from dieta.sources.jsonld import parse_ingredient, recipe_urls, sitemap_locs, sp
 _log = logging.getLogger(__name__)
 
 FEED_URL = "https://policzona-szama.pl/blogs/przepisy.atom"  # kanał Atom z pełną treścią artykułów
+FEED_HOST = "policzona-szama.pl"
 SITEMAP_URL = "https://policzona-szama.pl/sitemap_articles_1.xml"
 URL_MARKER = "/blogs/przepisy/"
 MAX_FEED_PAGES = 40
@@ -164,6 +166,12 @@ def _synthetic_page(title: str, content: str) -> str:
     )
 
 
+def _is_recipe_url(url: str) -> bool:
+    """Link do artykułu z przepisem na własnym hoście (https): kanał nie może podsunąć obcego adresu."""
+    parts = urlsplit(url)
+    return parts.scheme == "https" and parts.hostname == FEED_HOST and URL_MARKER in parts.path
+
+
 def _feed_entries(xml: str) -> list[tuple[str, str]]:
     """(URL artykułu, strona HTML) z wpisów kanału; wpisy bez linku do przepisu pomijane."""
     root = ET.fromstring(xml)
@@ -173,13 +181,13 @@ def _feed_entries(xml: str) -> list[tuple[str, str]]:
             (
                 link.get("href", "")
                 for link in entry.findall(f"{ATOM}link")
-                if URL_MARKER in link.get("href", "")
+                if _is_recipe_url(link.get("href", ""))
             ),
             "",
         )
-        if url:
-            body = _synthetic_page(entry.findtext(f"{ATOM}title", ""), entry.findtext(f"{ATOM}content", ""))
-            pages.append((url, body))
+        content = entry.findtext(f"{ATOM}content", "")
+        if url and content.strip():  # wpis bez treści: crawl pobierze stronę zwykłym fetch
+            pages.append((url, _synthetic_page(entry.findtext(f"{ATOM}title", ""), content)))
     return pages
 
 
@@ -188,15 +196,20 @@ class PolicznaSource:
 
     def __init__(self) -> None:
         self._pages: dict[str, str] = {}  # strony złożone z kanału Atom (bez zapytania do serwisu)
+        self._errors: list[str] = []
 
     def prefetched(self, url: str) -> str | None:
         """Strona z kanału Atom dla URL-a; None, gdy URL nie pochodzi z kanału."""
         return self._pages.get(url)
 
     def list_urls(self, *, fetch: Fetch) -> list[str]:
+        self._errors = []
         feed = self._feed_urls(fetch)
         sitemap = self._sitemap_urls(fetch)
-        return list(dict.fromkeys([*feed, *sitemap]))
+        urls = list(dict.fromkeys([*feed, *sitemap]))
+        if not urls and self._errors:  # obie części padły: crawl ma pokazać przyczynę, nie „pustą sitemapę”
+            raise RuntimeError("; ".join(self._errors))
+        return urls
 
     def _feed_urls(self, fetch: Fetch) -> list[str]:
         """URL-e z kanału Atom; kończy na stronie bez nowych URL-i (pusta, bez wpisów lub powtórzona)."""
@@ -206,6 +219,7 @@ class PolicznaSource:
                 entries = _feed_entries(fetch(f"{FEED_URL}?page={page}"))
             except Exception as exc:
                 _log.warning("Policzona: kanał Atom, strona %d: %s", page, type(exc).__name__)
+                self._errors.append(f"kanał Atom: {type(exc).__name__}")
                 break
             new = [(url, body) for url, body in entries if url not in seen]
             if not new:
@@ -220,6 +234,7 @@ class PolicznaSource:
             return recipe_urls(sitemap_locs(fetch(SITEMAP_URL)), URL_MARKER)
         except Exception as exc:
             _log.warning("Policzona: sitemapa artykułów: %s", type(exc).__name__)
+            self._errors.append(f"sitemapa: {type(exc).__name__}")
             return []
 
     def parse(self, url: str, html: str) -> Recipe | None:

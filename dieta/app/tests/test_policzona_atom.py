@@ -116,3 +116,47 @@ def test_crawl_przepisy_z_kanalu_bez_zapytan_o_artykuly(tmp_path: Path) -> None:
     assert result.added == 3  # dwa z kanału + KEBAB z sitemapy (pobrany zwykłym fetch)
     assert fetch.requested == [_feed_page(1), _feed_page(2), SITEMAP_URL, KEBAB]
     assert store.get_meta("crawl_used:policzona") == "2026-11-23:1"
+
+
+def _atom(*entries: str) -> str:
+    return '<feed xmlns="http://www.w3.org/2005/Atom">' + "".join(entries) + "</feed>"
+
+
+def _entry(href: str, content: str = "&lt;p&gt;x&lt;/p&gt;") -> str:
+    return f'<entry><title>T</title><link href="{href}"/><content type="html">{content}</content></entry>'
+
+
+def test_kanal_odrzuca_obcy_host_schemat_i_wpisy_bez_tresci() -> None:
+    feed = _atom(
+        _entry("https://obcy.example/blogs/przepisy/a"),
+        _entry("http://policzona-szama.pl/blogs/przepisy/b"),
+        _entry("javascript:x//blogs/przepisy/c"),
+        _entry("https://policzona-szama.pl/blogs/przepisy/pusty", content="  "),
+        _entry("https://policzona-szama.pl/blogs/przepisy/dobry"),
+    )
+    source = PolicznaSource()
+
+    urls = source.list_urls(
+        fetch=FakeFetch({_feed_page(1): feed, _feed_page(2): EMPTY_FEED, SITEMAP_URL: SITEMAP})
+    )
+
+    assert urls[0] == "https://policzona-szama.pl/blogs/przepisy/dobry"
+    assert source.prefetched("https://policzona-szama.pl/blogs/przepisy/pusty") is None
+    assert not any("obcy" in u or u.startswith(("http:", "javascript")) for u in urls)
+
+
+def test_list_urls_gdy_kanal_i_sitemapa_padna_zglasza_przyczyne() -> None:
+    import pytest
+
+    fetch = FakeFetch({_feed_page(1): OSError("x"), SITEMAP_URL: OSError("y")})
+
+    with pytest.raises(RuntimeError, match="kanał Atom: OSError; sitemapa: OSError"):
+        PolicznaSource().list_urls(fetch=fetch)
+
+
+def test_list_urls_blad_kanalu_na_drugiej_stronie_zachowuje_pierwsza() -> None:
+    fetch = FakeFetch({_feed_page(1): _fixture(), _feed_page(2): OSError("x"), SITEMAP_URL: SITEMAP})
+
+    urls = PolicznaSource().list_urls(fetch=fetch)
+
+    assert urls[0] == SHOARMA and KEBAB in urls

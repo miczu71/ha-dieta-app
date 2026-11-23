@@ -108,6 +108,10 @@ class AniagotujeSource:
         ingredients = tuple(
             parse_ingredient(text) for name, _, text in props if name == "recipeIngredient" and text
         )
+        if (
+            not ingredients
+        ):  # zmiana szablonu: błąd w przebiegu (ponowna próba jutro), nie cichy przepis bez składników
+            raise ValueError("przepis bez składników")
         return Recipe(
             source=self.name,
             source_id=url,

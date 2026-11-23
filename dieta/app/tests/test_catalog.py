@@ -230,3 +230,39 @@ def test_crawl_isolated_429_does_not_stop(tmp_path: Path) -> None:
     fetch = _fetch_429(ok={"u1", "u3", "u4"})
     result = crawl(store, source, fetch=fetch, today=TODAY, limit=50)
     assert (result.added, result.errors) == (3, 1)
+
+
+class CachedSource(FakeSource):
+    """Źródło ze stronami z kanału (`prefetched`) dla wskazanych URL-i."""
+
+    def __init__(self, urls: list[str], cached: set[str], notrecipe: set[str] | None = None):
+        super().__init__(urls, notrecipe=notrecipe)
+        self.cached = cached
+
+    def prefetched(self, url: str) -> str | None:
+        return "<html>kanał</html>" if url in self.cached else None
+
+
+def test_crawl_strony_z_kanalu_przechodza_mimo_wyczerpanego_limitu(tmp_path: Path) -> None:
+    store = Store(tmp_path / "d.db")
+    fetch = _fetch_factory()
+    source = CachedSource(["u0", "u1", "u2"], cached={"u0", "u1"})
+
+    result = crawl(store, source, fetch=fetch, today=TODAY, limit=0)
+
+    assert result.added == 2
+    assert result.limit_reached is True
+    assert fetch.calls == []  # type: ignore[attr-defined]
+    assert store.get_meta(f"crawl_used:{TODAY.isoformat()}") in (None, "0")
+
+
+def test_crawl_strona_z_kanalu_bez_przepisu_trafia_do_pominietych(tmp_path: Path) -> None:
+    store = Store(tmp_path / "d.db")
+    source = CachedSource(["u0"], cached={"u0"}, notrecipe={"u0"})
+
+    first = crawl(store, source, fetch=_fetch_factory(), today=TODAY, limit=5)
+    second = crawl(store, source, fetch=_fetch_factory(), today=TODAY, limit=5)
+
+    assert (first.added, first.skipped) == (0, 1)
+    assert source.parsed == ["u0"]  # drugi przebieg pomija URL
+    assert second.skipped == 0
