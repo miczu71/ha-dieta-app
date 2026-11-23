@@ -12,6 +12,7 @@ from pathlib import Path
 from dieta.dictionary import Durability
 
 DEFAULT_REFRESH_TIME = "03:30"
+DEFAULT_PUSH_TIME = "07:00"
 DEFAULT_FAMILIAR_THRESHOLD = 50
 KNOWN_SOURCES = ("respo", "lidl", "policzona", "aniagotuje")
 WEEKDAYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
@@ -39,6 +40,8 @@ class Settings:
     llm_url: str = ""
     llm_key: str = field(default="", repr=False)
     refresh_time: str = DEFAULT_REFRESH_TIME
+    push_notify: str = ""
+    push_time: str = DEFAULT_PUSH_TIME
     shelf_fresh_days: int = 4
     shelf_chilled_days: int = 10
     shelf_dry_days: int = 30
@@ -74,9 +77,9 @@ class Settings:
         return name or f"Osoba {person_id}"
 
 
-def _clock(value: object) -> str:
+def _clock(value: object, default: str = DEFAULT_REFRESH_TIME) -> str:
     text = str(value or "").strip()
-    return text if _REFRESH_RE.match(text) else DEFAULT_REFRESH_TIME
+    return text if _REFRESH_RE.match(text) else default
 
 
 def _bounded(options: dict[str, object], key: str, default: int, low: int, high: int) -> int:
@@ -128,6 +131,8 @@ def load_settings() -> Settings:
         llm_url=str(options.get("llm_url") or "").strip(),
         llm_key=str(options.get("llm_key") or "").strip(),
         refresh_time=_clock(options.get("refresh_time")),
+        push_notify=str(options.get("push_notify") or "").strip(),
+        push_time=_clock(options.get("push_time"), DEFAULT_PUSH_TIME),
         shelf_fresh_days=_bounded(options, "shelf_fresh_days", 4, 1, 365),
         shelf_chilled_days=_bounded(options, "shelf_chilled_days", 10, 1, 365),
         shelf_dry_days=_bounded(options, "shelf_dry_days", 30, 1, 365),

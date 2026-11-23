@@ -190,6 +190,23 @@ _MIGRATIONS: list[str] = [
         created_at TEXT NOT NULL
     );
     """,
+    """
+    CREATE TABLE meal_log (
+        day TEXT NOT NULL,
+        person_id INTEGER NOT NULL CHECK(person_id IN (1,2)),
+        slot TEXT NOT NULL CHECK(slot IN ('breakfast','lunch','dinner','snack1','snack2')),
+        status TEXT NOT NULL CHECK(status IN ('eaten','skipped','substitute')),
+        recipe_id INTEGER,
+        title TEXT NOT NULL,
+        portions REAL,
+        kcal REAL NOT NULL DEFAULT 0,
+        protein REAL,
+        fat REAL,
+        carbs REAL,
+        updated_at TEXT NOT NULL,
+        PRIMARY KEY (day, person_id, slot)
+    );
+    """,
 ]
 
 
@@ -377,6 +394,23 @@ class PlanMeal:
     session_id: int
     p1_portions: float | None
     p2_portions: float | None
+
+
+@dataclass(frozen=True)
+class MealLogEntry:
+    """Odhaczenie posiłku (osoba × dzień × slot); migawka niezależna od ``plan_meal``."""
+
+    day: date
+    person_id: int
+    slot: str
+    status: str  # eaten | skipped | substitute
+    recipe_id: int | None
+    title: str
+    portions: float | None
+    kcal: float
+    protein: float | None
+    fat: float | None
+    carbs: float | None
 
 
 def _check_person(person_id: int) -> None:
@@ -1231,3 +1265,43 @@ class Store:
             if eaten >= since and eaten > history.get(recipe_id, date.min):
                 history[recipe_id] = eaten
         return history
+
+    def set_meal_log(self, entry: MealLogEntry) -> None:
+        """Zapis odhaczenia; ten sam (dzień, osoba, slot) nadpisuje poprzedni stan."""
+        _check_person(entry.person_id)
+        with closing(self._connect()) as conn, conn:
+            conn.execute(
+                "INSERT OR REPLACE INTO meal_log (day, person_id, slot, status, recipe_id, title, portions, "
+                "kcal, protein, fat, carbs, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+                (
+                    entry.day.isoformat(),
+                    entry.person_id,
+                    entry.slot,
+                    entry.status,
+                    entry.recipe_id,
+                    entry.title,
+                    entry.portions,
+                    entry.kcal,
+                    entry.protein,
+                    entry.fat,
+                    entry.carbs,
+                    datetime.now().isoformat(timespec="seconds"),
+                ),
+            )
+
+    def clear_meal_log(self, day: date, person_id: int, slot: str) -> None:
+        with closing(self._connect()) as conn, conn:
+            conn.execute(
+                "DELETE FROM meal_log WHERE day = ? AND person_id = ? AND slot = ?",
+                (day.isoformat(), person_id, slot),
+            )
+
+    def meal_log(self, day_from: date, day_to: date) -> list[MealLogEntry]:
+        """Odhaczenia z zakresu dni (włącznie), posortowane po dniu, osobie i slocie."""
+        with closing(self._connect()) as conn:
+            rows = conn.execute(
+                "SELECT day, person_id, slot, status, recipe_id, title, portions, kcal, protein, fat, carbs "
+                "FROM meal_log WHERE day >= ? AND day <= ? ORDER BY day, person_id, slot",
+                (day_from.isoformat(), day_to.isoformat()),
+            ).fetchall()
+        return [MealLogEntry(date.fromisoformat(r[0]), *r[1:]) for r in rows]

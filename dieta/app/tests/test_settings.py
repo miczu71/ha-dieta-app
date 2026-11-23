@@ -103,3 +103,28 @@ def test_cook_days_skips_bad_day_and_orders_by_week(tmp_path: Path, monkeypatch:
 def test_cook_days_without_valid_entry_uses_default(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     assert _load(tmp_path, monkeypatch, {"cook_days": ["x"]}).cook_days == ("sat", "sun", "wed")
     assert _load(tmp_path, monkeypatch, {"cook_days": "sat"}).cook_days == ("sat", "sun", "wed")
+
+
+def test_push_options_default_and_from_options(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("DIETA_OPTIONS_PATH", str(tmp_path / "missing.json"))
+    default = load_settings()
+    assert default.push_notify == ""
+    assert default.push_time == "07:00"
+
+    options = tmp_path / "options.json"
+    options.write_text(json.dumps({"push_notify": " family ", "push_time": "06:45"}), encoding="utf-8")
+    monkeypatch.setenv("DIETA_OPTIONS_PATH", str(options))
+    loaded = load_settings()
+    assert loaded.push_notify == "family"
+    assert loaded.push_time == "06:45"
+
+
+def test_bad_push_time_falls_back_without_touching_refresh_time(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    options = tmp_path / "options.json"
+    options.write_text(json.dumps({"push_time": "25:99", "refresh_time": "nope"}), encoding="utf-8")
+    monkeypatch.setenv("DIETA_OPTIONS_PATH", str(options))
+    loaded = load_settings()
+    assert loaded.push_time == "07:00"
+    assert loaded.refresh_time == "03:30"

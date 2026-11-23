@@ -23,6 +23,12 @@ configuration:
   refresh_time:
     name: Nightly refresh time
     description: HH:MM format, e.g. 03:30.
+  push_notify:
+    name: Notification service (morning plan)
+    description: Name of the notify service without prefix, e.g. family (notify.family). Empty = morning push disabled.
+  push_time:
+    name: Morning notification time
+    description: HH:MM format, e.g. 07:00. Sent once a day, only when the approved plan has meals today.
   shelf_fresh_days:
     name: Days — fresh
     description: Days after the last purchase during which a fresh ingredient counts as probably at home.

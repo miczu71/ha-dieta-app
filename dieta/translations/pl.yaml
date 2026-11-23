@@ -23,6 +23,12 @@ configuration:
   refresh_time:
     name: Godzina nocnego odświeżania
     description: Format HH:MM, np. 03:30.
+  push_notify:
+    name: Usługa powiadomień (poranny plan)
+    description: Nazwa usługi notify bez prefiksu, np. family (notify.family). Puste = poranny push wyłączony.
+  push_time:
+    name: Godzina porannego powiadomienia
+    description: Format HH:MM, np. 07:00. Wysyłane raz dziennie, tylko gdy zatwierdzony plan ma posiłki na dziś.
   shelf_fresh_days:
     name: Dni — świeże
     description: Ile dni po ostatnim zakupie składnik świeży uznajemy za prawdopodobnie w domu.

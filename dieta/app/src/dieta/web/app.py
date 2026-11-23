@@ -18,13 +18,14 @@ from fastapi.responses import RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from .. import nutrition
+from .. import nutrition, push
 from ..pipeline import CrawlRunner, default_crawl_runner
 from ..settings import Settings
 from ..store import PERSON_IDS, Profile, Store
 from ..targets import person_targets
 from .catalog import make_catalog_router
 from .chart import weight_chart
+from .dzis import make_dzis_router
 from .kupujemy import SyncRunner, default_runner, make_router, seconds_until
 from .plan import make_plan_router
 
@@ -117,15 +118,18 @@ def create_app(
 
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
-        task = None
+        tasks: list[asyncio.Task[None]] = []
         if sync_runner is None and crawl_runner is None:
-            task = asyncio.create_task(_nightly(settings, runner, crawler))
+            tasks.append(asyncio.create_task(_nightly(settings, runner, crawler)))
+            push_task = push.start(settings, store)
+            if push_task is not None:
+                tasks.append(push_task)
         try:
             yield
         finally:
-            if task is not None:
+            for task in tasks:
                 task.cancel()
-                await asyncio.gather(task, return_exceptions=True)
+            await asyncio.gather(*tasks, return_exceptions=True)
 
     app = FastAPI(title="Dieta", docs_url=None, redoc_url=None, lifespan=lifespan)
     app.state.settings = settings
@@ -136,6 +140,7 @@ def create_app(
     app.include_router(make_router(settings, store, templates, runner))
     app.include_router(make_catalog_router(settings, store, templates, crawler))
     app.include_router(make_plan_router(settings, store, templates))
+    app.include_router(make_dzis_router(settings, store, templates))
 
     @app.middleware("http")
     async def no_store(request: Request, call_next):  # type: ignore[no-untyped-def]
