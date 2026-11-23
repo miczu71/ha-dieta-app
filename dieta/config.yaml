@@ -34,6 +34,18 @@ options:
     - lidl
     - policzona
     - aniagotuje
+  slot_breakfast_pct: 25
+  slot_lunch_pct: 35
+  slot_dinner_pct: 30
+  slot_snack1_pct: 0
+  slot_snack2_pct: 0
+  cook_days:
+    - sat
+    - sun
+    - wed
+  max_minutes_weekday: 45
+  session_days_max: 4
+  discovery: 1
 schema:
   log_level: "list(debug|info|warning|error)"
   person_1_name: "str?"
@@ -51,3 +63,13 @@ schema:
   familiar_threshold: "int(0,100)"
   sources:
     - "list(respo|lidl|policzona|aniagotuje)"
+  slot_breakfast_pct: "int(0,100)"
+  slot_lunch_pct: "int(0,100)"
+  slot_dinner_pct: "int(0,100)"
+  slot_snack1_pct: "int(0,100)"
+  slot_snack2_pct: "int(0,100)"
+  cook_days:
+    - "list(mon|tue|wed|thu|fri|sat|sun)"
+  max_minutes_weekday: "int(10,240)"
+  session_days_max: "int(1,7)"
+  discovery: "int(0,3)"

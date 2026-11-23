@@ -44,3 +44,30 @@ configuration:
   sources:
     name: Źródła przepisów
     description: Włączone źródła katalogu (respo, lidl, policzona, aniagotuje).
+  slot_breakfast_pct:
+    name: Śniadanie (% kcal dnia)
+    description: Udział śniadania w kcal dnia w planerze. 0 = slot wyłączony. Suma slotów ≤ 100, reszta to posiłki spoza planu.
+  slot_lunch_pct:
+    name: Obiad (% kcal dnia)
+    description: Udział obiadu. 0 = slot wyłączony.
+  slot_dinner_pct:
+    name: Kolacja (% kcal dnia)
+    description: Udział kolacji. 0 = slot wyłączony.
+  slot_snack1_pct:
+    name: II śniadanie (% kcal dnia)
+    description: Udział drugiego śniadania. 0 = slot wyłączony.
+  slot_snack2_pct:
+    name: Podwieczorek (% kcal dnia)
+    description: Udział podwieczorku. 0 = slot wyłączony.
+  cook_days:
+    name: Dni gotowania
+    description: Dni tygodnia, w które zaczynają się sesje gotowania (mon..sun).
+  max_minutes_weekday:
+    name: Maks. czas gotowania w dni robocze (min)
+    description: Dłuższe przepisy dostają karę, gdy sesja zaczyna się w dzień roboczy.
+  session_days_max:
+    name: Maks. dni jednej sesji
+    description: Na ile kolejnych dni najwyżej starcza jedna sesja gotowania (z uwzględnieniem trwałości przepisu).
+  discovery:
+    name: Odkrywanie (0–3)
+    description: Ile sesji w tygodniu wybrać spośród przepisów jeszcze niekupowanych (0 = tylko znajome).

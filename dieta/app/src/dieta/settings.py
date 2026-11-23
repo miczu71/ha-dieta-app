@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import re
 from dataclasses import dataclass, field
@@ -13,6 +14,16 @@ from dieta.dictionary import Durability
 DEFAULT_REFRESH_TIME = "03:30"
 DEFAULT_FAMILIAR_THRESHOLD = 50
 KNOWN_SOURCES = ("respo", "lidl", "policzona", "aniagotuje")
+WEEKDAYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
+DEFAULT_COOK_DAYS = ("sat", "sun", "wed")
+DEFAULT_SLOT_PCT = {
+    "slot_breakfast_pct": 25,
+    "slot_lunch_pct": 35,
+    "slot_dinner_pct": 30,
+    "slot_snack1_pct": 0,
+    "slot_snack2_pct": 0,
+}
+log = logging.getLogger(__name__)
 _REFRESH_RE = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$")
 
 
@@ -35,6 +46,15 @@ class Settings:
     crawl_daily_limit: int = 150
     familiar_threshold: int = DEFAULT_FAMILIAR_THRESHOLD
     sources: tuple[str, ...] = KNOWN_SOURCES
+    slot_breakfast_pct: int = 25
+    slot_lunch_pct: int = 35
+    slot_dinner_pct: int = 30
+    slot_snack1_pct: int = 0
+    slot_snack2_pct: int = 0
+    cook_days: tuple[str, ...] = DEFAULT_COOK_DAYS
+    max_minutes_weekday: int = 45
+    session_days_max: int = 4
+    discovery: int = 1
 
     @property
     def db_path(self) -> Path:
@@ -73,6 +93,23 @@ def _sources(value: object) -> tuple[str, ...]:
     return tuple(dict.fromkeys(str(v) for v in value if str(v) in KNOWN_SOURCES))
 
 
+def _cook_days(value: object) -> tuple[str, ...]:
+    """Poprawne dni z listy (kolejność tygodnia, bez duplikatów); brak poprawnych → domyślne."""
+    if not isinstance(value, list):
+        return DEFAULT_COOK_DAYS
+    chosen = {str(v).strip().lower() for v in value}
+    days = tuple(d for d in WEEKDAYS if d in chosen)
+    return days or DEFAULT_COOK_DAYS
+
+
+def _slot_pcts(options: dict[str, object]) -> dict[str, int]:
+    pcts = {key: _bounded(options, key, default, 0, 100) for key, default in DEFAULT_SLOT_PCT.items()}
+    if sum(pcts.values()) > 100:
+        log.warning("suma udziałów slotów > 100%% — używam domyślnych (%s)", DEFAULT_SLOT_PCT)
+        return dict(DEFAULT_SLOT_PCT)
+    return pcts
+
+
 def load_settings() -> Settings:
     options_path = Path(os.environ.get("DIETA_OPTIONS_PATH", "/data/options.json"))
     options: dict[str, object] = {}
@@ -98,4 +135,9 @@ def load_settings() -> Settings:
         crawl_daily_limit=_bounded(options, "crawl_daily_limit", 150, 1, 1000),
         familiar_threshold=_bounded(options, "familiar_threshold", DEFAULT_FAMILIAR_THRESHOLD, 0, 100),
         sources=_sources(options.get("sources")),
+        **_slot_pcts(options),
+        cook_days=_cook_days(options.get("cook_days")),
+        max_minutes_weekday=_bounded(options, "max_minutes_weekday", 45, 10, 240),
+        session_days_max=_bounded(options, "session_days_max", 4, 1, 7),
+        discovery=_bounded(options, "discovery", 1, 0, 3),
     )

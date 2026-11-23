@@ -44,3 +44,30 @@ configuration:
   sources:
     name: Recipe sources
     description: Enabled catalog sources (respo, lidl, policzona, aniagotuje).
+  slot_breakfast_pct:
+    name: Breakfast (% of daily kcal)
+    description: Share of breakfast in daily kcal for the planner. 0 = slot disabled. Slots must sum to at most 100, the rest is for meals outside the plan.
+  slot_lunch_pct:
+    name: Lunch (% of daily kcal)
+    description: Share of lunch. 0 = slot disabled.
+  slot_dinner_pct:
+    name: Dinner (% of daily kcal)
+    description: Share of dinner. 0 = slot disabled.
+  slot_snack1_pct:
+    name: Morning snack (% of daily kcal)
+    description: Share of the morning snack. 0 = slot disabled.
+  slot_snack2_pct:
+    name: Afternoon snack (% of daily kcal)
+    description: Share of the afternoon snack. 0 = slot disabled.
+  cook_days:
+    name: Cooking days
+    description: Weekdays on which cooking sessions may start (mon..sun).
+  max_minutes_weekday:
+    name: Max cooking time on weekdays (min)
+    description: Longer recipes are penalized when a session starts on a weekday.
+  session_days_max:
+    name: Max days per session
+    description: For how many consecutive days one cooking session lasts at most (also limited by recipe storage life).
+  discovery:
+    name: Discovery (0-3)
+    description: How many sessions per week come from recipes not bought yet (0 = familiar only).

@@ -45,3 +45,61 @@ def test_defaults_threshold_50_and_four_sources(tmp_path: Path, monkeypatch: pyt
     settings = load_settings()
     assert settings.familiar_threshold == 50
     assert settings.sources == ("respo", "lidl", "policzona", "aniagotuje")
+
+
+def _load(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, options: dict[str, object]) -> Settings:
+    path = tmp_path / "options.json"
+    path.write_text(json.dumps(options), encoding="utf-8")
+    monkeypatch.setenv("DIETA_OPTIONS_PATH", str(path))
+    monkeypatch.setenv("DIETA_DATA_DIR", str(tmp_path))
+    return load_settings()
+
+
+def test_planner_option_defaults(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    s = _load(tmp_path, monkeypatch, {})
+    assert (s.slot_breakfast_pct, s.slot_lunch_pct, s.slot_dinner_pct) == (25, 35, 30)
+    assert (s.slot_snack1_pct, s.slot_snack2_pct) == (0, 0)
+    assert s.cook_days == ("sat", "sun", "wed")
+    assert (s.max_minutes_weekday, s.session_days_max, s.discovery) == (45, 4, 1)
+
+
+def test_planner_options_are_read_and_bounded(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    s = _load(
+        tmp_path,
+        monkeypatch,
+        {
+            "slot_breakfast_pct": 20,
+            "slot_snack1_pct": 10,
+            "max_minutes_weekday": 5,  # poza 10-240 → domyślne
+            "session_days_max": 7,
+            "discovery": 9,  # poza 0-3 → domyślne
+        },
+    )
+    assert s.slot_breakfast_pct == 20 and s.slot_snack1_pct == 10
+    assert s.max_minutes_weekday == 45 and s.session_days_max == 7 and s.discovery == 1
+
+
+def test_slot_sum_over_100_falls_back_to_defaults_with_warning(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    with caplog.at_level("WARNING", logger="dieta.settings"):
+        s = _load(
+            tmp_path, monkeypatch, {"slot_breakfast_pct": 50, "slot_lunch_pct": 50, "slot_dinner_pct": 50}
+        )
+    assert (s.slot_breakfast_pct, s.slot_lunch_pct, s.slot_dinner_pct) == (25, 35, 30)
+    assert any(r.levelname == "WARNING" for r in caplog.records)
+
+
+def test_slot_sum_exactly_100_is_accepted(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    s = _load(tmp_path, monkeypatch, {"slot_breakfast_pct": 30, "slot_lunch_pct": 40, "slot_dinner_pct": 30})
+    assert (s.slot_breakfast_pct, s.slot_lunch_pct, s.slot_dinner_pct) == (30, 40, 30)
+
+
+def test_cook_days_skips_bad_day_and_orders_by_week(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    s = _load(tmp_path, monkeypatch, {"cook_days": ["sun", "xyz", "mon", "sun"]})
+    assert s.cook_days == ("mon", "sun")
+
+
+def test_cook_days_without_valid_entry_uses_default(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    assert _load(tmp_path, monkeypatch, {"cook_days": ["x"]}).cook_days == ("sat", "sun", "wed")
+    assert _load(tmp_path, monkeypatch, {"cook_days": "sat"}).cook_days == ("sat", "sun", "wed")

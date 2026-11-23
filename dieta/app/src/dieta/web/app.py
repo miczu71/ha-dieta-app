@@ -22,6 +22,7 @@ from .. import nutrition
 from ..pipeline import CrawlRunner, default_crawl_runner
 from ..settings import Settings
 from ..store import PERSON_IDS, Profile, Store
+from ..targets import person_targets
 from .catalog import make_catalog_router
 from .chart import weight_chart
 from .kupujemy import SyncRunner, default_runner, make_router, seconds_until
@@ -76,13 +77,15 @@ def build_card(store: Store, settings: Settings, person_id: int) -> Card:
     points = store.weights(person_id, 90)
     card.chart = weight_chart(points, nutrition.trend_7d(points))
     card.recent = list(reversed(points))[:5]
-    if profile and weight:
-        bmr = nutrition.bmr_mifflin(profile.sex, profile.age, profile.height_cm, weight)
-        total = nutrition.tdee(bmr, profile.pal_level)
-        auto = nutrition.target_kcal(total, profile.goal, profile.pace_kg_week)
-        kcal = profile.kcal_override or round(auto)
-        card.bmr, card.tdee, card.auto_kcal, card.kcal = round(bmr), round(total), round(auto), kcal
-        card.macros = nutrition.macros(kcal, weight, profile.goal, profile.protein_g_kg, profile.fat_pct)
+    target = person_targets(store, settings, person_id)
+    if target:
+        card.bmr, card.tdee, card.auto_kcal, card.kcal = (
+            target.bmr,
+            target.tdee,
+            target.auto_kcal,
+            target.kcal,
+        )
+        card.macros = target.macros
     return card
 
 

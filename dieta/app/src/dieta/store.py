@@ -6,7 +6,7 @@ Schemat wersjonowany przez ``PRAGMA user_version``; kolejne migracje dopisujemy 
 
 import json
 import sqlite3
-from collections.abc import Iterable, Mapping
+from collections.abc import Iterable, Mapping, Sequence
 from contextlib import closing
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
@@ -157,6 +157,39 @@ _MIGRATIONS: list[str] = [
     ALTER TABLE recipe_ingredient ADD COLUMN grams_assumed REAL;
     UPDATE recipe SET kcal_source = 'source' WHERE has_nutrition = 1;
     """,
+    """
+    CREATE TABLE plan (
+        id INTEGER PRIMARY KEY,
+        week_start TEXT NOT NULL UNIQUE,
+        status TEXT NOT NULL CHECK(status IN ('draft','approved')),
+        seed INTEGER NOT NULL,
+        params_json TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        approved_at TEXT
+    );
+    CREATE TABLE plan_session (
+        id INTEGER PRIMARY KEY,
+        plan_id INTEGER NOT NULL REFERENCES plan(id) ON DELETE CASCADE,
+        slot TEXT NOT NULL CHECK(slot IN ('breakfast','lunch','dinner','snack1','snack2')),
+        recipe_id INTEGER NOT NULL REFERENCES recipe(id),
+        start_day INTEGER NOT NULL CHECK(start_day BETWEEN 0 AND 6),
+        days INTEGER NOT NULL CHECK(days BETWEEN 1 AND 7)
+    );
+    CREATE TABLE plan_meal (
+        plan_id INTEGER NOT NULL REFERENCES plan(id) ON DELETE CASCADE,
+        day INTEGER NOT NULL CHECK(day BETWEEN 0 AND 6),
+        slot TEXT NOT NULL,
+        session_id INTEGER NOT NULL REFERENCES plan_session(id) ON DELETE CASCADE,
+        p1_portions REAL,
+        p2_portions REAL,
+        PRIMARY KEY (plan_id, day, slot)
+    );
+    CREATE TABLE plan_undo (
+        plan_id INTEGER PRIMARY KEY REFERENCES plan(id) ON DELETE CASCADE,
+        snapshot_json TEXT NOT NULL,
+        created_at TEXT NOT NULL
+    );
+    """,
 ]
 
 
@@ -291,6 +324,59 @@ _ESTIMABLE_R_SQL = _ESTIMABLE_SQL.replace("kcal_source", "r.kcal_source").replac
 
 # Szacunek czekający na decyzję; odrzucone (``dismissed``) wypadają z kolejki.
 _PENDING_VISIBLE_SQL = "r.est_status = 'pending' AND COALESCE(f.dismissed, 0) = 0"
+
+
+PlanStatus = Literal["draft", "approved"]
+
+
+@dataclass(frozen=True)
+class PlanRow:
+    id: int
+    week_start: date
+    status: PlanStatus
+    seed: int
+    params_json: str
+    created_at: str
+    approved_at: str | None
+
+
+@dataclass(frozen=True)
+class NewPlanSession:
+    slot: str
+    recipe_id: int
+    start_day: int
+    days: int
+
+
+@dataclass(frozen=True)
+class NewPlanMeal:
+    """Posiłek planu; ``session_index`` = indeks sesji na liście przekazanej razem z nim."""
+
+    day: int
+    slot: str
+    session_index: int
+    p1_portions: float | None
+    p2_portions: float | None
+
+
+@dataclass(frozen=True)
+class PlanSession:
+    id: int
+    plan_id: int
+    slot: str
+    recipe_id: int
+    start_day: int
+    days: int
+
+
+@dataclass(frozen=True)
+class PlanMeal:
+    plan_id: int
+    day: int
+    slot: str
+    session_id: int
+    p1_portions: float | None
+    p2_portions: float | None
 
 
 def _check_person(person_id: int) -> None:
@@ -1003,3 +1089,138 @@ class Store:
                 (status, int(status in ("auto", "approved")), recipe_id),
             )
         return cur.rowcount > 0
+
+    # --- plan tygodnia (migracja v5) ------------------------------------------------------------
+
+    def _connect_fk(self) -> sqlite3.Connection:
+        """Połączenie z kluczami obcymi (kaskady planu); reszta store działa jak dotąd bez nich."""
+        conn = self._connect()
+        conn.execute("PRAGMA foreign_keys = ON")
+        return conn
+
+    @staticmethod
+    def _insert_plan_contents(
+        conn: sqlite3.Connection,
+        plan_id: int,
+        sessions: Sequence[NewPlanSession],
+        meals: Sequence[NewPlanMeal],
+    ) -> None:
+        ids: list[int] = []
+        for sess in sessions:
+            cur = conn.execute(
+                "INSERT INTO plan_session (plan_id, slot, recipe_id, start_day, days) VALUES (?,?,?,?,?)",
+                (plan_id, sess.slot, sess.recipe_id, sess.start_day, sess.days),
+            )
+            assert cur.lastrowid is not None
+            ids.append(cur.lastrowid)
+        for meal in meals:
+            conn.execute(
+                "INSERT INTO plan_meal (plan_id, day, slot, session_id, p1_portions, p2_portions) "
+                "VALUES (?,?,?,?,?,?)",
+                (plan_id, meal.day, meal.slot, ids[meal.session_index], meal.p1_portions, meal.p2_portions),
+            )
+
+    def save_plan(
+        self,
+        week_start: date,
+        status: PlanStatus,
+        seed: int,
+        params_json: str,
+        sessions: Sequence[NewPlanSession],
+        meals: Sequence[NewPlanMeal],
+    ) -> int:
+        """Nowy plan tygodnia; zwraca id. Drugi plan na ten sam tydzień → ``sqlite3.IntegrityError``."""
+        now = datetime.now().isoformat(timespec="seconds")
+        approved_at = now if status == "approved" else None
+        with closing(self._connect_fk()) as conn, conn:
+            cur = conn.execute(
+                "INSERT INTO plan (week_start, status, seed, params_json, created_at, approved_at) "
+                "VALUES (?,?,?,?,?,?)",
+                (week_start.isoformat(), status, seed, params_json, now, approved_at),
+            )
+            assert cur.lastrowid is not None
+            self._insert_plan_contents(conn, cur.lastrowid, sessions, meals)
+            return cur.lastrowid
+
+    def plan(self, week_start: date) -> PlanRow | None:
+        with closing(self._connect()) as conn:
+            row = conn.execute(
+                "SELECT id, week_start, status, seed, params_json, created_at, approved_at "
+                "FROM plan WHERE week_start = ?",
+                (week_start.isoformat(),),
+            ).fetchone()
+        if row is None:
+            return None
+        return PlanRow(
+            row[0], date.fromisoformat(row[1]), cast(PlanStatus, row[2]), row[3], row[4], row[5], row[6]
+        )
+
+    def plan_sessions(self, plan_id: int) -> list[PlanSession]:
+        with closing(self._connect()) as conn:
+            rows = conn.execute(
+                "SELECT id, plan_id, slot, recipe_id, start_day, days FROM plan_session "
+                "WHERE plan_id = ? ORDER BY id",
+                (plan_id,),
+            ).fetchall()
+        return [PlanSession(*r) for r in rows]
+
+    def plan_meals(self, plan_id: int) -> list[PlanMeal]:
+        with closing(self._connect()) as conn:
+            rows = conn.execute(
+                "SELECT plan_id, day, slot, session_id, p1_portions, p2_portions FROM plan_meal "
+                "WHERE plan_id = ? ORDER BY day, slot",
+                (plan_id,),
+            ).fetchall()
+        return [PlanMeal(*r) for r in rows]
+
+    def replace_plan_contents(
+        self, plan_id: int, sessions: Sequence[NewPlanSession], meals: Sequence[NewPlanMeal]
+    ) -> None:
+        """Podmienia sesje i posiłki planu w jednej transakcji (wiersz ``plan`` zostaje)."""
+        with closing(self._connect_fk()) as conn, conn:
+            conn.execute("DELETE FROM plan_meal WHERE plan_id = ?", (plan_id,))
+            conn.execute("DELETE FROM plan_session WHERE plan_id = ?", (plan_id,))
+            self._insert_plan_contents(conn, plan_id, sessions, meals)
+
+    def set_plan_status(self, plan_id: int, status: PlanStatus) -> bool:
+        approved_at = datetime.now().isoformat(timespec="seconds") if status == "approved" else None
+        with closing(self._connect()) as conn, conn:
+            cur = conn.execute(
+                "UPDATE plan SET status = ?, approved_at = ? WHERE id = ?", (status, approved_at, plan_id)
+            )
+        return cur.rowcount > 0
+
+    def delete_plan(self, plan_id: int) -> None:
+        with closing(self._connect_fk()) as conn, conn:
+            conn.execute("DELETE FROM plan WHERE id = ?", (plan_id,))
+
+    def save_undo(self, plan_id: int, snapshot_json: str) -> None:
+        """Jeden krok cofania na plan: kolejny zapis nadpisuje poprzedni."""
+        with closing(self._connect_fk()) as conn, conn:
+            conn.execute(
+                "INSERT OR REPLACE INTO plan_undo (plan_id, snapshot_json, created_at) VALUES (?,?,?)",
+                (plan_id, snapshot_json, datetime.now().isoformat(timespec="seconds")),
+            )
+
+    def pop_undo(self, plan_id: int) -> str | None:
+        with closing(self._connect()) as conn, conn:
+            row = conn.execute("SELECT snapshot_json FROM plan_undo WHERE plan_id = ?", (plan_id,)).fetchone()
+            if row is None:
+                return None
+            conn.execute("DELETE FROM plan_undo WHERE plan_id = ?", (plan_id,))
+        return cast(str, row[0])
+
+    def approved_recipe_history(self, since: date) -> dict[int, date]:
+        """Przepis → najpóźniejszy dzień posiłku w zatwierdzonych planach, od ``since`` (włącznie)."""
+        with closing(self._connect()) as conn:
+            rows = conn.execute(
+                "SELECT s.recipe_id, p.week_start, m.day FROM plan_meal m "
+                "JOIN plan p ON p.id = m.plan_id JOIN plan_session s ON s.id = m.session_id "
+                "WHERE p.status = 'approved'"
+            ).fetchall()
+        history: dict[int, date] = {}
+        for recipe_id, week_start, day in rows:
+            eaten = date.fromisoformat(week_start) + timedelta(days=day)
+            if eaten >= since and eaten > history.get(recipe_id, date.min):
+                history[recipe_id] = eaten
+        return history
