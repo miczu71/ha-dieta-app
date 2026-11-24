@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block content %}
-{% if sync_errors %}<div class="dz-err" role="status">{% for msg in sync_errors %}<p>{{ msg }}</p>{% endfor %}</div>{% endif %}
+{% include "_sync_errors.html" %}
 {% if error == 'sync' %}<p class="dz-err" role="alert">Nie udało się pobrać zakupów: {{ last_sync_error }}</p>{% endif %}
 {% if notice == 'ok' %}<p class="dz-ok" role="status">Zakupy odświeżone.</p>{% endif %}
 {% if error == 'ceny' %}<p class="dz-err" role="alert">Nie udało się zlecić (szczegóły w logu).</p>{% endif %}

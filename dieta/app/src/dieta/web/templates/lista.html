@@ -38,7 +38,7 @@
 {% endmacro %}
 {% block content %}
 {% if notice_text %}<p class="dz-ok" role="status">{{ notice_text }}</p>{% endif %}
-{% if sync_errors %}<div class="dz-err" role="status">{% for msg in sync_errors %}<p>{{ msg }}</p>{% endfor %}</div>{% endif %}
+{% include "_sync_errors.html" %}
 
 <nav class="dz-week" aria-label="Tygodnie">
   <a class="dz-link" href="lista?tydzien={{ prev_week.isoformat() }}">← Poprzedni</a>

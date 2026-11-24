@@ -86,7 +86,7 @@ def _parse_verdicts(reply: list[dict[str, object]] | None, count: int) -> dict[i
 
 def _prompt_safe(name: str) -> str:
     """Nazwa z cudzego API do jednej linii promptu: bez znaków sterujących i ``||``, ≤120 znaków."""
-    cleaned = "".join(" " if ch.isspace() else ch for ch in name if ch.isprintable() or ch.isspace())
+    cleaned = "".join(ch for ch in name if ch.isprintable() or ch.isspace())
     return " ".join(cleaned.replace("||", " ").split())[:120].rstrip()
 
 

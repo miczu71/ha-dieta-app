@@ -135,12 +135,7 @@ SYNC_ERROR_LABELS: tuple[tuple[str, str], ...] = (
 
 def sync_errors(store: Store) -> list[str]:
     """Komunikaty o niepustych błędach synchronizacji cen (katalog, półka, kolejka)."""
-    messages: list[str] = []
-    for key, label in SYNC_ERROR_LABELS:
-        text = store.get_meta(key) or ""
-        if text:
-            messages.append(f"{label}: {text}")
-    return messages
+    return [f"{label}: {text}" for key, label in SYNC_ERROR_LABELS if (text := store.get_meta(key))]
 
 
 def queue_size(store: Store) -> int:
