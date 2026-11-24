@@ -9,7 +9,7 @@ import time
 from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field, replace
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 from importlib import metadata
 from pathlib import Path
 from typing import Literal, cast
@@ -22,6 +22,7 @@ from fastapi.templating import Jinja2Templates
 from .. import nutrition, push, zepp
 from ..names import person_name, validate_name
 from ..pipeline import CrawlRunner, default_crawl_runner
+from ..plan_service import monday
 from ..settings import Settings
 from ..store import PERSON_IDS, BodyRow, Profile, Store
 from ..targets import kcal_suggestion, person_targets
@@ -91,7 +92,7 @@ def _weekly(points: list[tuple[date, float]]) -> list[tuple[date, float]]:
     """Średnie tygodniowe; kluczem poniedziałek tygodnia."""
     buckets: dict[date, list[float]] = {}
     for d, kg in points:
-        buckets.setdefault(d - timedelta(days=d.weekday()), []).append(kg)
+        buckets.setdefault(monday(d), []).append(kg)
     return [(mon, sum(v) / len(v)) for mon, v in sorted(buckets.items())]
 
 
@@ -184,7 +185,7 @@ def create_app(
     app.include_router(make_dzis_router(settings, store, templates))
     app.include_router(make_lista_router(settings, store, templates))
     if settings.zepp_enabled:
-        app.include_router(make_zepp_router(settings, store, templates, zepp_service))
+        app.include_router(make_zepp_router(zepp_service))
 
     @app.middleware("http")
     async def no_store(request: Request, call_next):  # type: ignore[no-untyped-def]

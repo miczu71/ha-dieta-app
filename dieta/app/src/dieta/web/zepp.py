@@ -11,10 +11,8 @@ from urllib.parse import urlencode
 
 from fastapi import APIRouter, Form, HTTPException
 from fastapi.responses import RedirectResponse, Response
-from fastapi.templating import Jinja2Templates
 
-from ..settings import Settings
-from ..store import PERSON_IDS, Store
+from ..store import PERSON_IDS
 from ..zepp_service import Outcome, ZeppService
 
 # kod → (rodzaj, tekst); rodzaj „status” = role="status", „alert” = role="alert"
@@ -50,10 +48,7 @@ def _redirect(person_id: int, out: Outcome) -> RedirectResponse:
     return RedirectResponse("../../?" + urlencode(query), status_code=303)
 
 
-def make_zepp_router(
-    settings: Settings, store: Store, templates: Jinja2Templates, service: ZeppService
-) -> APIRouter:
-    del settings, store, templates  # podpis wspólny z pozostałymi routerami
+def make_zepp_router(service: ZeppService) -> APIRouter:
     router = APIRouter()
 
     def _person(person_id: int) -> int:

@@ -750,6 +750,15 @@ class Store:
             rows = conn.execute(sql, (person_id, since_ts if since_ts is not None else 0)).fetchall()
         return [BodyRow(*r) for r in rows]
 
+    def count_body(self, person_id: int) -> int:
+        _check_person(person_id)
+        with closing(self._connect()) as conn:
+            return int(
+                conn.execute(
+                    "SELECT COUNT(*) FROM body_measurement WHERE person_id = ?", (person_id,)
+                ).fetchone()[0]
+            )
+
     def latest_body(self, person_id: int) -> BodyRow | None:
         _check_person(person_id)
         sql = (

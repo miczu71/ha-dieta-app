@@ -37,13 +37,12 @@ def _to_row(record: BodyRecord) -> BodyRow:
 
 def import_records(store: Store, person_id: int, records: Sequence[BodyRecord]) -> ImportResult:
     new = store.add_body_measurements(person_id, [_to_row(r) for r in records])
-    last_of_day: dict[date, BodyRecord] = {}
+    last_of_day: dict[date, float] = {}
     for record in sorted(records, key=lambda r: r.ts):
         if record.weight_kg is not None:
-            last_of_day[datetime.fromtimestamp(record.ts).date()] = record
+            last_of_day[datetime.fromtimestamp(record.ts).date()] = record.weight_kg
     days = 0
-    for day, record in last_of_day.items():
-        assert record.weight_kg is not None
-        if store.add_weight_if_not_manual(person_id, day, record.weight_kg):
+    for day, kg in last_of_day.items():
+        if store.add_weight_if_not_manual(person_id, day, kg):
             days += 1
     return ImportResult(new=new, skipped=len(records) - new, days=days)

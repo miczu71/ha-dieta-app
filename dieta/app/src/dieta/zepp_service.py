@@ -96,7 +96,7 @@ class ZeppService:
             fuid=acc.fuid if acc else None,
             last_sync_ts=acc.last_sync_ts if acc else None,
             last_error=acc.last_error if acc else None,
-            count=len(self._store.body_measurements(person_id)) if acc else 0,
+            count=self._store.count_body(person_id) if acc else 0,
             members=self._members.get(person_id, ()),
             pending_alive=pending is not None,
             pending_sent=pending is not None and pending.sent,
