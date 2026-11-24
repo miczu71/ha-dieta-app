@@ -408,6 +408,7 @@ Plan tygodnia 2026-11-23 wygenerowany (`POST /plan/generuj`, ostrzeżenie: próg
 - **Pomiar pokrycia:** plan 90%, lista 87% masy z ceną (cel ≥70% zaliczony) — `docs/POMIAR_ceny.md`, Przebieg 3. Podejrzane ceny pozycji (seler, pomidory, jajka, filet) do weryfikacji.
 - **Widok „Lista”:** 390 px jasny — `scrollWidth` = `clientWidth` = 390, bez poziomego przewijania; 1280 px ciemny — 1280/1280, ciemne tło. Render lokalny z zrzutu HTML+CSS 0.4.1 (ingress 401, tunel SSH nie przepuszcza ruchu); zrzuty `~/.playwright-mcp/lista-390-light.png`, `lista-1280-dark.png`.
 - **Kolejka EAN:** `shelf_queue_error` i `shelf_sync_error` puste, `shelf_queue_status=accepted`, logi Diety bez błędów; półka Zakupów nadal pusta (0 `shelf_item`) — kolejka nocna nie widziała jeszcze zatwierdzonego planu. DO SPRAWDZENIA po nocy 2026-11-25 (półka niepusta; 429 Biedronki możliwe).
-- **NIEWYKONANE:** `POST /api/v1/shelf` ze złym `store` → 400 (klasyfikator zablokował użycie tokenu z `options.json`; user uruchamia sam); ręczna ocena 10 pozycji na paragonach.
+- **`POST /api/v1/shelf` ze złym `store` → 400: ZROBIONE 2026-11-24** (za zgodą usera; skrypt w kontenerze Diety, token z `options.json` nie wypisany). `store` = `x store:!` i 33 znaki → oba 400, `detail`: „store: kod sklepu (1–32 znaki: litery, cyfry, _ lub -).”; bez zapisu.
+- **NIEWYKONANE:** ręczna ocena 10 pozycji na paragonach; półka Zakupów niepusta po nocy 2026-11-25.
 - **Nowe prośby usera (2026-11-24, do wywiadu/planu, nie zaczęte):** (1) wiek osób z daty urodzenia zamiast pola `age` w `profile`; (2) zmiana nazw osób w UI (dziś tylko opcje add-onu `person_1_name`/`person_2_name`).
 
