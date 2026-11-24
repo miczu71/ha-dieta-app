@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import date
 
 from . import nutrition
 from .settings import Settings
@@ -24,14 +25,17 @@ class PersonTarget:
         return nutrition.Macros(self.protein_g, self.fat_g, self.carb_g)
 
 
-def person_targets(store: Store, settings: Settings, person_id: int) -> PersonTarget | None:
+def person_targets(
+    store: Store, settings: Settings, person_id: int, today: date | None = None
+) -> PersonTarget | None:
     """Cele osoby albo ``None``, gdy brak profilu lub wagi. ``settings`` zarezerwowane na przyszłe opcje."""
     del settings
     profile = store.profile(person_id)
     weight = store.latest_weight(person_id)
     if not (profile and weight):
         return None
-    bmr = nutrition.bmr_mifflin(profile.sex, profile.age, profile.height_cm, weight)
+    today = today or date.today()
+    bmr = nutrition.bmr_mifflin(profile.sex, profile.age_on(today), profile.height_cm, weight)
     total = nutrition.tdee(bmr, profile.pal_level)
     auto = nutrition.target_kcal(total, profile.goal, profile.pace_kg_week)
     kcal = profile.kcal_override or round(auto)

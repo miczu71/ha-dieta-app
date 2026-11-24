@@ -43,7 +43,9 @@
     <form method="post" action="profile/{{ c.person_id }}" class="dz-form">
       <label>Płeć
         <select name="sex"><option value="m"{{ ' selected' if p and p.sex == 'm' }}>mężczyzna</option><option value="f"{{ ' selected' if p and p.sex == 'f' }}>kobieta</option></select></label>
-      <label>Wiek<input type="number" name="age" min="10" max="120" value="{{ p.age if p else 30 }}" required></label>
+      <label>Data urodzenia<input type="date" name="birth_date" max="{{ today }}" value="{{ p.birth_date.isoformat() if p else '' }}" required></label>
+      {% if p %}<p class="dz-note">Wiek: {{ p.age_on(today_date) }} lat</p>{% endif %}
+      {% if p and p.birth_date_approx %}<p class="dz-note">Data przybliżona — wpisz prawdziwą</p>{% endif %}
       <label>Wzrost (cm)<input type="number" name="height_cm" min="100" max="250" step="0.5" value="{{ p.height_cm|round(1) if p else 170 }}" required></label>
       <label>Aktywność
         <select name="pal_level">{% for k, v in pal_labels.items() %}<option value="{{ k }}"{{ ' selected' if (p.pal_level if p else 2) == k }}>{{ v }}</option>{% endfor %}</select></label>

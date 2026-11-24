@@ -21,7 +21,9 @@ def _recipe(sid: str, title: str, kcal: float) -> Recipe:
 
 def _demo(store: Store) -> None:
     for pid in (1, 2):
-        store.save_profile(Profile(pid, "f", 30, 165.0, 2, "maintain", 0.0, None, None, 0.3))
+        store.save_profile(
+            Profile(pid, "f", date(date.today().year - 30, 1, 1), 165.0, 2, "maintain", 0.0, None, None, 0.3)
+        )
         store.add_weight(pid, date(2026, 11, 1), 70.0)
     for category, base in (("lunch", 380.0), ("dinner", 420.0), ("breakfast", 300.0)):
         for i in range(4):
@@ -46,7 +48,7 @@ def test_migration_v9_to_v10_creates_person_and_backup(tmp_path: Path) -> None:
     conn.close()
     store = Store(path)
     with sqlite3.connect(path) as check:
-        assert check.execute("PRAGMA user_version").fetchone()[0] == 10
+        assert check.execute("PRAGMA user_version").fetchone()[0] == 11
         tables = {r[0] for r in check.execute("SELECT name FROM sqlite_master WHERE type='table'")}
     assert "person" in tables
     assert store.get_meta("k") == "v"

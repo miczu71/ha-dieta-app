@@ -39,7 +39,9 @@ def _client(tmp_path: Path) -> tuple[TestClient, Store]:
 
 def _demo(store: Store, people: tuple[int, ...] = (1, 2)) -> None:
     for pid in people:
-        store.save_profile(Profile(pid, "f", 30, 165.0, 2, "maintain", 0.0, None, None, 0.3))
+        store.save_profile(
+            Profile(pid, "f", date(date.today().year - 30, 1, 1), 165.0, 2, "maintain", 0.0, None, None, 0.3)
+        )
         store.add_weight(pid, date(2026, 11, 1), 70.0)
     for category, base in (("lunch", 380.0), ("dinner", 420.0), ("breakfast", 300.0)):
         for i in range(4):

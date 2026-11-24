@@ -77,7 +77,11 @@ def test_migration_v1_to_v2_keeps_profile(tmp_path: Path) -> None:
 
     store = Store(path)
     profile = store.profile(1)
-    assert profile is not None and profile.age == 40
+    assert (
+        profile is not None
+        and profile.birth_date.year == date.today().year - 40
+        and profile.birth_date_approx
+    )
     assert store.purchases() == []
     with sqlite3.connect(path) as check:
         assert check.execute("PRAGMA user_version").fetchone()[0] == len(_MIGRATIONS)
@@ -86,7 +90,7 @@ def test_migration_v1_to_v2_keeps_profile(tmp_path: Path) -> None:
 def test_save_profile_still_works_after_migration(tmp_path: Path) -> None:
     store = Store(tmp_path / "dieta.db")
     store.save_profile(
-        Profile(1, "f", 30, 165.0, 2, "maintain", 0.0, None, None, 0.3),
+        Profile(1, "f", date(date.today().year - 30, 1, 1), 165.0, 2, "maintain", 0.0, None, None, 0.3),
     )
     assert store.profile(1) is not None
 
@@ -237,7 +241,7 @@ def test_migration_v6_to_v7_keeps_data_and_adds_columns(tmp_path: Path) -> None:
     )
     conn.commit()
     conn.close()
-    assert len(_MIGRATIONS) == 10
+    assert len(_MIGRATIONS) == 11
 
     store = Store(path)
 
@@ -245,7 +249,7 @@ def test_migration_v6_to_v7_keeps_data_and_adds_columns(tmp_path: Path) -> None:
     assert p.code == "c1" and p.spend == 9.0
     assert (p.unit_price, p.is_weight, p.last_unit_price) == (None, None, None)
     with sqlite3.connect(path) as check:
-        assert check.execute("PRAGMA user_version").fetchone()[0] == 10
+        assert check.execute("PRAGMA user_version").fetchone()[0] == 11
         tables = {r[0] for r in check.execute("SELECT name FROM sqlite_master WHERE type='table'")}
         assert "shopping_state" in tables
 

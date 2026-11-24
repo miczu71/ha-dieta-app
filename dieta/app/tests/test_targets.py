@@ -14,7 +14,8 @@ def _settings(tmp_path: Path) -> Settings:
 
 def _profile(person_id: int, **kw: object) -> Profile:
     base: dict[str, object] = {
-        "person_id": person_id, "sex": "f", "age": 35, "height_cm": 168.0, "pal_level": 3,
+        "person_id": person_id, "sex": "f",
+        "birth_date": date(date.today().year - 35, 1, 1), "height_cm": 168.0, "pal_level": 3,
         "goal": "lose", "pace_kg_week": 0.4, "kcal_override": None, "protein_g_kg": None, "fat_pct": 0.3,
     }  # fmt: skip
     base.update(kw)
@@ -57,7 +58,7 @@ def test_build_card_equivalent_with_and_without_override(tmp_path: Path) -> None
         profile = store.profile(pid)
         weight = store.latest_weight(pid)
         assert profile is not None and weight is not None
-        bmr = nutrition.bmr_mifflin(profile.sex, profile.age, profile.height_cm, weight)
+        bmr = nutrition.bmr_mifflin(profile.sex, profile.age_on(date.today()), profile.height_cm, weight)
         total = nutrition.tdee(bmr, profile.pal_level)
         auto = nutrition.target_kcal(total, profile.goal, profile.pace_kg_week)
         kcal = profile.kcal_override or round(auto)

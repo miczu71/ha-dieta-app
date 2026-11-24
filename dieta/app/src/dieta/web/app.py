@@ -176,6 +176,7 @@ def create_app(
                 "goal_labels": GOAL_LABELS,
                 "pal_labels": PAL_LABELS,
                 "today": date.today().isoformat(),
+                "today_date": date.today(),
                 "page_title": "Profile",
                 "section": "profile",
                 "root": "",
@@ -205,7 +206,7 @@ def create_app(
     async def save_profile(
         person_id: int,
         sex: str = Form(...),
-        age: int = Form(...),
+        birth_date: str = Form(...),
         height_cm: float = Form(...),
         pal_level: int = Form(...),
         goal: str = Form(...),
@@ -219,11 +220,14 @@ def create_app(
             sex not in ("m", "f")
             or goal not in GOAL_LABELS
             or pal_level not in nutrition.PAL
-            or not 10 <= age <= 120
             or not 100 <= height_cm <= 250
             or not 0 <= pace_kg_week <= 1.5
             or not 15 <= fat_pct <= 50
         ):
+            return _back("profil")
+        try:
+            born = date.fromisoformat(birth_date)
+        except ValueError:
             return _back("profil")
         try:
             override = int(kcal_override) if kcal_override.strip() else None
@@ -234,20 +238,23 @@ def create_app(
             protein is not None and not 0.5 <= protein <= 4
         ):
             return _back("profil")
-        store.save_profile(
-            Profile(
-                person_id=person_id,
-                sex=cast(Literal["m", "f"], sex),
-                age=age,
-                height_cm=height_cm,
-                pal_level=pal_level,
-                goal=cast(Literal["lose", "maintain", "gain"], goal),
-                pace_kg_week=pace_kg_week,
-                kcal_override=override,
-                protein_g_kg=protein,
-                fat_pct=fat_pct / 100,
-            )
+        profile = Profile(
+            person_id=person_id,
+            sex=cast(Literal["m", "f"], sex),
+            birth_date=born,
+            height_cm=height_cm,
+            pal_level=pal_level,
+            goal=cast(Literal["lose", "maintain", "gain"], goal),
+            pace_kg_week=pace_kg_week,
+            kcal_override=override,
+            protein_g_kg=protein,
+            fat_pct=fat_pct / 100,
+            birth_date_approx=False,
         )
+        today = date.today()
+        if born > today or not 10 <= profile.age_on(today) <= 120:
+            return _back("profil")
+        store.save_profile(profile)
         return _back()
 
     @app.post("/weight/{person_id}")

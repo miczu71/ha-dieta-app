@@ -66,7 +66,9 @@ def _world(
     settings = Settings(data_dir=tmp_path, log_level="info", dev=True, todo_entity=todo_entity)
     store = Store(settings.db_path)
     for pid in (1, 2):
-        store.save_profile(Profile(pid, "f", 30, 165.0, 2, "maintain", 0.0, None, None, 0.3))
+        store.save_profile(
+            Profile(pid, "f", date(date.today().year - 30, 1, 1), 165.0, 2, "maintain", 0.0, None, None, 0.3)
+        )
         store.add_weight(pid, date(2026, 11, 1), 70.0)
     meta = RecipeMeta("lunch", 3, True, "rule")
     r1 = store.upsert_recipe(

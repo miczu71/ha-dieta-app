@@ -46,7 +46,7 @@ def test_migration_v8_to_v9_creates_table_and_backup_once(tmp_path: Path) -> Non
     conn.close()
     Store(path)
     with sqlite3.connect(path) as check:
-        assert check.execute("PRAGMA user_version").fetchone()[0] == 10
+        assert check.execute("PRAGMA user_version").fetchone()[0] == 11
         tables = {r[0] for r in check.execute("SELECT name FROM sqlite_master WHERE type='table'")}
     assert "shelf_item" in tables
     backup = tmp_path / "dieta.db.pre-v9"

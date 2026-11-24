@@ -4,6 +4,7 @@ Połączenie otwierane na każdą operację (krótkie, bez współdzielenia mię
 Schemat wersjonowany przez ``PRAGMA user_version``; kolejne migracje dopisujemy na końcu listy.
 """
 
+import calendar
 import json
 import shutil
 import sqlite3
@@ -33,6 +34,8 @@ _PROFILE_COLUMNS = (
     "person_id",
     "sex",
     "age",
+    "birth_date",
+    "birth_date_approx",
     "height_cm",
     "pal_level",
     "goal",
@@ -259,16 +262,23 @@ _MIGRATIONS: list[str] = [
     """
     CREATE TABLE person (person_id INTEGER PRIMARY KEY CHECK(person_id IN (1,2)), name TEXT NOT NULL);
     """,
+    # v11 (E7b): data urodzenia zamiast wieku; stare profile dostają datę przybliżoną (1 lipca).
+    """
+    ALTER TABLE profile ADD COLUMN birth_date TEXT;
+    ALTER TABLE profile ADD COLUMN birth_date_approx INTEGER NOT NULL DEFAULT 0;
+    UPDATE profile SET birth_date = (CAST(strftime('%Y','now') AS INTEGER) - age) || '-07-01',
+        birth_date_approx = 1;
+    """,
 ]
-# migracje v8 (katalog Frisco), v9 (cache Biedronki), v10 (nazwy osób): kopia pliku bazy przed startem
-BACKUP_BEFORE_VERSIONS = (8, 9, 10)
+# migracje v8 (Frisco), v9 (Biedronka), v10 (nazwy osób), v11 (data urodzenia): kopia bazy przed startem
+BACKUP_BEFORE_VERSIONS = (8, 9, 10, 11)
 
 
 @dataclass(frozen=True)
 class Profile:
     person_id: int
     sex: Literal["m", "f"]
-    age: int
+    birth_date: date
     height_cm: float
     pal_level: int
     goal: Literal["lose", "maintain", "gain"]
@@ -276,6 +286,15 @@ class Profile:
     kcal_override: int | None
     protein_g_kg: float | None
     fat_pct: float
+    birth_date_approx: bool = False
+
+    def age_on(self, day: date) -> int:
+        """Pełne lata w dniu ``day``; 29 lutego w latach nieprzestępnych obchodzi 1 marca."""
+        b = self.birth_date
+        had = (day.month, day.day) >= (b.month, b.day)
+        if (b.month, b.day) == (2, 29) and not calendar.isleap(day.year):
+            had = day.month >= 3
+        return day.year - b.year - (0 if had else 1)
 
 
 @dataclass(frozen=True)
@@ -556,14 +575,15 @@ class Store:
         return Profile(
             person_id=row[0],
             sex=cast(Literal["m", "f"], row[1]),
-            age=row[2],
-            height_cm=row[3],
-            pal_level=row[4],
-            goal=cast(Literal["lose", "maintain", "gain"], row[5]),
-            pace_kg_week=row[6],
-            kcal_override=row[7],
-            protein_g_kg=row[8],
-            fat_pct=row[9],
+            birth_date=date.fromisoformat(row[3]),
+            birth_date_approx=bool(row[4]),
+            height_cm=row[5],
+            pal_level=row[6],
+            goal=cast(Literal["lose", "maintain", "gain"], row[7]),
+            pace_kg_week=row[8],
+            kcal_override=row[9],
+            protein_g_kg=row[10],
+            fat_pct=row[11],
         )
 
     def save_profile(self, profile: Profile) -> None:
@@ -571,7 +591,9 @@ class Store:
         values = (
             profile.person_id,
             profile.sex,
-            profile.age,
+            profile.age_on(date.today()),
+            profile.birth_date.isoformat(),
+            int(profile.birth_date_approx),
             profile.height_cm,
             profile.pal_level,
             profile.goal,

@@ -33,7 +33,9 @@ def _recipe(sid: str, title: str, kcal: float = 400.0, names: tuple[str, ...] = 
 
 
 def _profile(person_id: int) -> Profile:
-    return Profile(person_id, "f", 30, 165.0, 2, "maintain", 0.0, None, None, 0.3)
+    return Profile(
+        person_id, "f", date(date.today().year - 30, 1, 1), 165.0, 2, "maintain", 0.0, None, None, 0.3
+    )
 
 
 def _setup(tmp_path: Path, people: tuple[int, ...] = (1, 2)) -> tuple[Store, Settings, list[int]]:

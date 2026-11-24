@@ -13,7 +13,8 @@ def _client(tmp_path: Path) -> TestClient:
 
 
 PROFILE = {
-    "sex": "m", "age": "30", "height_cm": "180", "pal_level": "3", "goal": "lose",
+    "sex": "m",
+    "birth_date": f"{date.today().year - 30}-01-01", "height_cm": "180", "pal_level": "3", "goal": "lose",
     "pace_kg_week": "0.5", "kcal_override": "", "protein_g_kg": "", "fat_pct": "30",
 }  # fmt: skip
 
@@ -47,7 +48,12 @@ def test_manual_override_wins(tmp_path: Path) -> None:
 
 def test_invalid_input_rejected(tmp_path: Path) -> None:
     c = _client(tmp_path)
-    assert c.post("/profile/1", data={**PROFILE, "age": "5"}).headers["location"] == "./?error=profil"
+    assert (
+        c.post("/profile/1", data={**PROFILE, "birth_date": f"{date.today().year - 5}-01-01"}).headers[
+            "location"
+        ]
+        == "./?error=profil"
+    )
     assert c.post("/weight/1", data={"day": "2999-01-01", "kg": "80"}).headers["location"] == "./?error=waga"
     assert c.post("/weight/1", data={"day": date.today().isoformat(), "kg": "abc"}).status_code == 303
     assert c.post("/weight/3", data={"day": date.today().isoformat(), "kg": "80"}).status_code == 404
