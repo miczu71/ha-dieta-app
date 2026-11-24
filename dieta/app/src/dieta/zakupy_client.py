@@ -82,11 +82,14 @@ class _SameHostRedirect(urllib.request.HTTPRedirectHandler):
         target = urllib.parse.urlsplit(urllib.parse.urljoin(req.full_url, newurl))
         if target.scheme not in ("http", "https") or origin.hostname is None:
             return None
-        if target.hostname != origin.hostname:
-            return None
+        if target.hostname != origin.hostname or (origin.scheme == "https" and target.scheme != "https"):
+            return None  # inny host albo downgrade https→http (Bearer nie pójdzie jawnym tekstem)
         default = {"http": 80, "https": 443}
-        if (target.port or default[target.scheme]) != (origin.port or default.get(origin.scheme, 0)):
-            return None
+        origin_port = origin.port or default[origin.scheme]
+        target_port = target.port or default[target.scheme]
+        upgrade = origin.scheme == "http" and target.scheme == "https"
+        if target_port != origin_port and not (upgrade and origin_port == 80 and target_port == 443):
+            return None  # http:80 → https:443 to zwykły upgrade; poza tym port musi się zgadzać
         return super().redirect_request(req, fp, code, msg, headers, newurl)
 
 

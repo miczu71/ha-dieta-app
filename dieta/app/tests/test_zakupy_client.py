@@ -407,3 +407,15 @@ def test_default_opener_follows_same_host_redirect_only() -> None:
         srv.shutdown()
         srv.server_close()
     assert seen == [f"Bearer {TOKEN}"]
+
+
+def test_same_host_redirect_blocks_https_downgrade_but_allows_upgrade() -> None:
+    import urllib.request
+
+    from dieta.zakupy_client import _SameHostRedirect
+
+    handler = _SameHostRedirect()
+    secure = urllib.request.Request("https://zakupy.local:443/a", headers={"Authorization": "Bearer x"})
+    plain = urllib.request.Request("http://zakupy.local:80/a", headers={"Authorization": "Bearer x"})
+    assert handler.redirect_request(secure, None, 302, "Found", {}, "http://zakupy.local:80/b") is None
+    assert handler.redirect_request(plain, None, 302, "Found", {}, "https://zakupy.local:443/b") is not None

@@ -65,4 +65,5 @@ progress_tracker `title: "E9 E<x>"`; po etapie `stage-end` (poza ostatnim).
 ## Stan
 E9a: **ZROBIONE 2026-11-24** (niewydane). Propozycja kcal liczona od `auto_kcal` i znika, gdy równa bieżącemu celowi; formularz wagi w `<details data-weight-form>` (zwinięty tylko przy Zepp `linked` + znanej wadze, decyzja w szablonie, bez pola w `Card`);
 `Store.purge_zepp` (kasuje zepp-owe `body_measurement`/`weight`, zeruje `last_sync_ts`) wołane przy `disconnect`, zmianie członka (inny `fuid`) i ponownym logowaniu na inne konto. Wykonane bez workera (mała zmiana, TDD). pytest 808+1 poprawiony test (`test_names`), ruff/mypy czyste.
-Następny: E9b.
+E9b: **ZROBIONE 2026-11-24** (niewydane). Dieta `c80746a` (limit bajtów `http_limit.read_limited`, sanityzacja promptów LLM w `map_with_llm`/`catalog_map`, log HTTP, `_SameHostRedirect`, `role="alert"`, `index` w threadpool) + poprawka rodzica (blokada https→http, upgrade http:80→https:443 dozwolony); Zakupy `84d5eab` (GTIN-14). pytest Dieta 825 passed, ruff/mypy czyste. verifier ACCEPT; NIEBLOKUJĄCE: `_prompt_safe` prywatne w `dictionary.py` (cykl importów), brak testu limitu 64 KB w `_reason`.
+Następny: E9c.
