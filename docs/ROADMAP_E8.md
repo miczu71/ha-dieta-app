@@ -110,4 +110,8 @@ E8d: **ZROBIONE 2026-11-24** (plan `docs/PLAN_E8d.md` `8a87600`, kod `6546190` n
 limit 1 logowanie/h przed `refresh` (`_LoginRateLimited`, konto zostaje `linked`), jeden push przy `reconnect` (znacznik `zepp_reconnect_pushed:{pid}` czyszczony przez `set_meta(key, "")`),
 poprawka z E8c: `start` z OTP na koncie `linked` nie nadpisuje konta. sonnet-worker → claimcheck 0/7 flag → verifier ACCEPT; pełny pytest 772 passed, ruff/format/mypy czyste (powtórzone przeze mnie na `main`).
 Nieblokujące: limit 1/h obejmuje też ręczny „Synchronizuj teraz” i `member()`; `zepp_sync` importuje prywatne `push._panel_path`; pętla w `lifespan` bez testu end-to-end (test `start() is None`).
-Następny: **E8e** (BMR Katch-McArdle, historia/wykresy składu, korekta kcal wg trendu; `docs/PLAN_E8e.md`, haiku-worker), potem E8-release (0.6.0).
+E8e: **ZROBIONE 2026-11-24** (plan `docs/PLAN_E8e.md`, kod `de7adcb` na `main`, niewydane). `nutrition.bmr_katch`/`trend_rate_kg_week`, `targets` (Katch przy pomiarze ≤14 dni, `bmr_formula`, `body_age_days`, `kcal_suggestion`),
+`web/chart.body_chart`, `POST /profile/{id}/kcal` (800–6000), karta z linią formuły i propozycją „Zastosuj”, `<details>` „Historia pomiarów”. haiku-worker → verifier ACCEPT; pełny pytest 794 passed, ruff/format/mypy czyste (powtórzone przeze mnie na `main`).
+Playwright 390 i 1280 px OK (dane fałszywe, bez poziomego przewijania; makra poprawne). Odstępstwo od planu: `Store.latest_body` bez zmian (`test_body_store.py:65`), filtr w nowej `Store.latest_composition`.
+Nieblokujące: brak testu 303/adresu względnego przy błędzie `save_kcal`; `aria-label` wykresu historii mówi „średnia 7 dni”, a pokazuje średnie tygodniowe; tabela historii na 390 px wysoka (kolumna „Mięśnie” łamie „(x kg)”); claimcheck zwrócił „brak punktów w raporcie” (nie sprawdził nic).
+Następny: **E8-release** (0.6.0, ostatni etap, bez pytania).
