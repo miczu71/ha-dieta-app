@@ -199,6 +199,8 @@ class ZeppService:
         return self._finish_link(person_id, pending.state.device_id, linked, keep_fuid=False)
 
     def _finish_link(self, person_id: int, device_id: str, linked: Linked, *, keep_fuid: bool) -> Outcome:
+        prev = self._store.zepp_account(person_id)
+        prev_fuid = prev.fuid if prev else None  # _store_link przy keep_fuid=False zeruje fuid
         self._store_link(person_id, device_id, linked, keep_fuid=keep_fuid)
         self._store.set_meta(reconnect_pushed_key(person_id), "")
         try:
@@ -210,8 +212,15 @@ class ZeppService:
         acc = self._store.zepp_account(person_id)
         if acc is not None and acc.fuid is not None and any(m.fuid == acc.fuid for m in members):
             return self.sync(person_id)
-        if acc is not None and acc.fuid is not None:
-            self._store.purge_zepp(person_id)  # inne konto/członek: stare pomiary nie należą do nowego
+        if prev_fuid is not None and members and all(m.fuid != prev_fuid for m in members):
+            # inne konto: stare pomiary nie należą do nowego (pusta lista członków to anomalia API,
+            # nie dowód zmiany konta — nie kasujemy)
+            log.warning(
+                "zepp: inne konto dla osoby %s (poprzedni fuid %s) — kasuję stare pomiary",
+                person_id,
+                prev_fuid,
+            )
+            self._store.purge_zepp(person_id)
         if len(members) == 1:
             self._save(person_id, fuid=members[0].fuid, last_sync_ts=None)
             return self.sync(person_id)

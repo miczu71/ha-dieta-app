@@ -343,6 +343,34 @@ def test_same_member_choice_keeps_data(svc: ZeppService, fake: FakeZepp, store: 
     assert len(store.body_measurements(1)) == before > 0
 
 
+def test_relogin_other_account_purges_old_data(svc: ZeppService, fake: FakeZepp, store: Store) -> None:
+    _link(svc, fake)
+    assert len(store.body_measurements(1)) > 0
+    fake.member_list = [Member(9, "Inna", 160.0)]
+    fake.records = [_rec(NOW + 5000, 61.0)]
+    _link(svc, fake)
+    assert [r.weight_kg for r in store.body_measurements(1)] == [61.0]
+
+
+def test_otp_relogin_other_account_purges_old_data(svc: ZeppService, fake: FakeZepp, store: Store) -> None:
+    _link(svc, fake)
+    fake.member_list = [Member(9, "Inna", 160.0)]
+    fake.records = [_rec(NOW + 5000, 61.0)]
+    fake.start_result = fake.otp
+    assert svc.start(1, EMAIL, PW).code == "otp"
+    assert svc.send(1).code == "sent"
+    assert svc.verify(1, "123456").code == "ok"
+    assert [r.weight_kg for r in store.body_measurements(1)] == [61.0]
+
+
+def test_relogin_with_empty_member_list_keeps_data(svc: ZeppService, fake: FakeZepp, store: Store) -> None:
+    _link(svc, fake)
+    before = len(store.body_measurements(1))
+    fake.member_list = []
+    _link(svc, fake)
+    assert len(store.body_measurements(1)) == before > 0
+
+
 def test_view_without_account(svc: ZeppService) -> None:
     view = svc.view(2)
     assert view.status is None and view.count == 0 and view.members == ()
