@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "dieta"
-version = "0.4.1"
+version = "0.5.0"
 description = "Dieta — add-on Home Assistant"
 requires-python = ">=3.12"
 dependencies = [

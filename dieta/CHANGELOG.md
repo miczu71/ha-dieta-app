@@ -1,5 +1,15 @@
 # Dziennik zmian
 
+## 0.5.0 — nazwy osób i wiek z daty urodzenia
+
+- Nazwy osób wpisujesz w UI Profili (1–30 znaków, różne dla obu osób, puste pole = domyślna z opcji add-onu albo „Osoba N”);
+  zmiana działa od razu na ekranach Plan, Dziś, Bilans, Profile i w powiadomieniu push, bez restartu.
+- Wiek liczy się z daty urodzenia (pole daty w Profilach, wiek 10–120 lat, nie z przyszłości); karta, Dziś i Bilans liczą wiek z dzisiejszej daty,
+  plan z dnia generowania (cele zostają zamrożone w planie).
+- Migracja istniejących profili: data urodzenia = 1 lipca roku wynikającego z dotychczasowego wieku, oznaczona jako przybliżona
+  (baner „Data przybliżona — wpisz prawdziwą”); cele kcal po migracji bez zmian.
+- Migracje bazy 10 i 11 (kopie `dieta.db.pre-v10`, `dieta.db.pre-v11`); kolumna `age` zostaje (kompatybilność wstecz).
+
 ## 0.4.1 — hartowanie klienta Zakupów i widoczne błędy synchronizacji (wymaga Zakupów 1.12.1)
 
 - Klient Zakupów nie podąża za przekierowaniami (nagłówek Bearer nie trafi pod obcy host); 3xx to czytelny błąd.
