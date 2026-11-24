@@ -33,13 +33,12 @@
     <button class="dz-btn" type="submit">Zapisz wagę</button>
   </form>
 
-  <form method="post" action="person/{{ c.person_id }}/name" class="dz-row">
-    <label>Nazwa<input type="text" name="name" maxlength="30" value="{{ c.saved_name }}" placeholder="{{ c.name }}"></label>
-    <button class="dz-btn" type="submit">Zapisz nazwę</button>
-  </form>
-
   <details class="dz-details"{% if not p %} open{% endif %}>
-    <summary>Profil</summary>
+    <summary>Ustawienia</summary>
+    <form method="post" action="person/{{ c.person_id }}/name" class="dz-row">
+      <label>Nazwa<input type="text" name="name" maxlength="30" value="{{ c.saved_name }}" placeholder="{{ c.name }}"></label>
+      <button class="dz-btn" type="submit">Zapisz nazwę</button>
+    </form>
     <form method="post" action="profile/{{ c.person_id }}" class="dz-form">
       <label>Płeć
         <select name="sex"><option value="m"{{ ' selected' if p and p.sex == 'm' }}>mężczyzna</option><option value="f"{{ ' selected' if p and p.sex == 'f' }}>kobieta</option></select></label>

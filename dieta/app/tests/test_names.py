@@ -151,3 +151,12 @@ def test_name_input_prefill_and_empty_post(tmp_path: Path) -> None:
     assert store.person_names() == {}
     client.post("/person/1/name", data={"name": "Ola"})
     assert 'name="name" maxlength="30" value="Ola"' in client.get("/").text
+
+
+def test_name_form_is_inside_collapsed_settings(tmp_path: Path) -> None:
+    client, _, _ = _client(tmp_path)
+    html = client.get("/").text
+    for pid in (1, 2):
+        start = html.index('<details class="dz-details"', html.index(f'id="h{pid}"'))
+        end = html.index("</details>", start)
+        assert start < html.index(f'action="person/{pid}/name"') < end

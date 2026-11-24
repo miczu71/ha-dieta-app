@@ -1,5 +1,10 @@
 # Dziennik zmian
 
+## 0.5.2 — zmiana nazwy osoby w ustawieniach
+
+- Formularz zmiany nazwy osoby jest schowany w zwijanej sekcji „Ustawienia” na karcie osoby w Profilach (dawniej „Profil”),
+  zamiast leżeć na wierzchu. Zapis działa tak samo.
+
 ## 0.5.1 — poprawka przekierowania po zapisie
 
 - Zapis profilu, wagi i nazwy osoby kończył się stroną `{"detail":"Not Found"}`: dane się zapisywały, ale przeglądarka
