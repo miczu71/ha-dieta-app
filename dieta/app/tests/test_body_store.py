@@ -75,3 +75,18 @@ def test_add_weight_if_not_manual(tmp_path: Path) -> None:
     store.add_weight(1, d, 75.0)  # ręczny przejmuje
     assert store.add_weight_if_not_manual(1, d, 70.0) is False
     assert store.weights(1) == [(d, 75.0)]
+
+
+def test_purge_zepp_removes_only_zepp_data_and_resets_sync(tmp_path: Path) -> None:
+    store = Store(tmp_path / "d.sqlite")
+    store.save_zepp_account(ZeppAccount(1, "dev", "{}", "u", "tok", 1, "linked", 500, None))
+    store.add_body_measurements(1, [_row(1000), _row(2000)])
+    store.add_body_measurements(2, [_row(1000)])
+    store.add_weight(1, date(2026, 1, 1), 70.0)
+    store.add_weight_if_not_manual(1, date(2026, 1, 2), 71.0)
+    store.purge_zepp(1)
+    assert store.body_measurements(1) == []
+    assert len(store.body_measurements(2)) == 1
+    assert store.weights(1, 36500) == [(date(2026, 1, 1), 70.0)]
+    got = store.zepp_account(1)
+    assert got is not None and got.last_sync_ts is None

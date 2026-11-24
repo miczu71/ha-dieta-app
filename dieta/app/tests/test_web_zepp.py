@@ -168,3 +168,14 @@ def test_banner_ignores_non_ascii_digits_and_huge_numbers() -> None:
 
     assert banner("ok", "²", "²") is not None
     assert banner("ok", "9" * 5000, "9" * 5000) is not None  # bez ValueError
+
+
+def test_weight_form_collapsed_only_when_zepp_linked_with_weight(tmp_path: Path, fake: FakeZepp) -> None:
+    fake.start_result = Linked(ZeppToken("1000001", "TOK-0"), {"passToken": "COOKIE-SECRET"})
+    c = _client(tmp_path)
+    _start(c)
+    html = c.get("/").text
+    assert '<details class="dz-details" data-weight-form="1">' in html
+    assert '<details class="dz-details" data-weight-form="2" open>' in html
+    c.post("/zepp/1/disconnect")
+    assert '<details class="dz-details" data-weight-form="1" open>' in c.get("/").text

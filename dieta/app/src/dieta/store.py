@@ -713,6 +713,14 @@ class Store:
                 (person_id,),
             )
 
+    def purge_zepp(self, person_id: int) -> None:
+        """Kasuje pomiary i wagi z Zepp tej osoby (ręczne zostają) i zeruje kursor synchronizacji."""
+        _check_person(person_id)
+        with closing(self._connect()) as conn, conn:
+            conn.execute("DELETE FROM body_measurement WHERE person_id = ? AND source = 'zepp'", (person_id,))
+            conn.execute("DELETE FROM weight WHERE person_id = ? AND source = 'zepp'", (person_id,))
+            conn.execute("UPDATE zepp_account SET last_sync_ts = NULL WHERE person_id = ?", (person_id,))
+
     def set_zepp_status(self, person_id: int, status: str, *, last_error: str | None = None) -> None:
         _check_person(person_id)
         with closing(self._connect()) as conn, conn:

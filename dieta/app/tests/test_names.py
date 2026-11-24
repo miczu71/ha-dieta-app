@@ -157,6 +157,7 @@ def test_name_form_is_inside_collapsed_settings(tmp_path: Path) -> None:
     client, _, _ = _client(tmp_path)
     html = client.get("/").text
     for pid in (1, 2):
-        start = html.index('<details class="dz-details"', html.index(f'id="h{pid}"'))
+        summary = html.index("<summary>Ustawienia</summary>", html.index(f'id="h{pid}"'))
+        start = html.rindex('<details class="dz-details"', 0, summary)
         end = html.index("</details>", start)
         assert start < html.index(f'action="person/{pid}/name"') < end

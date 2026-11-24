@@ -1,13 +1,14 @@
 """Testy ``ZeppService``. Sieć jest fałszywa: funkcje modułu ``dieta.zepp`` podmieniamy na skrypty."""
 
 import json
+from datetime import date
 from pathlib import Path
 from typing import Any
 
 import pytest
 
 from dieta import zepp
-from dieta.store import Store
+from dieta.store import BodyRow, Store
 from dieta.zepp import BodyRecord, Linked, Member, NeedsOtp, ReconnectNeeded, WrongCode, ZeppError, ZeppToken
 from dieta.zepp_service import LOOKBACK_S, PENDING_TTL_S, ZeppService
 
@@ -296,18 +297,50 @@ def test_sync_without_account_or_fuid(svc: ZeppService, fake: FakeZepp) -> None:
     assert svc.sync(1).code == "error"
 
 
-def test_disconnect_clears_tokens_keeps_history(svc: ZeppService, fake: FakeZepp, store: Store) -> None:
+def test_disconnect_clears_tokens_and_purges_zepp_data(
+    svc: ZeppService, fake: FakeZepp, store: Store
+) -> None:
     _link(svc, fake)
     fake.start_result = fake.otp
     svc.start(2, EMAIL, PW)
     assert svc.disconnect(1).code == "disconnected"
     acc = store.zepp_account(1)
     assert acc is not None and acc.app_token is None and acc.cookies_json == "{}"
-    assert acc.status == "reconnect"
-    assert len(store.body_measurements(1)) == 2
+    assert acc.status == "reconnect" and acc.last_sync_ts is None
+    assert store.body_measurements(1) == []
     assert 2 in svc._pending  # druga osoba nietknięta
     svc.disconnect(2)
     assert svc._pending == {}
+
+
+def test_disconnect_keeps_manual_weight_and_other_person(
+    svc: ZeppService, fake: FakeZepp, store: Store
+) -> None:
+    _link(svc, fake)
+    store.add_weight(1, date(2020, 1, 1), 99.0)
+    store.add_body_measurements(2, [BodyRow(ts=5, source="zepp", weight_kg=60.0)])
+    store.add_weight_if_not_manual(2, date(2020, 1, 2), 60.0)
+    svc.disconnect(1)
+    assert store.weights(1, 36500) == [(date(2020, 1, 1), 99.0)]
+    assert len(store.body_measurements(2)) == 1 and store.latest_weight(2) == 60.0
+
+
+def test_member_change_purges_old_data(svc: ZeppService, fake: FakeZepp, store: Store) -> None:
+    fake.member_list = [Member(7, "Ala", 170.0), Member(8, "Ola", 165.0)]
+    _link(svc, fake)
+    svc.member(1, 7)
+    fake.records = [_rec(NOW + 5000, 61.0)]
+    svc.member(1, 8)
+    assert [r.weight_kg for r in store.body_measurements(1)] == [61.0]
+
+
+def test_same_member_choice_keeps_data(svc: ZeppService, fake: FakeZepp, store: Store) -> None:
+    fake.member_list = [Member(7, "Ala", 170.0), Member(8, "Ola", 165.0)]
+    _link(svc, fake)
+    svc.member(1, 7)
+    before = len(store.body_measurements(1))
+    svc.member(1, 7)
+    assert len(store.body_measurements(1)) == before > 0
 
 
 def test_view_without_account(svc: ZeppService) -> None:

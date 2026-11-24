@@ -116,7 +116,9 @@ def build_card(store: Store, settings: Settings, person_id: int) -> Card:
         card.macros = target.macros
         card.bmr_label = "Katch-McArdle" if target.bmr_formula == "katch" else "Mifflin"
         card.body_age_days = target.body_age_days
-        card.suggestion = kcal_suggestion(profile.goal, profile.pace_kg_week, card.kcal or 0, card.trend)
+        # Baza = kcal automatyczny: po „Zastosuj” (override) ta sama propozycja znika zamiast się kumulować.
+        proposal = kcal_suggestion(profile.goal, profile.pace_kg_week, target.auto_kcal, card.trend)
+        card.suggestion = None if proposal == target.kcal else proposal
     body_rows = store.body_measurements(person_id)
     if body_rows:
         card.body_chart = body_chart(body_rows)

@@ -116,6 +116,25 @@ def test_suggestion_applies_via_kcal_endpoint(tmp_path: Path) -> None:
     assert 'action="profile/1/kcal"' in html and 'name="kcal" value="1660"' in html
 
 
+def test_suggestion_does_not_compound_after_apply(tmp_path: Path) -> None:
+    c = _client(tmp_path)
+    c.post("/profile/1", data=PROFILE)
+    today = date.today()
+    for back in range(20, -1, -1):
+        c.post("/weight/1", data={"day": (today - timedelta(days=back)).isoformat(), "kg": "80"})
+    assert 'name="kcal" value="1660"' in c.get("/").text
+    c.post("/profile/1/kcal", data={"kcal": "1660"})
+    html = c.get("/").text
+    assert 'action="profile/1/kcal"' not in html and "1660" in html
+
+
+def test_weight_form_open_without_zepp(tmp_path: Path) -> None:
+    c = _client(tmp_path)
+    c.post("/profile/1", data=PROFILE)
+    c.post("/weight/1", data={"day": date.today().isoformat(), "kg": "80"})
+    assert '<details class="dz-details" data-weight-form="1" open>' in c.get("/").text
+
+
 def test_kcal_endpoint_sets_override(tmp_path: Path) -> None:
     c = _client(tmp_path)
     c.post("/profile/1", data=PROFILE)

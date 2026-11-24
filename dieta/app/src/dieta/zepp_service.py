@@ -210,6 +210,8 @@ class ZeppService:
         acc = self._store.zepp_account(person_id)
         if acc is not None and acc.fuid is not None and any(m.fuid == acc.fuid for m in members):
             return self.sync(person_id)
+        if acc is not None and acc.fuid is not None:
+            self._store.purge_zepp(person_id)  # inne konto/członek: stare pomiary nie należą do nowego
         if len(members) == 1:
             self._save(person_id, fuid=members[0].fuid, last_sync_ts=None)
             return self.sync(person_id)
@@ -229,6 +231,8 @@ class ZeppService:
         self._members[person_id] = tuple(members)
         if fuid not in {m.fuid for m in members}:
             return Outcome("error")
+        if acc.fuid is not None and acc.fuid != fuid:
+            self._store.purge_zepp(person_id)
         self._save(person_id, fuid=fuid, last_sync_ts=None)
         return self.sync(person_id)
 
@@ -291,6 +295,7 @@ class ZeppService:
 
     def disconnect(self, person_id: int) -> Outcome:
         self._store.delete_zepp_tokens(person_id)
+        self._store.purge_zepp(person_id)  # jawne rozłączenie = koniec danych z tego konta
         self._store.set_meta(reconnect_pushed_key(person_id), "1")  # świadome rozłączenie bez pusha
         self._pending.pop(person_id, None)
         self._members.pop(person_id, None)
