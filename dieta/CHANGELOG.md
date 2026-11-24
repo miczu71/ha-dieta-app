@@ -1,5 +1,15 @@
 # Dziennik zmian
 
+## 0.6.1 — domknięcie: kcal, waga, Zepp, odporność
+
+- Propozycja kcal liczona od celu automatycznego, więc po „Zastosuj” nie kumuluje się przy tym samym trendzie.
+- Formularz ręcznej wagi jest zwinięty u osoby z połączonym Zepp i znaną wagą; rozwinięty bez Zepp albo bez wagi.
+- Zmiana konta/członka Zepp i jawne odłączenie kasują stare pomiary Zepp tej osoby (ręczne wagi zostają); dotyczy też logowania
+  kodem z e-maila. Wygasła sesja niczego nie kasuje.
+- Odporność: limit rozmiaru odpowiedzi (Zakupy, Zepp, LLM), przekierowania Zakupów tylko na ten sam host (bez downgrade https→http),
+  nazwy do promptu LLM są oczyszczane, logi błędów LLM z kodem HTTP, `role="alert"` w komunikatach błędów, strona główna nie blokuje serwera.
+- Wewnętrzne: wspólny parser dat, liczniki kolejki przez COUNT, testy brzegowe.
+
 ## 0.6.0 — konto Zepp: historia wagi i składu ciała
 
 - W Profilach połączysz własne konto Zepp (e-mail, hasło, jednorazowy kod z e-maila). Hasło nie jest zapisywane; zostają tylko ciasteczka
