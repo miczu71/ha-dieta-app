@@ -1,5 +1,14 @@
 # Dziennik zmian
 
+## 0.4.1 — hartowanie klienta Zakupów i widoczne błędy synchronizacji (wymaga Zakupów 1.12.1)
+
+- Klient Zakupów nie podąża za przekierowaniami (nagłówek Bearer nie trafi pod obcy host); 3xx to czytelny błąd.
+- Zlecenie cen półkowych wysyła tylko listę EAN-ów (sklep wybiera Zakupy z własnych ustawień).
+- Pusty katalog z Zakupów to błąd synchronizacji („pusty katalog”): poprzedni snapshot i współczynnik Frisco zostają.
+- Nazwy produktów z feedu są czyszczone przed promptem mapowania LLM (znaki sterujące, separator `||`, limit 120 znaków).
+- Ekrany „Kupujemy” i „Lista” pokazują baner, gdy zawiodła synchronizacja katalogu cen, cen półkowych albo kolejki cen
+  (wcześniej błąd był tylko w bazie).
+
 ## 0.4.0 — ceny: katalog Frisco, Biedronka po EAN, plakietki źródeł (wymaga Zakupów 1.12.0)
 
 - Wydanie zbiorcze E6b.2–E6b.4 (poniżej). Przy wydaniu: jeden GET półki Biedronki zamiast dwóch, kolejka EAN odrzuca niepoprawne EAN-y (Zakupy odrzucają całe zlecenie), podział pokrycia liczony w Pythonie.

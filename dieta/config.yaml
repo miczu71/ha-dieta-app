@@ -1,5 +1,5 @@
 name: "Dieta"
-version: "0.4.0"
+version: "0.4.1"
 slug: dieta
 description: "Planer posiłków wielodniowych z celami kcal dla dwóch osób, połączony z zakupami"
 url: "https://github.com/miczu71/ha-dieta-app"
