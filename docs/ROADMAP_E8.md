@@ -96,4 +96,8 @@ E8a: **ZROBIONE 2026-11-24** (plan `docs/PLAN_E8a.md` `175fa22`, kod `1b4905a` n
 stdlib, wstrzykiwany `http`, allowlista hostów (SSRF), brak sekretów w wyjątkach/`repr`. sonnet-worker → claimcheck → verifier ACCEPT;
 po verifierze poprawione: szerszy catch błędów sieci w `default_http`, usunięta osłabiająca asercja `or`. `ruff`/`format`/`mypy` czyste, `pytest` 702 passed na `main`.
 Do potwierdzenia na żywo w E8c: kształt odpowiedzi `0106` i `securityStatus 16` (założenie z prototypu), `send_ticket` rzuca przy `code` ≠ 0 (założenie).
-Następny: **E8b** (migracja 12, `docs/PLAN_E8b.md` z sekcją Wykonawca).
+E8b: **ZROBIONE 2026-11-24** (plan `docs/PLAN_E8b.md` `fb232e4`, kod `917ea84` na `main`, niewydane). Migracja 12 (`zepp_account`, `body_measurement`, `weight.source`),
+`body.py` (`import_records`), metody `Store`; kolumna `muscle_pct` (Zepp daje %, nie kg — kg policzy E8e). Ręczny wpis wagi wygrywa (`source='manual'`).
+sonnet-worker → verifier ACCEPT; pełny pytest 713 passed, ruff/format/mypy czyste (wynik workera, nie powtórzony przeze mnie na `main`). Asercje `11→12` w 10 istniejących plikach testów (tylko liczby).
+Nieblokujące: `ImportResult.days` to licznik zapisów, nie idempotentny przy ponownym imporcie (wartości w `weight` bez zmian); dzień pomiaru z lokalnej strefy kontenera.
+Następny: **E8c** („Konto Zepp” w profilu; `docs/PLAN_E8c.md`; potwierdzić na żywo kształt `0106`/`securityStatus 16` i `send_ticket`).
