@@ -1,5 +1,11 @@
 # Dziennik zmian
 
+## 0.5.1 — poprawka przekierowania po zapisie
+
+- Zapis profilu, wagi i nazwy osoby kończył się stroną `{"detail":"Not Found"}`: dane się zapisywały, ale przeglądarka
+  dostawała adres przekierowania liczony od URL-a zapisu (`/profile/`, `/weight/`, `/person/1/`), który nie istnieje.
+  Teraz po zapisie wracasz na stronę Profili (także pod prefiksem Ingress).
+
 ## 0.5.0 — nazwy osób i wiek z daty urodzenia
 
 - Nazwy osób wpisujesz w UI Profili (1–30 znaków, różne dla obu osób, puste pole = domyślna z opcji add-onu albo „Osoba N”);

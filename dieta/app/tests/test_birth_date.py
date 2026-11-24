@@ -120,21 +120,22 @@ def _client(tmp_path: Path) -> TestClient:
 )
 def test_route_rejects_bad_dates(tmp_path: Path, born: str) -> None:
     c = _client(tmp_path)
-    assert c.post("/profile/1", data={**PROFILE, "birth_date": born}).headers["location"] == "./?error=profil"
+    r = c.post("/profile/1", data={**PROFILE, "birth_date": born})
+    assert r.headers["location"] == "../?error=profil"
 
 
 def test_route_rejects_age_outside_range(tmp_path: Path) -> None:
     c = _client(tmp_path)
     t = date.today()
     ok = c.post("/profile/1", data={**PROFILE, "birth_date": date(t.year - 9, 1, 1).isoformat()})
-    assert ok.headers["location"] == "./?error=profil"
+    assert ok.headers["location"] == "../?error=profil"
     old = c.post("/profile/1", data={**PROFILE, "birth_date": date(t.year - 121, 1, 1).isoformat()})
-    assert old.headers["location"] == "./?error=profil"
+    assert old.headers["location"] == "../?error=profil"
     assert (
         c.post("/profile/1", data={**PROFILE, "birth_date": date(t.year - 10, 1, 1).isoformat()}).headers[
             "location"
         ]
-        == "./"
+        == "../"
     )
 
 

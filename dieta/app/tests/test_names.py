@@ -103,12 +103,12 @@ def _client(tmp_path: Path) -> tuple[TestClient, Store, Settings]:
 def test_post_name_ok_and_duplicate(tmp_path: Path) -> None:
     client, store, _ = _client(tmp_path)
     r = client.post("/person/1/name", data={"name": " Ala "})
-    assert r.status_code == 303 and r.headers["location"] == "./"
+    assert r.status_code == 303 and r.headers["location"] == "../../"
     assert store.person_names() == {1: "Ala"}
     assert "Ala" in client.get("/").text
     client.post("/person/2/name", data={"name": "Ola"})
     r = client.post("/person/2/name", data={"name": "ala"})
-    assert r.headers["location"] == "./?error=nazwa"
+    assert r.headers["location"] == "../../?error=nazwa"
     assert store.person_names() == {1: "Ala", 2: "Ola"}
     assert "nazwa" in client.get("/?error=nazwa").text.lower()
     assert client.post("/person/3/name", data={"name": "X"}).status_code == 404

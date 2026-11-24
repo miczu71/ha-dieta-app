@@ -183,9 +183,10 @@ def create_app(
             raise HTTPException(404)
         return person_id
 
-    def _back(error: str = "") -> RedirectResponse:
-        # Adres względny: działa pod prefiksem Ingress (/api/hassio_ingress/<token>/).
-        return RedirectResponse("./" + (f"?error={error}" if error else ""), status_code=303)
+    def _back(error: str = "", up: int = 1) -> RedirectResponse:
+        # Adres względny liczony od URL-a POST-a (``up`` = liczba segmentów katalogów w ścieżce POST-a):
+        # działa pod prefiksem Ingress (/api/hassio_ingress/<token>/) i prowadzi na stronę główną.
+        return RedirectResponse("../" * up + (f"?error={error}" if error else ""), status_code=303)
 
     @app.post("/person/{person_id}/name")
     async def save_name(person_id: int, name: str = Form("")) -> Response:
@@ -193,9 +194,9 @@ def create_app(
         other = person_name(store, settings, 2 if person_id == 1 else 1)
         valid = validate_name(name, other)
         if valid is None:
-            return _back("nazwa")
+            return _back("nazwa", up=2)
         store.set_person_name(person_id, valid)
-        return _back()
+        return _back(up=2)
 
     @app.post("/profile/{person_id}")
     async def save_profile(
