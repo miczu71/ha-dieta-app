@@ -91,4 +91,9 @@ połączenie konta osoby 1 z OTP, ≥284 pomiarów, karta z Katch-McArdle. Krok 
 - Zapis wagi z powrotem do Zepp lub Garmina.
 
 ## Stan
-Plan zatwierdzony 2026-11-24. Zrobione: prototyp logowania i pobrania wag (`~/dev/zepp-login`). Wątpliwości z odczytu wyjaśnione (brak ważeń = brak ważeń; 80 kg = osoba 2). Kod w Diecie niezaczęty — następny krok: `docs/PLAN_E8a.md` z sekcją Wykonawca.
+Plan zatwierdzony 2026-11-24. Prototyp logowania i pobrania wag: `~/dev/zepp-login`.
+E8a: **ZROBIONE 2026-11-24** (plan `docs/PLAN_E8a.md` `175fa22`, kod `1b4905a` na `main`, niewydane). `dieta/zepp.py` + `tests/test_zepp.py`:
+stdlib, wstrzykiwany `http`, allowlista hostów (SSRF), brak sekretów w wyjątkach/`repr`. sonnet-worker → claimcheck → verifier ACCEPT;
+po verifierze poprawione: szerszy catch błędów sieci w `default_http`, usunięta osłabiająca asercja `or`. `ruff`/`format`/`mypy` czyste, `pytest` 702 passed na `main`.
+Do potwierdzenia na żywo w E8c: kształt odpowiedzi `0106` i `securityStatus 16` (założenie z prototypu), `send_ticket` rzuca przy `code` ≠ 0 (założenie).
+Następny: **E8b** (migracja 12, `docs/PLAN_E8b.md` z sekcją Wykonawca).
