@@ -238,7 +238,7 @@ def test_migration_v6_to_v7_keeps_data_and_adds_columns(tmp_path: Path) -> None:
     )
     conn.commit()
     conn.close()
-    assert len(_MIGRATIONS) == 11
+    assert len(_MIGRATIONS) == 12
 
     store = Store(path)
 
@@ -246,7 +246,7 @@ def test_migration_v6_to_v7_keeps_data_and_adds_columns(tmp_path: Path) -> None:
     assert p.code == "c1" and p.spend == 9.0
     assert (p.unit_price, p.is_weight, p.last_unit_price) == (None, None, None)
     with sqlite3.connect(path) as check:
-        assert check.execute("PRAGMA user_version").fetchone()[0] == 11
+        assert check.execute("PRAGMA user_version").fetchone()[0] == 12
         tables = {r[0] for r in check.execute("SELECT name FROM sqlite_master WHERE type='table'")}
         assert "shopping_state" in tables
 

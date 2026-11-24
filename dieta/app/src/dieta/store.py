@@ -10,7 +10,7 @@ import shutil
 import sqlite3
 from collections.abc import Iterable, Mapping, Sequence
 from contextlib import closing
-from dataclasses import dataclass
+from dataclasses import dataclass, field, fields
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any, Literal, cast
@@ -270,9 +270,26 @@ _MIGRATIONS: list[str] = [
         - (strftime('%m-%d','now') < '07-01')) || '-07-01',
         birth_date_approx = 1;
     """,
+    # v12 (E8b): pomiary Zepp; ręczny wpis wagi wygrywa z importem (weight.source).
+    """
+    ALTER TABLE weight ADD COLUMN source TEXT NOT NULL DEFAULT 'manual';
+    CREATE TABLE zepp_account (
+        person_id INTEGER PRIMARY KEY CHECK(person_id IN (1,2)),
+        device_id TEXT NOT NULL, cookies_json TEXT NOT NULL DEFAULT '{}',
+        user_id TEXT, app_token TEXT, fuid INTEGER,
+        status TEXT NOT NULL CHECK(status IN ('pending_otp','linked','reconnect')),
+        last_sync_ts INTEGER, last_error TEXT
+    );
+    CREATE TABLE body_measurement (
+        person_id INTEGER NOT NULL CHECK(person_id IN (1,2)), ts INTEGER NOT NULL, source TEXT NOT NULL,
+        weight_kg REAL, fat_pct REAL, muscle_pct REAL, water_pct REAL, bone_kg REAL, visceral REAL,
+        bmr_kcal REAL, bmi REAL, impedance REAL, body_score REAL, metabolic_age REAL, raw_json TEXT,
+        PRIMARY KEY (person_id, ts, source)
+    );
+    """,
 ]
-# migracje v8 (Frisco), v9 (Biedronka), v10 (nazwy osób), v11 (data urodzenia): kopia bazy przed startem
-BACKUP_BEFORE_VERSIONS = (8, 9, 10, 11)
+# migracje v8 (Frisco), v9 (Biedronka), v10 (nazwy), v11 (data ur.), v12 (Zepp): kopia bazy przed startem
+BACKUP_BEFORE_VERSIONS = (8, 9, 10, 11, 12)
 
 
 @dataclass(frozen=True)
@@ -296,6 +313,41 @@ class Profile:
         if (b.month, b.day) == (2, 29) and not calendar.isleap(day.year):
             had = day.month >= 3
         return day.year - b.year - (0 if had else 1)
+
+
+@dataclass(frozen=True)
+class ZeppAccount:
+    person_id: int
+    device_id: str
+    cookies_json: str = field(repr=False)
+    user_id: str | None
+    app_token: str | None = field(repr=False)
+    fuid: int | None
+    status: Literal["pending_otp", "linked", "reconnect"]
+    last_sync_ts: int | None
+    last_error: str | None
+
+
+@dataclass(frozen=True)
+class BodyRow:
+    ts: int
+    source: str
+    weight_kg: float | None = None
+    fat_pct: float | None = None
+    muscle_pct: float | None = None
+    water_pct: float | None = None
+    bone_kg: float | None = None
+    visceral: float | None = None
+    bmr_kcal: float | None = None
+    bmi: float | None = None
+    impedance: float | None = None
+    body_score: float | None = None
+    metabolic_age: float | None = None
+    raw_json: str | None = None
+
+
+_BODY_COLUMNS = tuple(f.name for f in fields(BodyRow))
+_ZEPP_COLUMNS = tuple(f.name for f in fields(ZeppAccount))
 
 
 @dataclass(frozen=True)
@@ -615,11 +667,98 @@ class Store:
     def add_weight(self, person_id: int, day: date, kg: float) -> None:
         _check_person(person_id)
         sql = (
-            "INSERT INTO weight (person_id, day, kg) VALUES (?, ?, ?) "
-            "ON CONFLICT(person_id, day) DO UPDATE SET kg = excluded.kg"
+            "INSERT INTO weight (person_id, day, kg, source) VALUES (?, ?, ?, 'manual') "
+            "ON CONFLICT(person_id, day) DO UPDATE SET kg = excluded.kg, source = 'manual'"
         )
         with closing(self._connect()) as conn, conn:
             conn.execute(sql, (person_id, day.isoformat(), kg))
+
+    def add_weight_if_not_manual(self, person_id: int, day: date, kg: float) -> bool:
+        """Zapis ``source='zepp'`` tylko gdy dnia nie ma albo wpis też pochodzi z Zepp."""
+        _check_person(person_id)
+        sql = (
+            "INSERT INTO weight (person_id, day, kg, source) VALUES (?, ?, ?, 'zepp') "
+            "ON CONFLICT(person_id, day) DO UPDATE SET kg = excluded.kg WHERE weight.source = 'zepp'"
+        )
+        with closing(self._connect()) as conn, conn:
+            return conn.execute(sql, (person_id, day.isoformat(), kg)).rowcount > 0
+
+    # --- Zepp: konto i pomiary ciała (migracja v12) ---
+
+    def zepp_account(self, person_id: int) -> ZeppAccount | None:
+        _check_person(person_id)
+        sql = f"SELECT {', '.join(_ZEPP_COLUMNS)} FROM zepp_account WHERE person_id = ?"
+        with closing(self._connect()) as conn:
+            row = conn.execute(sql, (person_id,)).fetchone()
+        return None if row is None else ZeppAccount(*row)
+
+    def save_zepp_account(self, account: ZeppAccount) -> None:
+        _check_person(account.person_id)
+        placeholders = ", ".join("?" * len(_ZEPP_COLUMNS))
+        updates = ", ".join(f"{c} = excluded.{c}" for c in _ZEPP_COLUMNS[1:])
+        sql = (
+            f"INSERT INTO zepp_account ({', '.join(_ZEPP_COLUMNS)}) VALUES ({placeholders}) "
+            f"ON CONFLICT(person_id) DO UPDATE SET {updates}"
+        )
+        values = tuple(getattr(account, c) for c in _ZEPP_COLUMNS)
+        with closing(self._connect()) as conn, conn:
+            conn.execute(sql, values)
+
+    def delete_zepp_tokens(self, person_id: int) -> None:
+        _check_person(person_id)
+        with closing(self._connect()) as conn, conn:
+            conn.execute(
+                "UPDATE zepp_account SET cookies_json = '{}', app_token = NULL, status = 'reconnect'"
+                " WHERE person_id = ?",
+                (person_id,),
+            )
+
+    def set_zepp_status(self, person_id: int, status: str, *, last_error: str | None = None) -> None:
+        _check_person(person_id)
+        with closing(self._connect()) as conn, conn:
+            conn.execute(
+                "UPDATE zepp_account SET status = ?, last_error = ? WHERE person_id = ?",
+                (status, last_error, person_id),
+            )
+
+    def set_zepp_last_sync(self, person_id: int, ts: int) -> None:
+        _check_person(person_id)
+        with closing(self._connect()) as conn, conn:
+            conn.execute("UPDATE zepp_account SET last_sync_ts = ? WHERE person_id = ?", (ts, person_id))
+
+    def add_body_measurements(self, person_id: int, rows: Sequence[BodyRow]) -> int:
+        """INSERT OR IGNORE po kluczu (osoba, ts, źródło); zwraca liczbę nowych wierszy."""
+        _check_person(person_id)
+        sql = (
+            f"INSERT OR IGNORE INTO body_measurement (person_id, {', '.join(_BODY_COLUMNS)}) "
+            f"VALUES (?, {', '.join('?' * len(_BODY_COLUMNS))})"
+        )
+        new = 0
+        with closing(self._connect()) as conn, conn:
+            for row in rows:
+                values = (person_id, *(getattr(row, c) for c in _BODY_COLUMNS))
+                new += conn.execute(sql, values).rowcount
+        return new
+
+    def body_measurements(self, person_id: int, since_ts: int | None = None) -> list[BodyRow]:
+        _check_person(person_id)
+        sql = (
+            f"SELECT {', '.join(_BODY_COLUMNS)} FROM body_measurement "
+            "WHERE person_id = ? AND ts >= ? ORDER BY ts"
+        )
+        with closing(self._connect()) as conn:
+            rows = conn.execute(sql, (person_id, since_ts if since_ts is not None else 0)).fetchall()
+        return [BodyRow(*r) for r in rows]
+
+    def latest_body(self, person_id: int) -> BodyRow | None:
+        _check_person(person_id)
+        sql = (
+            f"SELECT {', '.join(_BODY_COLUMNS)} FROM body_measurement "
+            "WHERE person_id = ? ORDER BY ts DESC LIMIT 1"
+        )
+        with closing(self._connect()) as conn:
+            row = conn.execute(sql, (person_id,)).fetchone()
+        return None if row is None else BodyRow(*row)
 
     def weights(self, person_id: int, days: int = 90) -> list[tuple[date, float]]:
         """Wpisy z ostatnich ``days`` dni (włącznie), liczone wstecz od najnowszego wpisu osoby."""

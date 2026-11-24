@@ -60,7 +60,7 @@ def test_migration_v11_converts_age_to_approx_birth_date(tmp_path: Path) -> None
     store = Store(path)
     store.add_weight(1, date(2026, 11, 1), 80.0)
     with sqlite3.connect(path) as check:
-        assert check.execute("PRAGMA user_version").fetchone()[0] == 11
+        assert check.execute("PRAGMA user_version").fetchone()[0] == 12
         row = check.execute("SELECT birth_date, birth_date_approx, age FROM profile").fetchone()
     assert row == (f"{_july_year(30)}-07-01", 1, 30)
     assert (tmp_path / "dieta.db.pre-v11").exists()

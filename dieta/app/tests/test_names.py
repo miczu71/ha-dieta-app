@@ -48,7 +48,7 @@ def test_migration_v9_to_v10_creates_person_and_backup(tmp_path: Path) -> None:
     conn.close()
     store = Store(path)
     with sqlite3.connect(path) as check:
-        assert check.execute("PRAGMA user_version").fetchone()[0] == 11
+        assert check.execute("PRAGMA user_version").fetchone()[0] == 12
         tables = {r[0] for r in check.execute("SELECT name FROM sqlite_master WHERE type='table'")}
     assert "person" in tables
     assert store.get_meta("k") == "v"

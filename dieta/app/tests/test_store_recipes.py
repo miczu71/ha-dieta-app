@@ -59,7 +59,7 @@ def test_migration_v2_to_v3_keeps_data(tmp_path: Path) -> None:
     )
     assert store.ingredient_durability("ryż") == "dry"
     assert store.get_meta("last_sync_at") == "2026-11-21"
-    assert sqlite3.connect(path).execute("PRAGMA user_version").fetchone()[0] == len(_MIGRATIONS) == 11
+    assert sqlite3.connect(path).execute("PRAGMA user_version").fetchone()[0] == len(_MIGRATIONS) == 12
     assert store.recipes({}, frozenset()) == []
 
 
