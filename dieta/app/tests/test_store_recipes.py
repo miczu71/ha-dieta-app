@@ -2,6 +2,8 @@ import sqlite3
 from datetime import date
 from pathlib import Path
 
+from test_birth_date import _july_year
+
 from dieta.profile import IngredientStat
 from dieta.settings import Settings
 from dieta.sources.base import RawIngredient, Recipe
@@ -52,7 +54,7 @@ def test_migration_v2_to_v3_keeps_data(tmp_path: Path) -> None:
     profile = store.profile(1)
     assert (
         isinstance(profile, Profile)
-        and profile.birth_date.year == date.today().year - 30
+        and profile.birth_date.year == _july_year(30)
         and profile.birth_date_approx
     )
     assert store.ingredient_durability("ryż") == "dry"

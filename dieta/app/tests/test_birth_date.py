@@ -15,6 +15,12 @@ from dieta.targets import person_targets
 from dieta.web.app import create_app
 
 
+def _july_year(age: int) -> int:
+    """Rok daty „1 lipca” z migracji 11 dla profilu w wieku ``age`` — dziś."""
+    t = date.today()
+    return t.year - age - (0 if (t.month, t.day) >= (7, 1) else 1)
+
+
 def _p(born: date, approx: bool = False) -> Profile:
     return Profile(1, "f", born, 165.0, 2, "maintain", 0.0, None, None, 0.3, approx)
 
@@ -50,16 +56,15 @@ def test_migration_v11_converts_age_to_approx_birth_date(tmp_path: Path) -> None
     conn.execute("INSERT INTO profile VALUES (1,'m',30,180,2,'lose',0.5,NULL,NULL,0.3)")
     conn.commit()
     conn.close()
-    year = date.today().year
     s = Settings(data_dir=tmp_path, log_level="info", dev=True)
     store = Store(path)
     store.add_weight(1, date(2026, 11, 1), 80.0)
     with sqlite3.connect(path) as check:
         assert check.execute("PRAGMA user_version").fetchone()[0] == 11
         row = check.execute("SELECT birth_date, birth_date_approx, age FROM profile").fetchone()
-    assert row == (f"{year - 30}-07-01", 1, 30)
+    assert row == (f"{_july_year(30)}-07-01", 1, 30)
     assert (tmp_path / "dieta.db.pre-v11").exists()
-    t = person_targets(store, s, 1, today=date(year, 7, 1))
+    t = person_targets(store, s, 1, today=date.today())
     assert t is not None
     assert t.bmr == round(nutrition.bmr_mifflin("m", 30, 180.0, 80.0))
 
@@ -145,3 +150,12 @@ def test_save_clears_approx_flag_and_banner(tmp_path: Path) -> None:
     assert 'name="birth_date"' in html and "Wiek: " in html
     got = store.profile(1)
     assert got is not None and not got.birth_date_approx and got.birth_date == date(1990, 3, 2)
+
+
+def test_save_keeps_approx_flag_when_date_unchanged(tmp_path: Path) -> None:
+    c = _client(tmp_path)
+    store = Store(Settings(data_dir=tmp_path, log_level="info", dev=True).db_path)
+    store.save_profile(_p(date(1990, 7, 1), approx=True))
+    c.post("/profile/1", data={**PROFILE, "birth_date": "1990-07-01"})
+    got = store.profile(1)
+    assert got is not None and got.birth_date_approx

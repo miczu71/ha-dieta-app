@@ -266,7 +266,8 @@ _MIGRATIONS: list[str] = [
     """
     ALTER TABLE profile ADD COLUMN birth_date TEXT;
     ALTER TABLE profile ADD COLUMN birth_date_approx INTEGER NOT NULL DEFAULT 0;
-    UPDATE profile SET birth_date = (CAST(strftime('%Y','now') AS INTEGER) - age) || '-07-01',
+    UPDATE profile SET birth_date = (CAST(strftime('%Y','now') AS INTEGER) - age
+        - (strftime('%m-%d','now') < '07-01')) || '-07-01',
         birth_date_approx = 1;
     """,
 ]

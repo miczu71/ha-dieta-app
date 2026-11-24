@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from test_birth_date import _july_year
 
 from dieta.settings import Settings
 from dieta.store import _MIGRATIONS, Profile, Store
@@ -77,11 +78,7 @@ def test_migration_v1_to_v2_keeps_profile(tmp_path: Path) -> None:
 
     store = Store(path)
     profile = store.profile(1)
-    assert (
-        profile is not None
-        and profile.birth_date.year == date.today().year - 40
-        and profile.birth_date_approx
-    )
+    assert profile is not None and profile.birth_date.year == _july_year(40) and profile.birth_date_approx
     assert store.purchases() == []
     with sqlite3.connect(path) as check:
         assert check.execute("PRAGMA user_version").fetchone()[0] == len(_MIGRATIONS)

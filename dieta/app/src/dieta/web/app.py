@@ -233,6 +233,7 @@ def create_app(
             protein is not None and not 0.5 <= protein <= 4
         ):
             return _back("profil")
+        previous = store.profile(person_id)
         profile = Profile(
             person_id=person_id,
             sex=cast(Literal["m", "f"], sex),
@@ -244,6 +245,7 @@ def create_app(
             kcal_override=override,
             protein_g_kg=protein,
             fat_pct=fat_pct / 100,
+            birth_date_approx=bool(previous and previous.birth_date_approx and previous.birth_date == born),
         )
         today = date.today()
         if born > today or not 10 <= profile.age_on(today) <= 120:
