@@ -10,7 +10,8 @@ Bez pętli w tle (to E8d) i bez zmian w `targets.py` (E8e). Nic produkcyjnego po
 - **Wybór członka (fuid):** po zalogowaniu `members()`; 1 członek → od razu `fuid` i import; >1 → konto zapisane z `status='linked'`, `fuid=NULL`, UI pokazuje wybór.
 - **Synchronizacja = `ZeppService.sync(person_id)`** (E8d użyje jej w pętli): `weight_records(since_ts=last_sync_ts)` → `body.import_records` → `set_zepp_last_sync(now)`.
   `ReconnectNeeded` (401) → **jedno** `zepp.refresh(cookies, device_id)`, zapis nowego tokenu/ciasteczek, ponowna próba; `ReconnectNeeded` z `refresh` → `set_zepp_status('reconnect', last_error=…)`.
-  Pierwszy import: `since_ts=0`. Przy każdej porażce `last_error` zawiera tylko komunikat `ZeppError` (bezpieczny z założenia E8a), nigdy treść odpowiedzi.
+  Pierwszy import (`last_sync_ts` brak): `since_ts=0`; kolejne: `since_ts = max(0, last_sync_ts - LOOKBACK_S)`, `LOOKBACK_S = 14 dni` (pomiar wgrany do chmury z opóźnieniem ma starszy `generatedTime`; duplikaty odfiltrowuje `INSERT OR IGNORE`).
+  Poprawka po REJECT verifiera (2026-11-24): wcześniej `since_ts=last_sync_ts`. Przy każdej porażce `last_error` zawiera tylko komunikat `ZeppError` (bezpieczny z założenia E8a), nigdy treść odpowiedzi.
 - **Dzięki `to_thread`** wywołania sieciowe nie blokują pętli zdarzeń (`asyncio.to_thread`).
 - **Komunikaty zwrotne** przez zapytanie `?zepp=<kod>[&n=<liczba>]` (wzorzec `?error=`); kody: `otp` (wpisz kod), `sent`, `ok` (+`n`), `wrong_code`, `login_failed`, `expired` (pending wygasł), `error`, `disconnected`. Hasła ani e-maila nie ma w URL-ach.
 - **Flaga rollbacku:** opcja add-onu `zepp_enabled` (bool, domyślnie `true`); `false` → sekcja ukryta, trasy `/zepp/*` zwracają 404.

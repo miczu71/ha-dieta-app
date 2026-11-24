@@ -5,7 +5,8 @@ from __future__ import annotations
 import asyncio
 import logging
 import re
-from collections.abc import AsyncIterator
+import time
+from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import date, datetime
@@ -18,18 +19,21 @@ from fastapi.responses import RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from .. import nutrition, push
+from .. import nutrition, push, zepp
 from ..names import person_name, validate_name
 from ..pipeline import CrawlRunner, default_crawl_runner
 from ..settings import Settings
 from ..store import PERSON_IDS, Profile, Store
 from ..targets import person_targets
+from ..zepp_service import ZeppService
 from .catalog import make_catalog_router
 from .chart import weight_chart
 from .dzis import make_dzis_router
 from .kupujemy import SyncRunner, default_runner, make_router, seconds_until
 from .lista import make_lista_router
 from .plan import make_plan_router
+from .zepp import banner as zepp_banner
+from .zepp import make_zepp_router
 
 log = logging.getLogger(__name__)
 
@@ -115,8 +119,11 @@ def create_app(
     *,
     sync_runner: SyncRunner | None = None,
     crawl_runner: CrawlRunner | None = None,
+    zepp_http: zepp.Http | None = None,
+    zepp_now: Callable[[], int] | None = None,
 ) -> FastAPI:
     store = Store(settings.db_path)
+    zepp_service = ZeppService(store, http=zepp_http or zepp.default_http, now=zepp_now or time.time)
     runner = sync_runner or default_runner(settings, store)
     crawler = crawl_runner or default_crawl_runner(settings, store)
 
@@ -146,6 +153,8 @@ def create_app(
     app.include_router(make_plan_router(settings, store, templates))
     app.include_router(make_dzis_router(settings, store, templates))
     app.include_router(make_lista_router(settings, store, templates))
+    if settings.zepp_enabled:
+        app.include_router(make_zepp_router(settings, store, templates, zepp_service))
 
     @app.middleware("http")
     async def no_store(request: Request, call_next):  # type: ignore[no-untyped-def]
@@ -159,7 +168,7 @@ def create_app(
         return {"status": "ok"}
 
     @app.get("/")
-    async def index(request: Request, error: str = "") -> Response:
+    async def index(request: Request, error: str = "", zepp: str = "", n: str = "", p: str = "") -> Response:
         cards = [build_card(store, settings, pid) for pid in PERSON_IDS]
         return templates.TemplateResponse(
             request,
@@ -175,6 +184,11 @@ def create_app(
                 "page_title": "Profile",
                 "section": "profile",
                 "root": "",
+                "zepp_views": {pid: zepp_service.view(pid) for pid in PERSON_IDS}
+                if settings.zepp_enabled
+                else None,
+                "zepp_banner": zepp_banner(zepp, n, p) if settings.zepp_enabled else None,
+                "zepp_time": lambda ts: datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M"),
             },
         )
 

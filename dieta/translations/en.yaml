@@ -83,3 +83,6 @@ configuration:
   cheaper_mode:
     name: Cheaper mode
     description: The planner favours recipes made of ingredients you probably already have at home. Off = plan unchanged.
+  zepp_enabled:
+    name: Zepp account
+    description: Shows the "Zepp account" section in Profiles (weight and body composition import). Off = section hidden, data kept.

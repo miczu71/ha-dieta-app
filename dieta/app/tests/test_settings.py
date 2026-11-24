@@ -138,3 +138,9 @@ def test_e6_option_defaults(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> 
 def test_e6_options_are_read(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     s = _load(tmp_path, monkeypatch, {"todo_entity": " todo.zakupy ", "cheaper_mode": True})
     assert s.todo_entity == "todo.zakupy" and s.cheaper_mode is True
+
+
+def test_zepp_enabled_defaults_true_and_reads_false(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    assert _load(tmp_path, monkeypatch, {}).zepp_enabled is True
+    assert _load(tmp_path, monkeypatch, {"zepp_enabled": True}).zepp_enabled is True
+    assert _load(tmp_path, monkeypatch, {"zepp_enabled": False}).zepp_enabled is False

@@ -1,0 +1,57 @@
+{# Sekcja „Konto Zepp” jednej osoby. Dane: c (karta), zepp_views[c.person_id] (ZeppView — bez tokenów i ciasteczek). #}
+{% macro icon(name) -%}
+<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+{%- if name == 'link' %}<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+{%- elif name == 'refresh' %}<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>
+{%- else %}<path d="m18.84 12.25 1.72-1.71h-.02a5.004 5.004 0 0 0-.12-7.07 5.006 5.006 0 0 0-6.95 0l-1.72 1.71"/><path d="m5.17 11.75-1.71 1.71a5.004 5.004 0 0 0 .12 7.07 5.006 5.006 0 0 0 6.95 0l1.71-1.71"/><line x1="8" x2="8" y1="2" y2="5"/><line x1="2" x2="5" y1="8" y2="8"/><line x1="16" x2="16" y1="19" y2="22"/><line x1="19" x2="22" y1="16" y2="16"/>
+{%- endif %}</svg>
+{%- endmacro %}
+{% macro login_form(pid) %}
+<form method="post" action="zepp/{{ pid }}/start" class="dz-form" autocomplete="off">
+  <label>E-mail konta Zepp / Xiaomi<input type="email" name="email" autocomplete="off" required></label>
+  <label>Hasło<input type="password" name="password" autocomplete="off" required></label>
+  <button class="dz-btn" type="submit">{{ icon('link') }} Połącz</button>
+</form>
+<p class="dz-note">Hasło służy tylko do jednorazowego logowania i nie jest zapisywane.</p>
+{% endmacro %}
+{% set zv = zepp_views[c.person_id] %}
+{% set zb = zepp_banner if zepp_banner and zepp_banner.pid == c.person_id else none %}
+{% set otp = zv.status == 'pending_otp' and zv.pending_alive %}
+<details class="dz-details"{% if zb or otp or zv.status == 'reconnect' or (zv.status == 'linked' and zv.fuid is none) %} open{% endif %}>
+  <summary>Konto Zepp</summary>
+  {% if zb %}<p class="{{ 'dz-err' if zb.kind == 'alert' else 'dz-note' }}" role="{{ zb.kind }}">{{ zb.text }}</p>{% endif %}
+  {% if zv.status == 'linked' and zv.fuid is none %}
+    <p class="dz-sub">Wybierz osobę z wagi, której pomiary mają trafiać do tego profilu.</p>
+    {% if zv.members %}
+    <form method="post" action="zepp/{{ c.person_id }}/member" class="dz-form">
+      {% for m in zv.members %}
+      <label><input type="radio" name="fuid" value="{{ m.fuid }}"{{ ' checked' if loop.first }} required> {{ m.nickname or ('Osoba ' ~ m.fuid) }}</label>
+      {% endfor %}
+      <button class="dz-btn" type="submit">{{ icon('refresh') }} Importuj</button>
+    </form>
+    {% else %}
+    <p class="dz-note">Lista osób wygasła — rozłącz i połącz ponownie.</p>
+    {% endif %}
+    <form method="post" action="zepp/{{ c.person_id }}/disconnect" class="dz-row"><button class="dz-btn dz-btn--ghost" type="submit">{{ icon('unlink') }} Rozłącz</button></form>
+  {% elif zv.status == 'linked' %}
+    <p class="dz-sub">Połączono. Pomiarów: <span class="dz-num">{{ zv.count }}</span>{% if zv.last_sync_ts %} · ostatnia synchronizacja: {{ zepp_time(zv.last_sync_ts) }}{% endif %}</p>
+    {% if zv.last_error %}<p class="dz-err" role="alert">Ostatni błąd: {{ zv.last_error }}</p>{% endif %}
+    <div class="dz-row">
+      <form method="post" action="zepp/{{ c.person_id }}/sync"><button class="dz-btn" type="submit">{{ icon('refresh') }} Synchronizuj teraz</button></form>
+      <form method="post" action="zepp/{{ c.person_id }}/disconnect"><button class="dz-btn dz-btn--ghost" type="submit">{{ icon('unlink') }} Rozłącz</button></form>
+    </div>
+  {% elif otp %}
+    <p class="dz-sub">Xiaomi wymaga kodu z e-maila{% if zv.pending_sent %} (kod wysłany){% endif %}.</p>
+    <form method="post" action="zepp/{{ c.person_id }}/send" class="dz-row"><button class="dz-btn dz-btn--ghost" type="submit">Wyślij kod</button></form>
+    <form method="post" action="zepp/{{ c.person_id }}/verify" class="dz-row" autocomplete="off">
+      <label>Kod z e-maila<input type="text" name="code" inputmode="numeric" autocomplete="off" required></label>
+      <button class="dz-btn" type="submit">{{ icon('link') }} Potwierdź</button>
+    </form>
+  {% elif zv.status == 'reconnect' %}
+    <p class="dz-err" role="alert">Połącz ponownie — sesja Zepp wygasła lub konto rozłączono.{% if zv.last_error %} ({{ zv.last_error }}){% endif %}</p>
+    {{ login_form(c.person_id) }}
+  {% else %}
+    <p class="dz-sub">Połącz konto, aby importować wagę i skład ciała z wagi Zepp.</p>
+    {{ login_form(c.person_id) }}
+  {% endif %}
+</details>

@@ -83,3 +83,6 @@ configuration:
   cheaper_mode:
     name: Tryb „taniej"
     description: Planer premiuje przepisy ze składników, które prawdopodobnie masz już w domu. Wyłączone = plan bez zmian.
+  zepp_enabled:
+    name: Konto Zepp
+    description: Pokazuje w Profilach sekcję „Konto Zepp” (import wagi i składu ciała). Wyłączone = sekcja ukryta, dane zostają.

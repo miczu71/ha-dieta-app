@@ -51,6 +51,7 @@ options:
   discovery: 1
   todo_entity: ""
   cheaper_mode: false
+  zepp_enabled: true
 schema:
   log_level: "list(debug|info|warning|error)"
   person_1_name: "str?"
@@ -82,3 +83,4 @@ schema:
   discovery: "int(0,3)"
   todo_entity: "match(^(todo\\.[a-z0-9_]+)?$)?"
   cheaper_mode: bool
+  zepp_enabled: bool

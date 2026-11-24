@@ -60,6 +60,7 @@ class Settings:
     discovery: int = 1
     todo_entity: str = ""
     cheaper_mode: bool = False
+    zepp_enabled: bool = True
 
     @property
     def db_path(self) -> Path:
@@ -149,4 +150,5 @@ def load_settings() -> Settings:
         discovery=_bounded(options, "discovery", 1, 0, 3),
         todo_entity=str(options.get("todo_entity") or "").strip(),
         cheaper_mode=options.get("cheaper_mode") is True,
+        zepp_enabled=options.get("zepp_enabled") is not False,
     )
