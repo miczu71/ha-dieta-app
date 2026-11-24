@@ -11,6 +11,7 @@ import re
 from collections.abc import Callable
 from datetime import date, timedelta
 
+from dieta.dates import parse_iso_date
 from dieta.settings import Settings
 from dieta.shopping import CATALOG_PRICED_STATUSES, PRICED_MAPPING_STATUSES, _all_masses, build_context
 from dieta.store import Store
@@ -73,9 +74,7 @@ def _fresh_eans(store: Store, today: date) -> set[str]:
     cutoff = today - timedelta(days=FRESH_DAYS)
     fresh: set[str] = set()
     for item in store.shelf_items():
-        try:
-            fetched = date.fromisoformat(item.fetched_at[:10])
-        except ValueError:
+        if (fetched := parse_iso_date(item.fetched_at)) is None:
             continue
         if fetched >= cutoff:
             fresh.add(item.ean)

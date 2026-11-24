@@ -6,7 +6,16 @@ from fastapi.testclient import TestClient
 from dieta.settings import Settings
 from dieta.store import Store
 from dieta.web.app import create_app
-from dieta.web.kupujemy import catalog_queue, queue_size, review_queue, seconds_until
+from dieta.web.kupujemy import (
+    catalog_queue,
+    estimate_queue,
+    ingredient_queue,
+    queue_size,
+    recipe_queue,
+    review_queue,
+    seconds_until,
+    sync_errors,
+)
 from dieta.zakupy_client import CatalogItem, Purchase
 
 TODAY = date.today()
@@ -332,3 +341,49 @@ def test_sync_errors_banner_escapes_html(tmp_path: Path) -> None:
     r = client.get("/kupujemy")
     assert "Katalog cen: &lt;script&gt;" in r.text
     assert "<script>alert(1)</script>" not in r.text
+
+
+def test_queue_size_equals_sum_of_queue_lengths(tmp_path: Path) -> None:
+    from dieta.sources.base import RawIngredient, Recipe
+    from dieta.store import RecipeMeta
+
+    client, store = _client(tmp_path)
+    _seed(store)
+    _seed_catalog(store)
+    recipe = Recipe(
+        "respo", "u9", "Zupa", "u9", None, 2, 300, 10, 30, 5, 20, ("a",),
+        None, (RawIngredient("sól", None, None, "sól"),),
+    )  # fmt: skip
+    store.upsert_recipe(recipe, RecipeMeta(None, None, None, "pending"))
+    ing = store.upsert_ingredient("sól", None)
+    store.save_ingredient_nutrition(
+        ing,
+        kcal=1.0,
+        protein=0.0,
+        carbs=0.0,
+        fat=0.0,
+        piece_g=None,
+        source="llm",
+        confidence="low",
+        status="pending",
+    )
+    assert recipe_queue(store) and ingredient_queue(store) and catalog_queue(store)
+    expected = (
+        len(review_queue(store))
+        + len(recipe_queue(store))
+        + len(ingredient_queue(store))
+        + len(catalog_queue(store))
+        + len(estimate_queue(store))
+    )
+    assert queue_size(store) == expected
+    assert store.count_pending_recipe_meta() == len(recipe_queue(store)) == 1
+    assert store.count_pending_ingredient_nutrition() == len(ingredient_queue(store)) == 1
+    assert store.count_pending_catalog() == len(catalog_queue(store)) == 1
+
+
+def test_sync_errors_all_three_in_label_order(tmp_path: Path) -> None:
+    _, store = _client(tmp_path)
+    store.set_meta("shelf_queue_error", "C")
+    store.set_meta("catalog_sync_error", "A")
+    store.set_meta("shelf_sync_error", "B")
+    assert sync_errors(store) == ["Katalog cen: A", "Ceny półkowe: B", "Kolejka cen: C"]

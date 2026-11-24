@@ -6,7 +6,14 @@ from dieta.settings import Settings
 from dieta.sources.base import RawIngredient, Recipe
 from dieta.store import RecipeMeta, Store
 from dieta.sync import sync_catalog, sync_shelf
-from dieta.zakupy_client import CatalogItem, Purchase, ShelfItem, ZakupyError, fetch_catalog
+from dieta.zakupy_client import (
+    MAX_BYTES,
+    CatalogItem,
+    Purchase,
+    ShelfItem,
+    ZakupyError,
+    fetch_catalog,
+)
 
 TODAY = date(2026, 11, 22)
 FIXTURE = Path(__file__).parent / "fixtures" / "frisco_catalog_small.json"
@@ -235,3 +242,21 @@ def test_empty_catalog_keeps_old_snapshot_and_sync_at(tmp_path: Path) -> None:
     assert [(i.ean, i.price) for i in store.catalog_items()] == snapshot
     assert store.get_meta("catalog_sync_at") == TODAY.isoformat()
     assert store.get_meta("frisco_factor_json") == factor
+
+
+def test_oversized_catalog_response_sets_error_without_raising(tmp_path: Path) -> None:
+    class _Big:
+        def read(self, size: int = -1) -> bytes:
+            return b"x" * (MAX_BYTES + 10)
+
+        def close(self) -> None:
+            return None
+
+    store = _store(tmp_path)
+
+    def fetch(url: str, token: str) -> list[CatalogItem]:
+        return fetch_catalog(url, token, opener=lambda req: _Big())
+
+    assert sync_catalog(store, _settings(tmp_path), TODAY, fetch=fetch) == 0
+    assert store.get_meta("catalog_sync_error") == "Odpowiedź Zakupów za duża."
+    assert store.catalog_items() == []

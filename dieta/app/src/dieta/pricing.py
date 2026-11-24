@@ -12,6 +12,7 @@ from dataclasses import dataclass, replace
 from datetime import date, timedelta
 from statistics import median
 
+from dieta.dates import parse_iso_date
 from dieta.zakupy_client import CatalogItem, Purchase, ShelfItem
 
 # opcjonalny mnożnik „6x", liczba, jednostka; lookbehind odcina liczby sklejone z poprzednim tokenem
@@ -212,17 +213,10 @@ def _shelf_price100(item: ShelfItem, price: float) -> float | None:
     return price / pack * 100 if pack else None
 
 
-def _day(value: str | None) -> date | None:
-    try:
-        return date.fromisoformat(value[:10]) if value else None
-    except ValueError:
-        return None
-
-
 def _promo_applies(item: ShelfItem, week_start: date, week_end: date) -> bool:
     if not item.is_promotion or item.card_only:
         return False
-    start, end = _day(item.promo_from), _day(item.promo_to)
+    start, end = parse_iso_date(item.promo_from), parse_iso_date(item.promo_to)
     return (start is None or start <= week_end) and (end is None or end >= week_start)
 
 
@@ -236,7 +230,7 @@ def _shelf_prices(
     best: dict[str, IngredientPrice] = {}
     for item in shelf:
         ingredient = ean_to_ingredient.get(item.ean)
-        fetched = _day(item.fetched_at)
+        fetched = parse_iso_date(item.fetched_at)
         if ingredient is None or fetched is None or fetched < today - timedelta(days=SHELF_FRESH_DAYS):
             continue
         promo = _promo_applies(item, week_start, week_end)

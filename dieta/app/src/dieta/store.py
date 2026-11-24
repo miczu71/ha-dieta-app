@@ -1499,6 +1499,30 @@ class Store:
                 ).fetchone()[0]
             )
 
+    def count_pending_recipe_meta(self) -> int:
+        with closing(self._connect()) as conn:
+            return int(
+                conn.execute("SELECT COUNT(*) FROM recipe WHERE meta_status = 'pending'").fetchone()[0]
+            )
+
+    def count_pending_ingredient_nutrition(self) -> int:
+        with closing(self._connect()) as conn:
+            return int(
+                conn.execute(
+                    "SELECT COUNT(*) FROM ingredient_nutrition n "
+                    "JOIN ingredient i ON i.id = n.ingredient_id WHERE n.status = 'pending'"
+                ).fetchone()[0]
+            )
+
+    def count_pending_catalog(self) -> int:
+        with closing(self._connect()) as conn:
+            return int(
+                conn.execute(
+                    "SELECT COUNT(*) FROM catalog_map m JOIN catalog_item c ON c.ean = m.ean "
+                    "WHERE m.status = 'pending'"
+                ).fetchone()[0]
+            )
+
     def is_estimate_pending(self, recipe_id: int) -> bool:
         with closing(self._connect()) as conn:
             row = conn.execute(

@@ -10,6 +10,7 @@ import re
 from dataclasses import dataclass
 from datetime import date
 
+from dieta.dates import parse_iso_date
 from dieta.dictionary import BATCH_SIZE, AskFn, normalize_name
 from dieta.fetcher import FetchError
 from dieta.sources.base import Fetch, Recipe, RecipeSource
@@ -101,9 +102,8 @@ def _used_today(store: Store, source: str, today: date) -> int:
 
 def _skip_active(value: str | None, today: date) -> bool:
     """Wpis ``crawl_skip`` (``<data ISO>[ powód]``) obowiązuje przez ``SKIP_TTL_DAYS`` dni."""
-    try:
-        since = date.fromisoformat((value or "").split(" ", 1)[0])
-    except ValueError:
+    since = parse_iso_date((value or "").split(" ", 1)[0])
+    if since is None:
         return False
     return (today - since).days < SKIP_TTL_DAYS
 

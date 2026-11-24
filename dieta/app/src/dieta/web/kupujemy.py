@@ -141,9 +141,9 @@ def sync_errors(store: Store) -> list[str]:
 def queue_size(store: Store) -> int:
     return (
         len(review_queue(store))
-        + len(recipe_queue(store))
-        + len(ingredient_queue(store))
-        + len(catalog_queue(store))
+        + store.count_pending_recipe_meta()
+        + store.count_pending_ingredient_nutrition()
+        + store.count_pending_catalog()
         + store.count_pending_estimates()
     )
 

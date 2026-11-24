@@ -14,6 +14,7 @@ from datetime import date, timedelta
 from functools import lru_cache
 from typing import Literal
 
+from dieta.dates import parse_iso_date
 from dieta.estimate import (
     Line,
     Measures,
@@ -175,7 +176,7 @@ def _build_context(store: Store, today: date, week_start: date) -> Context:
         for r in store.catalog_map_rows()
         if r.status in CATALOG_PRICED_STATUSES and r.ingredient is not None
     }
-    frisco_as_of = _iso_date(store.get_meta("catalog_sync_at"))
+    frisco_as_of = parse_iso_date(store.get_meta("catalog_sync_at"))
     durability_by_name = {
         m.ingredient: m.durability for m in store.mappings() if m.ingredient and m.durability
     }
@@ -193,13 +194,6 @@ def _build_context(store: Store, today: date, week_start: date) -> Context:
         frisco_as_of=frisco_as_of,
     )
     return Context(_measures(), per100, prices)
-
-
-def _iso_date(value: str | None) -> date | None:
-    try:
-        return date.fromisoformat(value) if value else None
-    except ValueError:
-        return None
 
 
 def line_grams(ln: RecipeLine, ctx: Context) -> tuple[int, str, float | None] | None:
@@ -299,12 +293,12 @@ def _coverage_by_source(masses: list[_Mass], prices: dict[str, IngredientPrice])
     return shares
 
 
-def plan_cost(store: Store, settings: Settings, week_start: date) -> PlanCost:
+def plan_cost(store: Store, settings: Settings, week_start: date, today: date | None = None) -> PlanCost:
     """Koszt gotowania dla domu (wszystkie sesje tygodnia, także szkicu), bez odejmowania „w domu"."""
     plan = store.plan(week_start)
     if plan is None:
         return PlanCost(0.0, 0.0, ())
-    ctx = build_context(store, week=week_start)
+    ctx = build_context(store, today, week=week_start)
     sessions: list[SessionCost] = []
     every: list[_Mass] = []
     for item in _all_masses(store, ctx, plan.id):

@@ -419,3 +419,11 @@ def test_same_host_redirect_blocks_https_downgrade_but_allows_upgrade() -> None:
     plain = urllib.request.Request("http://zakupy.local:80/a", headers={"Authorization": "Bearer x"})
     assert handler.redirect_request(secure, None, 302, "Found", {}, "http://zakupy.local:80/b") is None
     assert handler.redirect_request(plain, None, 302, "Found", {}, "https://zakupy.local:443/b") is not None
+
+
+def test_reason_oversized_error_body_returns_none_without_leaking() -> None:
+    from dieta.zakupy_client import _reason
+
+    body = b'{"reason": "busy", "pad": "' + b"x" * 70_000 + b'"}'
+    err = urllib.error.HTTPError("http://x:8099", 409, "Conflict", {}, io.BytesIO(body))
+    assert _reason(err) is None

@@ -17,6 +17,7 @@ from fastapi.templating import Jinja2Templates
 
 from .. import plan_service as svc
 from .. import shopping as sh
+from ..dates import parse_iso_date
 from ..settings import Settings
 from ..store import Store
 from ..todo import send_items
@@ -70,10 +71,8 @@ def _item_text(line: sh.ShoppingLine) -> str:
 
 def _short_date(value: str | None) -> str | None:
     """Data ISO (także z czasem) jako „25.11”; nieczytelna → None."""
-    try:
-        return date.fromisoformat(value[:10]).strftime("%d.%m") if value else None
-    except ValueError:
-        return None
+    d = parse_iso_date(value)
+    return d.strftime("%d.%m") if d else None
 
 
 def split_coverage(cov: dict[str, float]) -> str:
