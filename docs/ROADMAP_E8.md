@@ -106,4 +106,8 @@ router `web/zepp.py` (`POST /zepp/{pid}/…`), sekcja `_zepp.html` (Lucide SVG),
 Nieblokujące (do E8d/E8-release): `start` nadpisuje połączone konto (token, ciasteczka) przed potwierdzeniem OTP — porzucone logowanie = rozłączone konto; po `disconnect` status `reconnect` (baner „rozłączone”, sekcja „Połącz ponownie”);
 `view()` liczy pomiary z całej listy przy każdym renderze strony; lista członków (>1) cache'owana w pamięci procesu (po restarcie „rozłącz i połącz ponownie”).
 Do potwierdzenia na żywo w E8-release: kształt `0106`/`securityStatus 16`, `send_ticket` przy `code` ≠ 0, czy logowanie wylogowuje aplikację w telefonie.
-Następny: **E8d** (synchronizacja w tle: pętla co 6 h w `lifespan`, `ZeppService.sync` już gotowy, limit 1 logowanie/h, push przy `reconnect`, opcja `zepp_sync`; `docs/PLAN_E8d.md`).
+E8d: **ZROBIONE 2026-11-24** (plan `docs/PLAN_E8d.md` `8a87600`, kod `6546190` na `main`, niewydane). `zepp_sync.py` (`run_once`, pętla: pierwszy przebieg 5 min po starcie, potem co 6 h), opcja `zepp_sync`,
+limit 1 logowanie/h przed `refresh` (`_LoginRateLimited`, konto zostaje `linked`), jeden push przy `reconnect` (znacznik `zepp_reconnect_pushed:{pid}` czyszczony przez `set_meta(key, "")`),
+poprawka z E8c: `start` z OTP na koncie `linked` nie nadpisuje konta. sonnet-worker → claimcheck 0/7 flag → verifier ACCEPT; pełny pytest 772 passed, ruff/format/mypy czyste (powtórzone przeze mnie na `main`).
+Nieblokujące: limit 1/h obejmuje też ręczny „Synchronizuj teraz” i `member()`; `zepp_sync` importuje prywatne `push._panel_path`; pętla w `lifespan` bez testu end-to-end (test `start() is None`).
+Następny: **E8e** (BMR Katch-McArdle, historia/wykresy składu, korekta kcal wg trendu; `docs/PLAN_E8e.md`, haiku-worker), potem E8-release (0.6.0).
