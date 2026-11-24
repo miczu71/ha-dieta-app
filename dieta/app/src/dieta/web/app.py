@@ -78,13 +78,8 @@ class Card:
 def build_card(store: Store, settings: Settings, person_id: int) -> Card:
     profile = store.profile(person_id)
     weight = store.latest_weight(person_id)
-    card = Card(
-        person_id,
-        person_name(store, settings, person_id),
-        store.person_names().get(person_id, ""),
-        profile,
-        weight,
-    )
+    saved_name = store.person_names().get(person_id, "")
+    card = Card(person_id, saved_name or settings.person_name(person_id), saved_name, profile, weight)
     points = store.weights(person_id, 90)
     card.chart = weight_chart(points, nutrition.trend_7d(points))
     card.recent = list(reversed(points))[:5]
@@ -249,7 +244,6 @@ def create_app(
             kcal_override=override,
             protein_g_kg=protein,
             fat_pct=fat_pct / 100,
-            birth_date_approx=False,
         )
         today = date.today()
         if born > today or not 10 <= profile.age_on(today) <= 120:
