@@ -144,3 +144,8 @@ def test_zepp_enabled_defaults_true_and_reads_false(tmp_path: Path, monkeypatch:
     assert _load(tmp_path, monkeypatch, {}).zepp_enabled is True
     assert _load(tmp_path, monkeypatch, {"zepp_enabled": True}).zepp_enabled is True
     assert _load(tmp_path, monkeypatch, {"zepp_enabled": False}).zepp_enabled is False
+
+
+def test_zepp_sync_defaults_true_and_reads_false(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    assert _load(tmp_path, monkeypatch, {}).zepp_sync is True
+    assert _load(tmp_path, monkeypatch, {"zepp_sync": False}).zepp_sync is False

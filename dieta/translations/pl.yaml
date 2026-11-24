@@ -86,3 +86,6 @@ configuration:
   zepp_enabled:
     name: Konto Zepp
     description: Pokazuje w Profilach sekcję „Konto Zepp” (import wagi i składu ciała). Wyłączone = sekcja ukryta, dane zostają.
+  zepp_sync:
+    name: Synchronizacja Zepp w tle
+    description: Co 6 h odświeża wagę i skład ciała z konta Zepp i raz wysyła powiadomienie, gdy trzeba połączyć konto ponownie. Działa tylko przy włączonym koncie Zepp. Wyłączone = tylko ręczne „Synchronizuj teraz”.

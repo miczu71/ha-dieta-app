@@ -86,3 +86,6 @@ configuration:
   zepp_enabled:
     name: Zepp account
     description: Shows the "Zepp account" section in Profiles (weight and body composition import). Off = section hidden, data kept.
+  zepp_sync:
+    name: Background Zepp sync
+    description: Refreshes weight and body composition from the Zepp account every 6 h and sends one notification when the account needs to be reconnected. Works only when the Zepp account is enabled. Off = manual "Sync now" only.

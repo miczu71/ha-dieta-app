@@ -327,3 +327,24 @@ def test_sync_picks_up_late_upload_within_lookback_without_duplicates(
     clock.t = NOW + 200
     assert svc.sync(1).n == 0
     assert len(store.body_measurements(1)) == 3
+
+
+def test_abandoned_otp_on_linked_account_keeps_it(svc: ZeppService, fake: FakeZepp, store: Store) -> None:
+    _link(svc, fake)
+    before = store.zepp_account(1)
+    fake.start_result = fake.otp
+    assert svc.start(1, EMAIL, PW).code == "otp"
+    assert store.zepp_account(1) == before
+    assert svc.view(1).pending_alive is True
+    assert svc.sync(1).code == "ok"
+
+
+def test_start_otp_on_reconnect_account_saves_pending_otp(
+    svc: ZeppService, fake: FakeZepp, store: Store
+) -> None:
+    _link(svc, fake)
+    store.set_zepp_status(1, "reconnect")
+    fake.start_result = fake.otp
+    assert svc.start(1, EMAIL, PW).code == "otp"
+    acc = store.zepp_account(1)
+    assert acc is not None and acc.status == "pending_otp"

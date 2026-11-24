@@ -19,8 +19,21 @@ from .zepp import Http, Linked, Member, NeedsOtp, ReconnectNeeded, WrongCode, Ze
 
 PENDING_TTL_S = 15 * 60
 LOOKBACK_S = 14 * 86400  # pomiar wgrany do chmury z opóźnieniem ma starszy generatedTime
+LOGIN_MIN_INTERVAL_S = 3600  # limit automatycznych logowań (refresh) na konto
 
 T = TypeVar("T")
+
+
+def login_ts_key(person_id: int) -> str:
+    return f"zepp_login_ts:{person_id}"
+
+
+def reconnect_pushed_key(person_id: int) -> str:
+    return f"zepp_reconnect_pushed:{person_id}"
+
+
+class _LoginRateLimited(ReconnectNeeded):
+    """Za częste logowanie: konto zostaje ``linked``, kolejny przebieg spróbuje ponownie."""
 
 
 @dataclass(frozen=True)
@@ -128,6 +141,8 @@ class ZeppService:
             self._pending.pop(person_id, None)
             return self._finish_link(person_id, device_id, result, keep_fuid=True)
         self._pending[person_id] = _Pending(result, sent=False, created=self._now())
+        if old is not None and old.status == "linked":
+            return Outcome("otp")  # porzucone logowanie nie nadpisuje działającego konta
         self._store.save_zepp_account(
             ZeppAccount(
                 person_id=person_id,
@@ -170,6 +185,7 @@ class ZeppService:
 
     def _finish_link(self, person_id: int, device_id: str, linked: Linked, *, keep_fuid: bool) -> Outcome:
         self._store_link(person_id, device_id, linked, keep_fuid=keep_fuid)
+        self._store.set_meta(reconnect_pushed_key(person_id), "")
         try:
             members = zepp.members(linked.token, http=self._http)
         except ZeppError as exc:
@@ -203,6 +219,11 @@ class ZeppService:
 
     # --- synchronizacja ------------------------------------------------------------------------
 
+    def _check_login_limit(self, person_id: int) -> None:
+        raw = self._store.get_meta(login_ts_key(person_id))
+        if raw and raw.isdigit() and self._now() - int(raw) < LOGIN_MIN_INTERVAL_S:
+            raise _LoginRateLimited("limit logowań")
+
     def _call(self, person_id: int, fn: Callable[[ZeppToken], T]) -> T:
         """Wywołanie z tokenem konta; 401 → jedno ``refresh`` i ponowna próba. Błąd zapisuje w koncie."""
         acc = self._store.zepp_account(person_id)
@@ -212,7 +233,9 @@ class ZeppService:
             try:
                 return fn(ZeppToken(acc.user_id, acc.app_token))
             except ReconnectNeeded:
+                self._check_login_limit(person_id)
                 linked = zepp.refresh(json.loads(acc.cookies_json), acc.device_id, http=self._http)
+                self._store.set_meta(login_ts_key(person_id), str(int(self._now())))
                 self._save(
                     person_id,
                     cookies_json=json.dumps(linked.cookies),
@@ -220,6 +243,9 @@ class ZeppService:
                     app_token=linked.token.app_token,
                 )
                 return fn(linked.token)
+        except _LoginRateLimited as exc:
+            self._store.set_zepp_status(person_id, "linked", last_error=str(exc))
+            raise
         except ReconnectNeeded as exc:
             self._store.set_zepp_status(person_id, "reconnect", last_error=str(exc))
             raise

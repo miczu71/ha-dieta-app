@@ -26,6 +26,7 @@ from ..settings import Settings
 from ..store import PERSON_IDS, Profile, Store
 from ..targets import person_targets
 from ..zepp_service import ZeppService
+from ..zepp_sync import start as start_zepp_sync
 from .catalog import make_catalog_router
 from .chart import weight_chart
 from .dzis import make_dzis_router
@@ -135,6 +136,9 @@ def create_app(
             push_task = push.start(settings, store)
             if push_task is not None:
                 tasks.append(push_task)
+            zepp_task = start_zepp_sync(zepp_service, store, settings)
+            if zepp_task is not None:
+                tasks.append(zepp_task)
         try:
             yield
         finally:
