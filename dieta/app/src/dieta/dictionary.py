@@ -7,11 +7,14 @@ from __future__ import annotations
 
 import json
 import logging
+import urllib.error
 import urllib.request
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal, cast
+
+from dieta.http_limit import read_limited
 
 if TYPE_CHECKING:
     from dieta.settings import Settings
@@ -23,6 +26,7 @@ SEED_PATH = Path(__file__).resolve().parent / "seed" / "seed_slownik.json"
 BATCH_SIZE = 25
 LLM_MODEL = "auto:text"
 LLM_TIMEOUT_S = 180
+LLM_MAX_BYTES = 1_000_000
 CLASSES = ("skladnik", "gotowe", "alkohol", "slodycze_przekaski", "napoj", "non-food")
 
 _log = logging.getLogger(__name__)
@@ -136,9 +140,10 @@ def map_with_llm(names: list[str], *, ask: AskFn) -> list[LlmMapping]:
     results: list[LlmMapping] = []
     for start in range(0, len(names), BATCH_SIZE):
         batch = names[start : start + BATCH_SIZE]
-        reply = ask(batch)
+        safe = [_prompt_safe(n) for n in batch]
+        reply = ask(safe)
         if reply is None:
-            reply = ask(batch)
+            reply = ask(safe)
         by_index: dict[int, dict[str, object]] = {}
         for item in reply or []:
             if isinstance(item, dict) and isinstance(item.get("i"), int):
@@ -167,6 +172,12 @@ def map_with_llm(names: list[str], *, ask: AskFn) -> list[LlmMapping]:
     return results
 
 
+def _prompt_safe(name: str) -> str:
+    """Nazwa z cudzego API do jednej linii promptu: bez znaków sterujących i ``||``, ≤120 znaków."""
+    cleaned = "".join(ch for ch in name if ch.isprintable() or ch.isspace())
+    return " ".join(cleaned.replace("||", " ").split())[:120].rstrip()
+
+
 def make_llm_ask(
     url: str, key: str, prompt: str = PROMPT
 ) -> Callable[[list[str]], list[dict[str, object]] | None]:
@@ -193,9 +204,12 @@ def make_llm_ask(
         )
         try:
             with urllib.request.urlopen(req, timeout=LLM_TIMEOUT_S) as resp:
-                payload = json.loads(resp.read())
+                payload = json.loads(read_limited(resp, LLM_MAX_BYTES))
             text = str(payload["choices"][0]["message"]["content"]).strip()
             data = json.loads(text[text.index("[") : text.rindex("]") + 1])
+        except urllib.error.HTTPError as exc:
+            _log.warning("LLM: błąd HTTP %s (%s)", exc.code, str(exc.reason)[:80])
+            return None
         except Exception as exc:
             _log.warning("LLM: błąd paczki (%s)", type(exc).__name__)
             return None

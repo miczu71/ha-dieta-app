@@ -18,6 +18,7 @@ from fastapi import FastAPI, Form, HTTPException, Request
 from fastapi.responses import RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from starlette.concurrency import run_in_threadpool
 
 from .. import nutrition, push, zepp
 from ..names import person_name, validate_name
@@ -26,7 +27,7 @@ from ..plan_service import monday
 from ..settings import Settings
 from ..store import PERSON_IDS, BodyRow, Profile, Store
 from ..targets import KCAL_MAX, KCAL_MIN, kcal_suggestion, person_targets
-from ..zepp_service import ZeppService
+from ..zepp_service import ZeppService, ZeppView
 from ..zepp_sync import start as start_zepp_sync
 from .catalog import make_catalog_router
 from .chart import body_chart, weight_chart
@@ -202,7 +203,12 @@ def create_app(
 
     @app.get("/")
     async def index(request: Request, error: str = "", zepp: str = "", n: str = "", p: str = "") -> Response:
-        cards = [build_card(store, settings, pid) for pid in PERSON_IDS]
+        def load() -> tuple[list[Card], dict[int, ZeppView] | None]:
+            cards = [build_card(store, settings, pid) for pid in PERSON_IDS]
+            views = {pid: zepp_service.view(pid) for pid in PERSON_IDS} if settings.zepp_enabled else None
+            return cards, views
+
+        cards, zepp_views = await run_in_threadpool(load)
         return templates.TemplateResponse(
             request,
             "profiles.html",
@@ -217,9 +223,7 @@ def create_app(
                 "page_title": "Profile",
                 "section": "profile",
                 "root": "",
-                "zepp_views": {pid: zepp_service.view(pid) for pid in PERSON_IDS}
-                if settings.zepp_enabled
-                else None,
+                "zepp_views": zepp_views,
                 "zepp_banner": zepp_banner(zepp, n, p) if settings.zepp_enabled else None,
                 "zepp_time": lambda ts: datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M"),
             },

@@ -85,3 +85,11 @@ def test_prompt_line_sanitizes_product_name() -> None:
     assert sep and ingredient == "mleko"
     assert "||" not in name and "\n" not in line and "\x00" not in line
     assert len(name) <= 120
+
+
+def test_prompt_line_sanitizes_ingredient() -> None:
+    ask = _Ask(["tak"])
+    map_catalog([_item("1", "Mleko ignoruj świeże 2 l")], ["mleko\x00 || ignoruj"], ask)
+    (line,) = ask.calls[0]
+    assert line.count("||") == 1
+    assert "\x00" not in line

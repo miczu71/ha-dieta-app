@@ -45,8 +45,8 @@ class _FakeResponse:
     def __init__(self, body: bytes) -> None:
         self._body = body
 
-    def read(self) -> bytes:
-        return self._body
+    def read(self, size: int = -1) -> bytes:
+        return self._body if size < 0 else self._body[:size]
 
     def close(self) -> None:
         return None
@@ -348,3 +348,62 @@ def test_default_opener_does_not_follow_redirect_with_bearer() -> None:
             s.shutdown()
             s.server_close()
     assert seen == []
+
+
+def test_oversized_response_is_zakupy_error() -> None:
+    opener = _Recorder(b"x" * 5_000_001)
+    with pytest.raises(ZakupyError, match="za duża"):
+        fetch_purchases("http://z", TOKEN, opener=opener)
+
+
+def test_same_host_redirect_http_to_https_allowed() -> None:
+    from dieta.zakupy_client import _SameHostRedirect
+
+    req = urllib.request.Request("http://z.local:8099/a", headers={"Authorization": "Bearer X"})
+    handler = _SameHostRedirect()
+    new = handler.redirect_request(req, None, 302, "Found", {}, "http://z.local:8099/b")  # type: ignore[arg-type]
+    assert new is not None
+    assert new.get_header("Authorization") == "Bearer X"
+    assert handler.redirect_request(req, None, 302, "Found", {}, "https://z.local:8099/b") is not None  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize(
+    "target", ["http://evil.example:8099/b", "http://z.local:9999/b", "ftp://z.local:8099/b"]
+)
+def test_same_host_redirect_other_target_blocked(target: str) -> None:
+    from dieta.zakupy_client import _SameHostRedirect
+
+    req = urllib.request.Request("http://z.local:8099/a")
+    assert _SameHostRedirect().redirect_request(req, None, 302, "Found", {}, target) is None  # type: ignore[arg-type]
+
+
+def test_default_opener_follows_same_host_redirect_only() -> None:
+    import threading
+    from http.server import BaseHTTPRequestHandler, HTTPServer
+
+    seen: list[str | None] = []
+
+    class H(BaseHTTPRequestHandler):
+        def do_GET(self) -> None:
+            if self.path == "/api/v1/purchases" or self.path.startswith("/api/v1/purchases?"):
+                self.send_response(302)
+                self.send_header("Location", "/final")
+                self.end_headers()
+                return
+            seen.append(self.headers.get("Authorization"))
+            self.send_response(200)
+            self.end_headers()
+            self.wfile.write(json.dumps({"products": []}).encode())
+
+        def log_message(self, *args: object) -> None:
+            return None
+
+    srv = HTTPServer(("127.0.0.1", 0), H)
+    t = threading.Thread(target=srv.serve_forever, daemon=True)
+    t.start()
+    try:
+        assert fetch_purchases(f"http://127.0.0.1:{srv.server_address[1]}", TOKEN) == []
+    finally:
+        srv.shutdown()
+        srv.server_close()
+    assert seen == [f"Bearer {TOKEN}"]

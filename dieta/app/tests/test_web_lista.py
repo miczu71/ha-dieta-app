@@ -283,7 +283,7 @@ def test_lista_sync_errors_banner_shows_shelf_queue_error(tmp_path: Path) -> Non
     resp = client.get("/lista", params={"tydzien": WEEK_ISO})
     assert resp.status_code == 200
     assert "Kolejka cen: Zakupy nie odpowiedziały" in resp.text
-    assert 'role="status"' in resp.text
+    assert 'role="alert"' in resp.text
 
 
 def test_lista_sync_errors_banner_absent_without_errors(tmp_path: Path) -> None:

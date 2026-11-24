@@ -15,7 +15,11 @@ from dataclasses import dataclass
 from datetime import date
 from typing import Any
 
+from dieta.http_limit import ResponseTooLarge, read_limited
+
 TIMEOUT_S = 15
+MAX_BYTES = 5_000_000
+ERROR_MAX_BYTES = 64_000
 
 
 class ZakupyError(Exception):
@@ -70,14 +74,23 @@ class ShelfItem:
 Opener = Callable[[urllib.request.Request], Any]
 
 
-class _NoRedirect(urllib.request.HTTPRedirectHandler):
-    """Przekierowanie kończy się ``HTTPError`` 3xx — nagłówek Bearer nie idzie pod inny host."""
+class _SameHostRedirect(urllib.request.HTTPRedirectHandler):
+    """Przekierowanie tylko na ten sam host i port (http/https); inaczej ``HTTPError`` 3xx (bez Bearera)."""
 
     def redirect_request(self, req, fp, code, msg, headers, newurl):  # type: ignore[no-untyped-def]
-        return None
+        origin = urllib.parse.urlsplit(req.full_url)
+        target = urllib.parse.urlsplit(urllib.parse.urljoin(req.full_url, newurl))
+        if target.scheme not in ("http", "https") or origin.hostname is None:
+            return None
+        if target.hostname != origin.hostname:
+            return None
+        default = {"http": 80, "https": 443}
+        if (target.port or default[target.scheme]) != (origin.port or default.get(origin.scheme, 0)):
+            return None
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
 
 
-_OPENER = urllib.request.build_opener(_NoRedirect)
+_OPENER = urllib.request.build_opener(_SameHostRedirect)
 
 
 def _open(req: urllib.request.Request) -> Any:
@@ -129,7 +142,7 @@ def _get_json(
     open_fn = opener or _open
     try:
         with closing(open_fn(req)) as resp:
-            raw = resp.read()
+            raw = read_limited(resp, MAX_BYTES)
     except urllib.error.HTTPError as exc:
         if exc.code == 409 and busy_ok and _reason(exc) == "busy":
             return {"busy": True}
@@ -140,6 +153,8 @@ def _get_json(
         if exc.code == 503:
             raise ZakupyError("API Zakupów wyłączone (brak api_token po stronie Zakupów).") from None
         raise ZakupyError(f"Zakupy zwróciły HTTP {exc.code}.") from None
+    except ResponseTooLarge:
+        raise ZakupyError("Odpowiedź Zakupów za duża.") from None
     except (urllib.error.URLError, OSError):
         raise ZakupyError("Brak połączenia z Zakupami.") from None
     try:
@@ -228,7 +243,7 @@ class ShelfRequestResult:
 
 def _reason(exc: urllib.error.HTTPError) -> str | None:
     try:
-        payload = json.loads(exc.read())
+        payload = json.loads(read_limited(exc, ERROR_MAX_BYTES))
     except (ValueError, OSError, AttributeError):
         return None
     return payload.get("reason") if isinstance(payload, dict) else None

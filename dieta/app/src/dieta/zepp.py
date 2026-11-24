@@ -23,7 +23,10 @@ from contextlib import closing
 from dataclasses import dataclass, field
 from typing import Any
 
+from dieta.http_limit import ResponseTooLarge, read_limited
+
 TIMEOUT_S = 20
+MAX_BYTES = 5_000_000
 MAX_REDIRECTS = 5
 MAX_PAGES = 200  # bezpiecznik paginacji weightRecords
 
@@ -174,16 +177,21 @@ def default_http(
     req = urllib.request.Request(url, data=body, headers=hdrs, method=method)
     try:
         with closing(_OPENER.open(req, timeout=TIMEOUT_S)) as resp:
-            text = resp.read().decode("utf-8", errors="replace")
+            text = read_limited(resp, MAX_BYTES).decode("utf-8", errors="replace")
             return HttpResult(resp.status, _lower_headers(resp.headers), text, _cookie_pairs(resp.headers))
     except urllib.error.HTTPError as exc:
         try:
-            text = exc.read().decode("utf-8", errors="replace")
+            text = read_limited(exc, MAX_BYTES).decode("utf-8", errors="replace")
+        except ResponseTooLarge:
+            exc.close()
+            raise ZeppError("odpowiedź za duża") from None
         except OSError:
             text = ""
         result = HttpResult(exc.code, _lower_headers(exc.headers), text, _cookie_pairs(exc.headers))
         exc.close()
         return result
+    except ResponseTooLarge:
+        raise ZeppError("odpowiedź za duża") from None
     except (urllib.error.URLError, OSError, http.client.HTTPException, ValueError):
         raise ZeppError("błąd sieci") from None
 

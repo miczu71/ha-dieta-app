@@ -314,7 +314,7 @@ def test_sync_errors_banner_shows_shelf_queue_error(tmp_path: Path) -> None:
     r = client.get("/kupujemy")
     assert r.status_code == 200
     assert "Kolejka cen: Zakupy nie odpowiedziały" in r.text
-    assert 'role="status"' in r.text
+    assert 'role="alert"' in r.text
 
 
 def test_sync_errors_banner_absent_without_errors(tmp_path: Path) -> None:

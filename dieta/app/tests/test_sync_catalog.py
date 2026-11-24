@@ -15,7 +15,7 @@ FIXTURE = Path(__file__).parent / "fixtures" / "frisco_catalog_small.json"
 class _Opener:
     def __call__(self, req):  # type: ignore[no-untyped-def]
         class _R:
-            def read(self) -> bytes:
+            def read(self, size: int = -1) -> bytes:
                 return FIXTURE.read_bytes()
 
             def close(self) -> None:

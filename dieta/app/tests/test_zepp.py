@@ -720,8 +720,8 @@ class _Resp:
         self._body = body
         self.closed = False
 
-    def read(self) -> bytes:
-        return self._body
+    def read(self, size: int = -1) -> bytes:
+        return self._body if size < 0 else self._body[:size]
 
     def close(self) -> None:
         self.closed = True
@@ -836,3 +836,18 @@ def test_default_http_network_error(monkeypatch: pytest.MonkeyPatch, exc: BaseEx
         zepp.default_http("GET", "https://api-mifit.zepp.com/x")
     assert info.value.__cause__ is None
     assert "secret" not in repr(info.value)
+
+
+def test_default_http_oversized_response(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(zepp, "_OPENER", _Opener(_Resp(200, _headers(), b"x" * 5_000_001)))
+    with pytest.raises(ZeppError, match="odpowiedź za duża"):
+        zepp.default_http("GET", "https://api-mifit.zepp.com/x")
+
+
+def test_default_http_oversized_error_body(monkeypatch: pytest.MonkeyPatch) -> None:
+    err = urllib.error.HTTPError(
+        "https://api-mifit.zepp.com/x", 500, "err", _headers(), io.BytesIO(b"x" * 5_000_001)
+    )
+    monkeypatch.setattr(zepp, "_OPENER", _Opener(err))
+    with pytest.raises(ZeppError, match="odpowiedź za duża"):
+        zepp.default_http("GET", "https://api-mifit.zepp.com/x")
