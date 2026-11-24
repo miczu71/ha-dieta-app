@@ -255,9 +255,13 @@ _MIGRATIONS: list[str] = [
         store TEXT
     );
     """,
+    # v10 (E7a): nazwy osób wpisywane w UI; tylko dodaje tabelę.
+    """
+    CREATE TABLE person (person_id INTEGER PRIMARY KEY CHECK(person_id IN (1,2)), name TEXT NOT NULL);
+    """,
 ]
-# migracje v8 (katalog Frisco) i v9 (cache Biedronki): kopia pliku bazy przed pierwszym uruchomieniem
-BACKUP_BEFORE_VERSIONS = (8, 9)
+# migracje v8 (katalog Frisco), v9 (cache Biedronki), v10 (nazwy osób): kopia pliku bazy przed startem
+BACKUP_BEFORE_VERSIONS = (8, 9, 10)
 
 
 @dataclass(frozen=True)
@@ -523,6 +527,24 @@ class Store:
     def data_version(self) -> int:
         """Licznik zapisów (commitów) w tym procesie; klucz cache wyników liczonych z bazy."""
         return _CountingConnection.commits
+
+    def person_names(self) -> dict[int, str]:
+        """Nazwy wpisane w UI (tylko istniejące wpisy)."""
+        with closing(self._connect()) as conn:
+            return {int(r[0]): str(r[1]) for r in conn.execute("SELECT person_id, name FROM person")}
+
+    def set_person_name(self, person_id: int, name: str) -> None:
+        """Zapisuje nazwę osoby; pusta nazwa kasuje wpis (wraca opcja add-onu albo „Osoba N”)."""
+        _check_person(person_id)
+        with closing(self._connect()) as conn, conn:
+            if name == "":
+                conn.execute("DELETE FROM person WHERE person_id = ?", (person_id,))
+            else:
+                conn.execute(
+                    "INSERT INTO person (person_id, name) VALUES (?, ?)"
+                    " ON CONFLICT(person_id) DO UPDATE SET name = excluded.name",
+                    (person_id, name),
+                )
 
     def profile(self, person_id: int) -> Profile | None:
         _check_person(person_id)

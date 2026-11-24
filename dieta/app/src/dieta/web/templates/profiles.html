@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block content %}
-{% if error %}<p class="dz-err" role="alert">Nie zapisano: {{ 'niepoprawne dane profilu' if error == 'profil' else 'niepoprawna waga lub data' }}.</p>{% endif %}
+{% if error %}<p class="dz-err" role="alert">Nie zapisano: {{ 'niepoprawne dane profilu' if error == 'profil' else ('niepoprawna nazwa (maks. 30 znaków, inna niż druga osoba)' if error == 'nazwa' else 'niepoprawna waga lub data') }}.</p>{% endif %}
 <div class="dz-grid">
 {% for c in cards %}
 {% set p = c.profile %}
@@ -31,6 +31,11 @@
     <label>Data<input type="date" name="day" value="{{ today }}" max="{{ today }}" required></label>
     <label>Waga (kg)<input type="text" inputmode="decimal" name="kg" value="{{ '%.1f'|format(c.weight) if c.weight else '' }}" required></label>
     <button class="dz-btn" type="submit">Zapisz wagę</button>
+  </form>
+
+  <form method="post" action="person/{{ c.person_id }}/name" class="dz-row">
+    <label>Nazwa<input type="text" name="name" maxlength="30" value="{{ c.saved_name }}" placeholder="{{ c.name }}"></label>
+    <button class="dz-btn" type="submit">Zapisz nazwę</button>
   </form>
 
   <details class="dz-details"{% if not p %} open{% endif %}>

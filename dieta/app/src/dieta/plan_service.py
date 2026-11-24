@@ -14,6 +14,7 @@ from datetime import date, timedelta
 
 from . import planner
 from .match import DEFAULT_BASICS
+from .names import person_name
 from .profile import IngredientStat
 from .settings import WEEKDAYS, Settings
 from .shopping import Context, build_context, line_grams
@@ -448,7 +449,7 @@ def undo(store: Store, week_start: date) -> Outcome:
 def view(store: Store, settings: Settings, week_start: date) -> PlanView:
     plan = store.plan(week_start)
     targets = build_targets(store, settings)
-    labels = (settings.person_name(PERSON_IDS[0]), settings.person_name(PERSON_IDS[1]))
+    labels = (person_name(store, settings, PERSON_IDS[0]), person_name(store, settings, PERSON_IDS[1]))
     has_target = (targets.p1 is not None, targets.p2 is not None)
     prev_week = week_start - timedelta(days=planner.WEEK_DAYS)
     next_week = week_start + timedelta(days=planner.WEEK_DAYS)

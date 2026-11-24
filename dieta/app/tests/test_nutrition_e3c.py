@@ -121,7 +121,7 @@ def test_migration_v3_to_v4_adds_columns_backfills_and_keeps_data(tmp_path: Path
     _v3_db(path)
     store = Store(path)
     conn = sqlite3.connect(path)
-    assert conn.execute("PRAGMA user_version").fetchone()[0] == len(_MIGRATIONS) == 9
+    assert conn.execute("PRAGMA user_version").fetchone()[0] == len(_MIGRATIONS) == 10
     recipe_cols = {r[1] for r in conn.execute("PRAGMA table_info(recipe)")}
     assert {
         "kcal_source",

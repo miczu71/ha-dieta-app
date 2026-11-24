@@ -13,6 +13,7 @@ from collections.abc import Callable, Mapping
 from datetime import date, datetime, timedelta
 
 from . import realization
+from .names import person_name
 from .realization import DayLog
 from .settings import Settings
 from .store import PERSON_IDS, Store
@@ -117,7 +118,7 @@ def run_once(
     if day.plan_status != "approved" or not day.meals:
         return "no_plan"
     yesterday = realization.unanswered_for(store, today - timedelta(days=1), today)
-    labels = {pid: settings.person_name(pid) for pid in PERSON_IDS}
+    labels = {pid: person_name(store, settings, pid) for pid in PERSON_IDS}
     title, message = compose(day, yesterday, labels)
     if not sender(settings.push_notify, title, message, _panel_path()):
         return "failed"

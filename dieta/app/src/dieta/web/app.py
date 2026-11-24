@@ -19,6 +19,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from .. import nutrition, push
+from ..names import person_name, validate_name
 from ..pipeline import CrawlRunner, default_crawl_runner
 from ..settings import Settings
 from ..store import PERSON_IDS, Profile, Store
@@ -62,6 +63,7 @@ def app_version() -> str:
 class Card:
     person_id: int
     name: str
+    saved_name: str
     profile: Profile | None
     weight: float | None
     bmr: int | None = None
@@ -76,7 +78,13 @@ class Card:
 def build_card(store: Store, settings: Settings, person_id: int) -> Card:
     profile = store.profile(person_id)
     weight = store.latest_weight(person_id)
-    card = Card(person_id, settings.person_name(person_id), profile, weight)
+    card = Card(
+        person_id,
+        person_name(store, settings, person_id),
+        store.person_names().get(person_id, ""),
+        profile,
+        weight,
+    )
     points = store.weights(person_id, 90)
     card.chart = weight_chart(points, nutrition.trend_7d(points))
     card.recent = list(reversed(points))[:5]
@@ -182,6 +190,16 @@ def create_app(
     def _back(error: str = "") -> RedirectResponse:
         # Adres względny: działa pod prefiksem Ingress (/api/hassio_ingress/<token>/).
         return RedirectResponse("./" + (f"?error={error}" if error else ""), status_code=303)
+
+    @app.post("/person/{person_id}/name")
+    async def save_name(person_id: int, name: str = Form("")) -> Response:
+        _person(person_id)
+        other = person_name(store, settings, 2 if person_id == 1 else 1)
+        valid = validate_name(name, other)
+        if valid is None:
+            return _back("nazwa")
+        store.set_person_name(person_id, valid)
+        return _back()
 
     @app.post("/profile/{person_id}")
     async def save_profile(

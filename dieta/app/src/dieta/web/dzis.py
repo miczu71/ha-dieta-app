@@ -16,6 +16,7 @@ from fastapi.templating import Jinja2Templates
 
 from .. import plan_service as svc
 from .. import realization as rz
+from ..names import person_name
 from ..settings import Settings
 from ..store import PERSON_IDS, Store
 from .kupujemy import queue_size
@@ -66,7 +67,6 @@ def _base(request: Request, store: Store, section: str) -> dict[str, object]:
 
 def make_dzis_router(settings: Settings, store: Store, templates: Jinja2Templates) -> APIRouter:
     router = APIRouter()
-    labels = [settings.person_name(pid) for pid in PERSON_IDS]
 
     def go(day: date, notice: str) -> Response:
         params = urlencode({"dzien": day.isoformat(), "notice": notice})
@@ -77,6 +77,7 @@ def make_dzis_router(settings: Settings, store: Store, templates: Jinja2Template
         today = date.today()
         day = _strict_day(dzien) or today
         view = rz.day_log(store, settings, day, today)
+        labels = [person_name(store, settings, pid) for pid in PERSON_IDS]
         return templates.TemplateResponse(
             request,
             "dzis.html",

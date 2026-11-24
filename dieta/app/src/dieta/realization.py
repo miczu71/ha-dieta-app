@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 
 from . import planner
+from .names import person_name
 from .plan_service import DAY_NAMES, candidates_for, monday
 from .settings import Settings
 from .store import PERSON_IDS, MealLogEntry, PlanMeal, PlanRow, PlanSession, Store
@@ -265,7 +266,7 @@ def day_log(store: Store, settings: Settings, day: date, today: date) -> DayLog:
         rows = [e for (p, _), e in entries.items() if p == pid]
         people.append(
             PersonDayLog(
-                settings.person_name(pid),
+                person_name(store, settings, pid),
                 float(target.kcal),
                 sum(e.kcal for e in rows),
                 sum(e.protein or 0.0 for e in rows),
@@ -325,7 +326,7 @@ def week_balance(store: Store, settings: Settings, week_start: date, today: date
         )
         people.append(
             PersonWeek(
-                settings.person_name(pid),
+                person_name(store, settings, pid),
                 days,
                 sum(t.eaten_kcal for t in days),
                 sum(t.target_kcal for t in days if not t.future),
