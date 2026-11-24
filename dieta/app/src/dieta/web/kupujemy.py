@@ -126,6 +126,23 @@ def catalog_queue(store: Store) -> list[PendingCatalog]:
     return store.pending_catalog()
 
 
+SYNC_ERROR_LABELS: tuple[tuple[str, str], ...] = (
+    ("catalog_sync_error", "Katalog cen"),
+    ("shelf_sync_error", "Ceny półkowe"),
+    ("shelf_queue_error", "Kolejka cen"),
+)
+
+
+def sync_errors(store: Store) -> list[str]:
+    """Komunikaty o niepustych błędach synchronizacji cen (katalog, półka, kolejka)."""
+    messages: list[str] = []
+    for key, label in SYNC_ERROR_LABELS:
+        text = store.get_meta(key) or ""
+        if text:
+            messages.append(f"{label}: {text}")
+    return messages
+
+
 def queue_size(store: Store) -> int:
     return (
         len(review_queue(store))
@@ -181,6 +198,7 @@ def make_router(
             total=len(rows),
             error=error,
             notice=notice,
+            sync_errors=sync_errors(store),
         )
 
     @router.post("/kupujemy/odswiez")

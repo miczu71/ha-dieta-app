@@ -306,3 +306,29 @@ def test_catalog_invalid_decisions_change_nothing(tmp_path: Path) -> None:
     row = next(m for m in store.catalog_map_rows() if m.ean == "590001")
     assert (row.status, row.ingredient) == ("pending", "mleko")
     assert next(m for m in store.catalog_map_rows() if m.ean == "590002").status == "approved"
+
+
+def test_sync_errors_banner_shows_shelf_queue_error(tmp_path: Path) -> None:
+    client, store = _client(tmp_path)
+    store.set_meta("shelf_queue_error", "Zakupy nie odpowiedziały")
+    r = client.get("/kupujemy")
+    assert r.status_code == 200
+    assert "Kolejka cen: Zakupy nie odpowiedziały" in r.text
+    assert 'role="status"' in r.text
+
+
+def test_sync_errors_banner_absent_without_errors(tmp_path: Path) -> None:
+    client, store = _client(tmp_path)
+    store.set_meta("shelf_queue_error", "")
+    r = client.get("/kupujemy")
+    assert "Kolejka cen:" not in r.text
+    assert "Katalog cen:" not in r.text
+    assert "Ceny półkowe:" not in r.text
+
+
+def test_sync_errors_banner_escapes_html(tmp_path: Path) -> None:
+    client, store = _client(tmp_path)
+    store.set_meta("catalog_sync_error", "<script>alert(1)</script>")
+    r = client.get("/kupujemy")
+    assert "Katalog cen: &lt;script&gt;" in r.text
+    assert "<script>alert(1)</script>" not in r.text

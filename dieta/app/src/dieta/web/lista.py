@@ -20,7 +20,7 @@ from .. import shopping as sh
 from ..settings import Settings
 from ..store import Store
 from ..todo import send_items
-from .kupujemy import queue_size
+from .kupujemy import queue_size, sync_errors
 
 NOTICE_TEXT = {
     "no_plan": "Brak zatwierdzonego planu na ten tydzień.",
@@ -165,6 +165,7 @@ def make_lista_router(settings: Settings, store: Store, templates: Jinja2Templat
             "show_todo": bool(settings.todo_entity) and lst.notice in SHOWN_NOTICES,
             "notice_text": notice_text,
             "split": split_coverage(lst.coverage_by_source),
+            "sync_errors": sync_errors(store),
         }
         return templates.TemplateResponse(request, "lista.html", context)
 

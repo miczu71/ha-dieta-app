@@ -273,3 +273,27 @@ def test_todo_partial_after_two_of_three_counts_sent(tmp_path: Path, monkeypatch
         "Wysłano 2 z 3"
         in client.get("/lista", params={"tydzien": WEEK_ISO, "notice": "todo_partial-2-3"}).text
     )
+
+
+def test_lista_sync_errors_banner_shows_shelf_queue_error(tmp_path: Path) -> None:
+    client, store, _ = _world(tmp_path)
+    store.set_meta("shelf_queue_error", "Zakupy nie odpowiedziały")
+    resp = client.get("/lista", params={"tydzien": WEEK_ISO})
+    assert resp.status_code == 200
+    assert "Kolejka cen: Zakupy nie odpowiedziały" in resp.text
+    assert 'role="status"' in resp.text
+
+
+def test_lista_sync_errors_banner_absent_without_errors(tmp_path: Path) -> None:
+    client, store, _ = _world(tmp_path)
+    store.set_meta("shelf_queue_error", "")
+    resp = client.get("/lista", params={"tydzien": WEEK_ISO})
+    assert "Kolejka cen:" not in resp.text
+
+
+def test_lista_sync_errors_banner_escapes_html(tmp_path: Path) -> None:
+    client, store, _ = _world(tmp_path)
+    store.set_meta("shelf_queue_error", "<script>alert(1)</script>")
+    resp = client.get("/lista", params={"tydzien": WEEK_ISO})
+    assert "Kolejka cen: &lt;script&gt;" in resp.text
+    assert "<script>alert(1)</script>" not in resp.text
