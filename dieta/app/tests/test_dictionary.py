@@ -164,14 +164,14 @@ def test_make_llm_ask_logs_http_status_without_token(
     assert "SEKRETNY-KLUCZ-123" not in caplog.text
 
 
-def test_prompt_safe_empty_name() -> None:
-    from dieta.dictionary import _prompt_safe
+def testprompt_safe_empty_name() -> None:
+    from dieta.dictionary import prompt_safe
 
-    assert _prompt_safe("") == ""
+    assert prompt_safe("") == ""
 
 
-def test_prompt_safe_keeps_120_chars_and_cuts_121() -> None:
-    from dieta.dictionary import _prompt_safe
+def testprompt_safe_keeps_120_chars_and_cuts_121() -> None:
+    from dieta.dictionary import prompt_safe
 
-    assert _prompt_safe("a" * 120) == "a" * 120
-    assert _prompt_safe("a" * 121) == "a" * 120
+    assert prompt_safe("a" * 120) == "a" * 120
+    assert prompt_safe("a" * 121) == "a" * 120

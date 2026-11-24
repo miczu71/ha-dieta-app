@@ -11,6 +11,7 @@ from collections.abc import Callable
 from datetime import date, timedelta
 
 from dieta.catalog_map import map_catalog
+from dieta.dates import parse_iso_date
 from dieta.dictionary import (
     SEED_PATH,
     AskFn,
@@ -139,10 +140,8 @@ def _catalog_fresh(store: Store, today: date) -> bool:
     last = store.get_meta("catalog_sync_at")
     if not last:
         return False
-    try:
-        return date.fromisoformat(last) >= today - timedelta(days=CATALOG_REFRESH_DAYS)
-    except ValueError:
-        return False
+    since = parse_iso_date(last)
+    return since is not None and since >= today - timedelta(days=CATALOG_REFRESH_DAYS)
 
 
 def sync_catalog(

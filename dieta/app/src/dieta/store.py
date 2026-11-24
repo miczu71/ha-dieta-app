@@ -1495,38 +1495,30 @@ class Store:
         """Linie z ilością i bez ``grams_assumed`` w przepisach do estymacji."""
         return self._line_rows(f"ri.amount IS NOT NULL AND ri.grams_assumed IS NULL AND {_ESTIMABLE_R_SQL}")
 
-    def count_pending_estimates(self) -> int:
+    def _count(self, sql: str) -> int:
         with closing(self._connect()) as conn:
-            return int(
-                conn.execute(
-                    "SELECT COUNT(*) FROM recipe r LEFT JOIN recipe_flag f ON f.recipe_id = r.id "
-                    f"WHERE {_PENDING_VISIBLE_SQL}"
-                ).fetchone()[0]
-            )
+            return int(conn.execute(sql).fetchone()[0])
+
+    def count_pending_estimates(self) -> int:
+        return self._count(
+            "SELECT COUNT(*) FROM recipe r LEFT JOIN recipe_flag f ON f.recipe_id = r.id "
+            f"WHERE {_PENDING_VISIBLE_SQL}"
+        )
 
     def count_pending_recipe_meta(self) -> int:
-        with closing(self._connect()) as conn:
-            return int(
-                conn.execute("SELECT COUNT(*) FROM recipe WHERE meta_status = 'pending'").fetchone()[0]
-            )
+        return self._count("SELECT COUNT(*) FROM recipe WHERE meta_status = 'pending'")
 
     def count_pending_ingredient_nutrition(self) -> int:
-        with closing(self._connect()) as conn:
-            return int(
-                conn.execute(
-                    "SELECT COUNT(*) FROM ingredient_nutrition n "
-                    "JOIN ingredient i ON i.id = n.ingredient_id WHERE n.status = 'pending'"
-                ).fetchone()[0]
-            )
+        return self._count(
+            "SELECT COUNT(*) FROM ingredient_nutrition n "
+            "JOIN ingredient i ON i.id = n.ingredient_id WHERE n.status = 'pending'"
+        )
 
     def count_pending_catalog(self) -> int:
-        with closing(self._connect()) as conn:
-            return int(
-                conn.execute(
-                    "SELECT COUNT(*) FROM catalog_map m JOIN catalog_item c ON c.ean = m.ean "
-                    "WHERE m.status = 'pending'"
-                ).fetchone()[0]
-            )
+        return self._count(
+            "SELECT COUNT(*) FROM catalog_map m JOIN catalog_item c ON c.ean = m.ean "
+            "WHERE m.status = 'pending'"
+        )
 
     def is_estimate_pending(self, recipe_id: int) -> bool:
         with closing(self._connect()) as conn:

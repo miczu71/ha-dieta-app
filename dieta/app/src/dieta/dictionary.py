@@ -140,7 +140,7 @@ def map_with_llm(names: list[str], *, ask: AskFn) -> list[LlmMapping]:
     results: list[LlmMapping] = []
     for start in range(0, len(names), BATCH_SIZE):
         batch = names[start : start + BATCH_SIZE]
-        safe = [_prompt_safe(n) for n in batch]
+        safe = [prompt_safe(n) for n in batch]
         reply = ask(safe)
         if reply is None:
             reply = ask(safe)
@@ -172,7 +172,7 @@ def map_with_llm(names: list[str], *, ask: AskFn) -> list[LlmMapping]:
     return results
 
 
-def _prompt_safe(name: str) -> str:
+def prompt_safe(name: str) -> str:
     """Nazwa z cudzego API do jednej linii promptu: bez znaków sterujących i ``||``, ≤120 znaków."""
     cleaned = "".join(ch for ch in name if ch.isprintable() or ch.isspace())
     return " ".join(cleaned.replace("||", " ").split())[:120].rstrip()

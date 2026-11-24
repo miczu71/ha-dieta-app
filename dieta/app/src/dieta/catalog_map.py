@@ -10,7 +10,7 @@ from collections.abc import Collection, Sequence
 from dataclasses import dataclass
 from typing import Literal
 
-from dieta.dictionary import BATCH_SIZE, AskFn, _prompt_safe, normalize_name
+from dieta.dictionary import BATCH_SIZE, AskFn, normalize_name, prompt_safe
 from dieta.zakupy_client import CatalogItem
 
 STEM_LEN = 5
@@ -118,7 +118,7 @@ def map_catalog(
     for start in range(0, len(loose), BATCH_SIZE):
         batch = loose[start : start + BATCH_SIZE]
         reply = ask(
-            [f"{_prompt_safe(item.name)} || {_prompt_safe(ingredient)}" for item, ingredient in batch]
+            [f"{prompt_safe(item.name)} || {prompt_safe(ingredient)}" for item, ingredient in batch]
         )
         verdicts = _parse_verdicts(reply, len(batch))
         for offset, (item, ingredient) in enumerate(batch):
