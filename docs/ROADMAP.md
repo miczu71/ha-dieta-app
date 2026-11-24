@@ -412,3 +412,11 @@ Plan tygodnia 2026-11-23 wygenerowany (`POST /plan/generuj`, ostrzeżenie: próg
 - **NIEWYKONANE:** ręczna ocena 10 pozycji na paragonach; półka Zakupów niepusta po nocy 2026-11-25.
 - **Nowe prośby usera (2026-11-24, do wywiadu/planu, nie zaczęte):** (1) wiek osób z daty urodzenia zamiast pola `age` w `profile`; (2) zmiana nazw osób w UI (dziś tylko opcje add-onu `person_1_name`/`person_2_name`).
 
+
+## Najbliższe punkty (dopisane 2026-11-24)
+- **E8 — konto Zepp Life: historia wagi i składu ciała (Dieta 0.6.0)**: plan zatwierdzony 2026-11-24, `docs/ROADMAP_E8.md` + `docs/PLAN_E8_zepp_roadmapa.md`
+  (E8a klient Zepp → E8b migracja 12 i import → E8c „Konto Zepp” w profilu z OTP → E8d synchronizacja co 6 h → E8e Katch-McArdle, wykresy, korekta wg trendu → jedno wydanie).
+  Zastępuje wcześniejszy plan E8 (lokalny odczyt wagi 625B z HA). Prototyp logowania: `~/dev/zepp-login`. Następny krok: `docs/PLAN_E8a.md` z sekcją Wykonawca.
+  Do wyjaśnienia przed E8e: brak ważeń w Zepp po 27.10 oraz rozbieżność ~80 kg (HA) vs ~89 kg (Zepp).
+- Z E7: poprawić daty urodzenia w UI (baner) i wygenerować nowy plan; push z nazwami niezweryfikowany na żywo (07:00).
+- Z E6c.3: ręczna ocena 10 pozycji na paragonach (podejrzane ceny: seler, pomidory, jajka, filet); półka Zakupów niepusta po nocy 2026-11-25.
