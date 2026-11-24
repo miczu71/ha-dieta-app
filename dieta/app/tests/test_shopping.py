@@ -251,8 +251,8 @@ def test_plan_cost_and_list_call_cascade_once_per_request(tmp_path: Path, monkey
     calls: list[int] = []
     real = shopping.cascade_prices
     monkeypatch.setattr(shopping, "cascade_prices", lambda *a, **k: calls.append(1) or real(*a, **k))
-    plan_cost(store, settings, WEEK)
-    shopping_list(store, settings, WEEK, TODAY)
+    plan_cost(store, settings, WEEK)  # bez parametru today: używa date.today()
+    shopping_list(store, settings, WEEK, date.today())  # ta sama data, inaczej inny klucz cache
     assert len(calls) == 1
 
 
