@@ -54,4 +54,6 @@ E7a: **ZROBIONE 2026-11-24** (commit `e2f56fb` na `main`, zapushowany, niewydane
 Weryfikacja: pytest 596 passed (na `main` po `wt land`), ruff i mypy czyste; verifier: 1. REJECT (pole „Nazwa” wstępnie wypełnione domyślną nazwą → zapis wpisywał ją do bazy), po poprawce ACCEPT.
 Komenda testu działa jako `uv run --extra dev pytest -q` (z `uv run pytest` brak zależności dev); pełny pytest ~3 min, wołać z `timeout 580`.
 NIEBLOKUJĄCE: `validate_name` porównuje z drugą osobą po nazwie wyświetlanej, więc „Osoba 2” dla osoby 1 jest odrzucane, gdy druga osoba nie ma własnej nazwy; 8 istniejących testów dostało tylko podbicie wersji schematu 9→10 (kontrakt mówił „bez zmian oczekiwań”) — w E7b podbić do 11 tak samo.
-Następny: **E7b** (`docs/PLAN_E7b.md`, migracja 11 — liczba w teście `len(_MIGRATIONS)` ma być 11), potem E7-release (0.5.0).
+E7b: **ZROBIONE 2026-11-24** (commit `dc01572` na `main`). Migracja 11 (`birth_date`, `birth_date_approx`), `Profile.age_on`, `person_targets(today)`, pole daty i baner w Profilach, walidacja 10–120 lat. sonnet-worker → verifier ACCEPT; pytest 609 passed na `main`, ruff i mypy czyste.
+NIEBLOKUJĄCE: migracja 11 liczy rok z `strftime('%Y','now')` (UTC; w styczniu–czerwcu przybliżony wiek do 1 lipca o 1 niższy, flaga przybliżenia to pokrywa); dwa testy migracji sprawdzają rok + flagę, nie dokładną datę; `test_birth_date.py` importuje helpery z innych modułów testowych; test „params_json po urodzinach” ustawia urodziny na dziś.
+Następny: **E7-release** (0.5.0) — przed wydaniem zapisać cele kcal obu osób z żywej karty.
