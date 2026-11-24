@@ -1,5 +1,19 @@
 # Dziennik zmian
 
+## 0.6.0 — konto Zepp: historia wagi i składu ciała
+
+- W Profilach połączysz własne konto Zepp (e-mail, hasło, jednorazowy kod z e-maila). Hasło nie jest zapisywane; zostają tylko ciasteczka
+  logowania i token w `/data` (trafiają do kopii zapasowych HA). Każda osoba łączy swoje konto.
+- Pełny import historii wagi i składu ciała (tłuszcz, mięśnie, woda, kości, trzewny, BMI i inne), potem synchronizacja co 6 h
+  i przycisk „Synchronizuj teraz”. Dzienna waga trafia do wagi w Diecie; ręczny wpis z tego dnia ma pierwszeństwo.
+  Gdy Xiaomi unieważni sesję, pojawia się „Połącz ponownie” i jedno powiadomienie push.
+- Cel kcal liczy BMR wzorem Katch-McArdle, gdy pomiar składu ciała ma ≤14 dni i wiarygodny % tłuszczu (3–60); inaczej Mifflin.
+  Karta pokazuje użyty wzór i wiek pomiaru.
+- Wykres wagi, % tłuszczu i mięśni (90 dni) oraz rozwijana historia pomiarów.
+- Propozycja korekty kcal wg 3-tygodniowego trendu wagi (przycisk „Zastosuj”, zakres 800–6000, nic automatycznie).
+- Opcje add-onu: `zepp_enabled` (sekcja w Profilach), `zepp_sync` (synchronizacja w tle).
+- Migracja bazy v12 (kopia `dieta.db.pre-v12` przed migracją).
+
 ## 0.5.2 — zmiana nazwy osoby w ustawieniach
 
 - Formularz zmiany nazwy osoby jest schowany w zwijanej sekcji „Ustawienia” na karcie osoby w Profilach (dawniej „Profil”),
