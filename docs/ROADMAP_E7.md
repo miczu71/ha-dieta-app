@@ -50,4 +50,8 @@ Krok produkcyjny: aktualizacja add-onu przez Supervisor; migracja baz startuje s
 - Dług techniczny z E6c.
 
 ## Stan
-E7a: PLAN GOTOWY 2026-11-24, czeka na zgodę usera na start. Pozostałe etapy: niezaczęte.
+E7a: **ZROBIONE 2026-11-24** (commit `e2f56fb` na `main`, zapushowany, niewydane). Migracja 10 (`person`), `names.py` (łańcuch baza → opcja → „Osoba N”, `validate_name`), `POST /person/{id}/name`, pole „Nazwa” (`value` = tylko zapis z bazy, `placeholder` = domyślna), etykiety `/dzis` liczone w handlerze.
+Weryfikacja: pytest 596 passed (na `main` po `wt land`), ruff i mypy czyste; verifier: 1. REJECT (pole „Nazwa” wstępnie wypełnione domyślną nazwą → zapis wpisywał ją do bazy), po poprawce ACCEPT.
+Komenda testu działa jako `uv run --extra dev pytest -q` (z `uv run pytest` brak zależności dev); pełny pytest ~3 min, wołać z `timeout 580`.
+NIEBLOKUJĄCE: `validate_name` porównuje z drugą osobą po nazwie wyświetlanej, więc „Osoba 2” dla osoby 1 jest odrzucane, gdy druga osoba nie ma własnej nazwy; 8 istniejących testów dostało tylko podbicie wersji schematu 9→10 (kontrakt mówił „bez zmian oczekiwań”) — w E7b podbić do 11 tak samo.
+Następny: **E7b** (`docs/PLAN_E7b.md`, migracja 11 — liczba w teście `len(_MIGRATIONS)` ma być 11), potem E7-release (0.5.0).
