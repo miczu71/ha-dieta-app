@@ -420,3 +420,5 @@ Plan tygodnia 2026-11-23 wygenerowany (`POST /plan/generuj`, ostrzeżenie: próg
   Każda osoba łączy własne konto Zepp w swoim profilu; lokalny odczyt z HA zarzucony (decyzja 2026-11-24).
 - Z E7: poprawić daty urodzenia w UI (baner) i wygenerować nowy plan; push z nazwami niezweryfikowany na żywo (07:00).
 - Z E6c.3: ręczna ocena 10 pozycji na paragonach (podejrzane ceny: seler, pomidory, jajka, filet); półka Zakupów niepusta po nocy 2026-11-25.
+- **UI (prośba usera 2026-11-24, do następnej roadmapy):** formularz ręcznego wpisu wagi (`profiles.html`, `POST weight/{id}`) ma być domyślnie zwinięty
+  (`<details>`, jak „Ustawienia” w 0.5.2) — waga przychodzi z Zepp. Interpretacja do potwierdzenia: w wiadomości stało „mapy”, przyjęto „wagi”.
