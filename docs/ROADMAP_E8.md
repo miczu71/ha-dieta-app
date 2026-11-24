@@ -18,6 +18,8 @@ Komenda weryfikacji etapu: `cd dieta/app && ruff check . && ruff format --check 
   Gdy Xiaomi unieważni sesję: status „połącz ponownie” + jeden push.
 - **Stały `deviceId` na konto** (to rozwiązanie blokady: ScaleConnect losował go przy każdym logowaniu, więc Xiaomi żądało weryfikacji za każdym razem).
 - **Użycie:** bieżąca waga → kcal; Katch-McArdle; historia/wykresy; korekta wg trendu (za zgodą).
+- **Dwie osoby = dwa konta Zepp:** każdy profil łączy własne konto (`zepp_account` per `person_id`); osoba 2 poda swoje dane logowania i swój OTP w swoim profilu.
+  Lokalny odczyt z HA ignorujemy (bez przypisywania pomiarów po wadze).
 - **Zakres danych:** tylko waga i skład ciała (waga, tłuszcz, mięśnie, woda, kości, trzewny, metabolizm, BMI, impedancja, wynik ciała, wiek metaboliczny). Bez aktywności z opaski.
 - **Synchronizacja:** pełny import przy połączeniu, potem co 6 h + „Synchronizuj teraz”; limit 1 logowanie/h na konto.
 
@@ -30,7 +32,7 @@ Komenda weryfikacji etapu: `cd dieta/app && ruff check . && ruff format --check 
 - Dieta (kod): tabela `weight(person_id, day, kg)` (`store.py:63`), `Store.add_weight/weights/latest_weight` (`store.py:615-640`), `_MIGRATIONS` (`store.py:49`, ostatnia v11, następna = 12),
   `BACKUP_BEFORE_VERSIONS` (`store.py:275`), BMR/TDEE w `targets.py:30-43` i `nutrition.py`, wykres `web/chart.py`, formularz `profiles.html` + `POST /profile/{id}` (`web/app.py:201`),
   pętla nocna `_nightly` (`web/app.py:98`), push `push.py`. HTTP: stdlib `urllib` ze wstrzykiwanym `opener` (wzorzec `todo.py`, `zakupy_client.py`).
-- Chmura Zepp nie ma ważeń po 27.10.2026, a w HA są ważenia z 17 i 20.11 (~80 kg) — rozbieżność do wyjaśnienia przed E8e (patrz Ryzyka).
+- Wyjaśnione przez usera (2026-11-24): brak ważeń w Zepp po 27.10 to brak ważeń osoby 1 od tej daty (synchronizacja działa); ważenia z HA z 17 i 20.11 (~80 kg) to osoba 2.
 
 ## E8a — klient Zepp (`docs/PLAN_E8a.md`, sekcja Wykonawca)
 Fundament: moduł `dieta/zepp.py`, bez UI i bez migracji. Czyste funkcje z wstrzykiwanym `opener`:
@@ -73,15 +75,14 @@ połączenie konta osoby 1 z OTP, ≥284 pomiarów, karta z Katch-McArdle. Krok 
 ## Ryzyka
 - Xiaomi może okresowo żądać nowego OTP → status `reconnect` + push, bez pętli logowań.
 - Zepp zwykle wylogowuje aplikację w telefonie przy logowaniu z innego urządzenia — sprawdzić przy E8c.
-- Chmura nie ma ważeń po 27.10 (bieżące idą BLE → HA). Bez naprawy synchronizacji w aplikacji Zepp dieta liczy ze starych danych → karta pokazuje wiek ostatniego pomiaru.
-- Rozbieżność ~80 kg (HA, 17 i 20.11) vs ~89 kg (Zepp, 27.10): wyjaśnić z userem przed E8e (inna osoba na wadze? inny profil?).
-- Druga osoba: brak danych w Zepp; może połączyć własne konto albo wpisywać wagę ręcznie.
+- Gdy ktoś długo się nie waży, dane są stare → karta pokazuje wiek ostatniego pomiaru, a Katch-McArdle wraca do Mifflina po 14 dniach.
+- Osoba 2 łączy konto dopiero po E8c; do tego czasu jej waga jest wpisywana ręcznie. Waga na wspólnej wadze trafia do konta Zepp tej osoby, która się ważyła.
 - Tokeny w SQLite trafiają do backupów HA (akceptowane, bo bez hasła).
 
 ## Odrzucone (2026-11-24)
 - Poprzedni plan E8: lokalny odczyt wagi 625B z HA (encje `sensor.mi_body_composition_scale_625b_*`), przypisanie osobie po najbliższej ostatniej wadze,
   kolejka niepewnych pomiarów, migracja `weight_inbox`. Powód: user wybrał chmurę Zepp, która daje pełny skład ciała i przypisanie do profilu bez zgadywania.
-  Wróci jako osobny etap, jeśli bieżące ważenia nadal będą szły tylko przez BLE do HA, a druga osoba nie będzie miała konta Zepp.
+  Decyzja usera 2026-11-24: lokalny pomiar ignorujemy, bo obie osoby mają konta Zepp.
 - ScaleConnect (`alexxit/smartscaleconnect`) jako pośrednik: losowy `deviceId` + brak obsługi weryfikacji Xiaomi. Zastąpiony własnym klientem.
 
 ## Poza zakresem
@@ -90,4 +91,4 @@ połączenie konta osoby 1 z OTP, ≥284 pomiarów, karta z Katch-McArdle. Krok 
 - Zapis wagi z powrotem do Zepp lub Garmina.
 
 ## Stan
-Plan zatwierdzony 2026-11-24. Zrobione: prototyp logowania i pobrania wag (`~/dev/zepp-login`). Kod w Diecie niezaczęty — następny krok: `docs/PLAN_E8a.md` z sekcją Wykonawca.
+Plan zatwierdzony 2026-11-24. Zrobione: prototyp logowania i pobrania wag (`~/dev/zepp-login`). Wątpliwości z odczytu wyjaśnione (brak ważeń = brak ważeń; 80 kg = osoba 2). Kod w Diecie niezaczęty — następny krok: `docs/PLAN_E8a.md` z sekcją Wykonawca.
