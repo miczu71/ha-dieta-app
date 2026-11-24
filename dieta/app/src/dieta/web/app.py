@@ -25,7 +25,7 @@ from ..pipeline import CrawlRunner, default_crawl_runner
 from ..plan_service import monday
 from ..settings import Settings
 from ..store import PERSON_IDS, BodyRow, Profile, Store
-from ..targets import kcal_suggestion, person_targets
+from ..targets import KCAL_MAX, KCAL_MIN, kcal_suggestion, person_targets
 from ..zepp_service import ZeppService
 from ..zepp_sync import start as start_zepp_sync
 from .catalog import make_catalog_router
@@ -275,7 +275,7 @@ def create_app(
             protein = float(protein_g_kg.replace(",", ".")) if protein_g_kg.strip() else None
         except ValueError:
             return _back("profil")
-        if (override is not None and not 800 <= override <= 6000) or (
+        if (override is not None and not KCAL_MIN <= override <= KCAL_MAX) or (
             protein is not None and not 0.5 <= protein <= 4
         ):
             return _back("profil")
@@ -307,7 +307,7 @@ def create_app(
             value = int(kcal)
         except ValueError:
             return _back("profil", up=2)
-        if profile is None or not 800 <= value <= 6000:
+        if profile is None or not KCAL_MIN <= value <= KCAL_MAX:
             return _back("profil", up=2)
         store.save_profile(replace(profile, kcal_override=value))
         return _back(up=2)

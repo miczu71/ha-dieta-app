@@ -12,6 +12,8 @@ from .store import Store
 
 BODY_MAX_AGE_DAYS = 14
 SUGGESTION_THRESHOLD_KG_WEEK = 0.25
+KCAL_MIN, KCAL_MAX = 800, 6000  # zakres celu kcal (ręczny i proponowany)
+FAT_PCT_RANGE = (3.0, 60.0)  # wiarygodny % tłuszczu; poza zakresem (np. brak impedancji) → Mifflin
 
 
 @dataclass(frozen=True)
@@ -48,7 +50,7 @@ def person_targets(
     formula: Literal["katch", "mifflin"] = "mifflin"
     body_age: int | None = None
     body = store.latest_composition(person_id)
-    if body is not None and body.fat_pct is not None:
+    if body is not None and body.fat_pct is not None and FAT_PCT_RANGE[0] <= body.fat_pct <= FAT_PCT_RANGE[1]:
         age = (today - datetime.fromtimestamp(body.ts).date()).days
         if age <= BODY_MAX_AGE_DAYS:
             bmr = nutrition.bmr_katch(weight * (1 - body.fat_pct / 100))
@@ -76,4 +78,5 @@ def kcal_suggestion(
     if abs(delta) <= SUGGESTION_THRESHOLD_KG_WEEK:
         return None
     daily = delta * nutrition.KCAL_PER_KG_FAT / nutrition.DAYS_PER_WEEK
-    return round((current_kcal - daily) / 10) * 10
+    proposal = min(max(round((current_kcal - daily) / 10) * 10, KCAL_MIN), KCAL_MAX)
+    return None if proposal == current_kcal else proposal

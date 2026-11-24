@@ -1,6 +1,8 @@
 from datetime import date, datetime
 from pathlib import Path
 
+import pytest
+
 from dieta import nutrition
 from dieta.settings import Settings
 from dieta.store import BodyRow, Profile, Store
@@ -153,3 +155,21 @@ def test_suggestion_threshold_is_inclusive() -> None:
     # |delta| == 0,25 → None; 0,26 → zmiana
     assert kcal_suggestion("maintain", 0.0, 2000, 0.25) is None
     assert kcal_suggestion("maintain", 0.0, 2000, 0.26) == 1710
+
+
+@pytest.mark.parametrize("fat", [0.0, 1.0, 61.0, 100.0, 120.0, -5.0])
+def test_implausible_fat_pct_falls_back_to_mifflin(tmp_path: Path, fat: float) -> None:
+    store = Store(tmp_path / "d.db")
+    store.save_profile(_profile(1))
+    store.add_weight(1, date(2026, 11, 20), 70.0)
+    store.add_body_measurements(1, [_body(date(2026, 11, 19), fat_pct=fat)])
+    t = person_targets(store, _settings(tmp_path), 1, today=date(2026, 11, 20))
+    assert t is not None and t.bmr_formula == "mifflin"
+
+
+def test_suggestion_is_clamped_to_kcal_range() -> None:
+    low = kcal_suggestion("lose", 0.5, 1500, 1.5)
+    assert low == 800
+    high = kcal_suggestion("gain", 0.5, 5900, -2.0)
+    assert high == 6000
+    assert kcal_suggestion("lose", 0.5, 800, 1.5) is None  # już na dolnej granicy → brak propozycji

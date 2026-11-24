@@ -28,15 +28,23 @@ BANNERS: dict[str, tuple[str, str]] = {
 }
 
 
+def _is_number(raw: str) -> bool:
+    return raw.isascii() and raw.isdigit() and len(raw) <= 6
+
+
 def banner(code: str, n: str, pid: str) -> dict[str, object] | None:
     """Baner z parametrów zapytania; nieznany kod → ``None`` (nic z zapytania nie trafia do HTML)."""
     entry = BANNERS.get(code)
     if entry is None:
         return None
     kind, text = entry
-    if code == "ok" and n.isdigit():
+    if code == "ok" and _is_number(n):
         text = f"Zaimportowano nowych pomiarów: {int(n)}."
-    return {"kind": kind, "text": text, "pid": int(pid) if pid.isdigit() else 0}
+    return {
+        "kind": kind,
+        "text": text,
+        "pid": int(pid) if pid.isascii() and pid.isdigit() and len(pid) <= 6 else 0,
+    }
 
 
 def _redirect(person_id: int, out: Outcome) -> RedirectResponse:

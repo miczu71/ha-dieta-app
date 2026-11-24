@@ -161,3 +161,10 @@ def test_page_never_contains_tokens_cookies_password(tmp_path: Path, fake: FakeZ
 def test_unknown_banner_code_ignored(tmp_path: Path, fake: FakeZepp) -> None:
     html = _client(tmp_path).get("/?zepp=<script>&p=1").text
     assert "<script>" not in html
+
+
+def test_banner_ignores_non_ascii_digits_and_huge_numbers() -> None:
+    from dieta.web.zepp import banner
+
+    assert banner("ok", "²", "²") is not None
+    assert banner("ok", "9" * 5000, "9" * 5000) is not None  # bez ValueError

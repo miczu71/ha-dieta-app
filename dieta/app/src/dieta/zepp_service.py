@@ -8,6 +8,7 @@ Metody są synchroniczne i blokują siecią: wołaj je przez ``asyncio.to_thread
 from __future__ import annotations
 
 import json
+import logging
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field, replace
@@ -26,6 +27,17 @@ T = TypeVar("T")
 
 def login_ts_key(person_id: int) -> str:
     return f"zepp_login_ts:{person_id}"
+
+
+log = logging.getLogger(__name__)
+
+
+def _load_cookies(raw: str) -> dict[str, str]:
+    try:
+        data = json.loads(raw)
+    except ValueError:
+        return {}  # uszkodzone ciasteczka → refresh zakończy się ReconnectNeeded
+    return data if isinstance(data, dict) else {}
 
 
 def reconnect_pushed_key(person_id: int) -> str:
@@ -135,7 +147,8 @@ class ZeppService:
         device_id = old.device_id if old else zepp.new_device_id()
         try:
             result = zepp.start_login(email, password, device_id, http=self._http)
-        except ZeppError:
+        except ZeppError as exc:
+            log.warning("zepp start: %s", exc)  # komunikaty ZeppError są bezpieczne do logu
             return Outcome("login_failed")
         if isinstance(result, Linked):
             self._pending.pop(person_id, None)
@@ -164,7 +177,8 @@ class ZeppService:
             return Outcome("expired")
         try:
             state = zepp.send_ticket(pending.state, http=self._http)
-        except ZeppError:
+        except ZeppError as exc:
+            log.warning("zepp send: %s", exc)
             return Outcome("error")
         self._pending[person_id] = _Pending(state, sent=True, created=pending.created)
         return Outcome("sent")
@@ -178,7 +192,8 @@ class ZeppService:
             linked = zepp.refresh(cookies, pending.state.device_id, http=self._http)
         except WrongCode:
             return Outcome("wrong_code")
-        except ZeppError:
+        except ZeppError as exc:
+            log.warning("zepp verify: %s", exc)
             return Outcome("error")
         del self._pending[person_id]
         return self._finish_link(person_id, pending.state.device_id, linked, keep_fuid=False)
@@ -234,7 +249,7 @@ class ZeppService:
                 return fn(ZeppToken(acc.user_id, acc.app_token))
             except ReconnectNeeded:
                 self._check_login_limit(person_id)
-                linked = zepp.refresh(json.loads(acc.cookies_json), acc.device_id, http=self._http)
+                linked = zepp.refresh(_load_cookies(acc.cookies_json), acc.device_id, http=self._http)
                 self._store.set_meta(login_ts_key(person_id), str(int(self._now())))
                 self._save(
                     person_id,
@@ -276,6 +291,7 @@ class ZeppService:
 
     def disconnect(self, person_id: int) -> Outcome:
         self._store.delete_zepp_tokens(person_id)
+        self._store.set_meta(reconnect_pushed_key(person_id), "1")  # świadome rozłączenie bez pusha
         self._pending.pop(person_id, None)
         self._members.pop(person_id, None)
         return Outcome("disconnected")

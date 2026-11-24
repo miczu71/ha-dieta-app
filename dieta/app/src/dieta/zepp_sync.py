@@ -30,7 +30,13 @@ def run_once(
         if acc is None:
             continue
         if acc.status == "linked" and acc.fuid is not None:
-            results[pid] = service.sync(pid).code
+            try:
+                results[pid] = service.sync(pid).code
+            except Exception:
+                log.exception("zepp sync: nieoczekiwany błąd (osoba %s)", pid)
+                continue
+            if results[pid] not in ("ok", "expired"):
+                log.warning("zepp sync: osoba %s → %s", pid, results[pid])
             acc = store.zepp_account(pid)
         if acc is None or acc.status != "reconnect" or not settings.push_notify:
             continue
