@@ -100,4 +100,10 @@ E8b: **ZROBIONE 2026-11-24** (plan `docs/PLAN_E8b.md` `fb232e4`, kod `917ea84` n
 `body.py` (`import_records`), metody `Store`; kolumna `muscle_pct` (Zepp daje %, nie kg — kg policzy E8e). Ręczny wpis wagi wygrywa (`source='manual'`).
 sonnet-worker → verifier ACCEPT; pełny pytest 713 passed, ruff/format/mypy czyste (wynik workera, nie powtórzony przeze mnie na `main`). Asercje `11→12` w 10 istniejących plikach testów (tylko liczby).
 Nieblokujące: `ImportResult.days` to licznik zapisów, nie idempotentny przy ponownym imporcie (wartości w `weight` bez zmian); dzień pomiaru z lokalnej strefy kontenera.
-Następny: **E8c** („Konto Zepp” w profilu; `docs/PLAN_E8c.md`; potwierdzić na żywo kształt `0106`/`securityStatus 16` i `send_ticket`).
+E8c: **ZROBIONE 2026-11-24** (plan `docs/PLAN_E8c.md` `151f879`, kod `df3eebe` na `main`, niewydane). `zepp_service.py` (`ZeppService`: start/send/verify/member/sync/disconnect, stan OTP w pamięci, hasła nie ma na dysku),
+router `web/zepp.py` (`POST /zepp/{pid}/…`), sekcja `_zepp.html` (Lucide SVG), opcja `zepp_enabled` (config.yaml + translations). sonnet-worker → verifier **REJECT** (sync z `since=last_sync_ts` gubił opóźnione pomiary) → poprawka
+(`LOOKBACK_S` 14 dni, test na późny pomiar) → ponownie sprawdzone przeze mnie (diff + 47 testów); pełny pytest 761 passed, ruff/format/mypy czyste (wynik workera). Playwright 390 i 1280 px OK (stany: połączono, połącz ponownie).
+Nieblokujące (do E8d/E8-release): `start` nadpisuje połączone konto (token, ciasteczka) przed potwierdzeniem OTP — porzucone logowanie = rozłączone konto; po `disconnect` status `reconnect` (baner „rozłączone”, sekcja „Połącz ponownie”);
+`view()` liczy pomiary z całej listy przy każdym renderze strony; lista członków (>1) cache'owana w pamięci procesu (po restarcie „rozłącz i połącz ponownie”).
+Do potwierdzenia na żywo w E8-release: kształt `0106`/`securityStatus 16`, `send_ticket` przy `code` ≠ 0, czy logowanie wylogowuje aplikację w telefonie.
+Następny: **E8d** (synchronizacja w tle: pętla co 6 h w `lifespan`, `ZeppService.sync` już gotowy, limit 1 logowanie/h, push przy `reconnect`, opcja `zepp_sync`; `docs/PLAN_E8d.md`).
