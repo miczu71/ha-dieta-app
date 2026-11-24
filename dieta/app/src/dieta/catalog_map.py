@@ -84,6 +84,12 @@ def _parse_verdicts(reply: list[dict[str, object]] | None, count: int) -> dict[i
     return verdicts
 
 
+def _prompt_safe(name: str) -> str:
+    """Nazwa z cudzego API do jednej linii promptu: bez znaków sterujących i ``||``, ≤120 znaków."""
+    cleaned = "".join(" " if ch.isspace() else ch for ch in name if ch.isprintable() or ch.isspace())
+    return " ".join(cleaned.replace("||", " ").split())[:120].rstrip()
+
+
 def map_catalog(
     items: Sequence[CatalogItem],
     ingredients: Collection[str],
@@ -117,7 +123,7 @@ def map_catalog(
     status_of: dict[str, CatalogMatchStatus] = {"tak": "ai", "nie": "excluded", "watpliwe": "pending"}
     for start in range(0, len(loose), BATCH_SIZE):
         batch = loose[start : start + BATCH_SIZE]
-        reply = ask([f"{item.name} || {ingredient}" for item, ingredient in batch])
+        reply = ask([f"{_prompt_safe(item.name)} || {ingredient}" for item, ingredient in batch])
         verdicts = _parse_verdicts(reply, len(batch))
         for offset, (item, ingredient) in enumerate(batch):
             verdict = verdicts.get(offset)

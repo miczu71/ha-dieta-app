@@ -295,3 +295,56 @@ def test_fetch_shelf_full_returns_items_and_absent() -> None:
     assert absent == ["5900009"]
     no_absent = _Recorder(json.dumps(SHELF_PAYLOAD).encode())
     assert fetch_shelf_full("http://z:8099", TOKEN, opener=no_absent)[1] == []
+
+
+def test_redirect_is_zakupy_error() -> None:
+    err = urllib.error.HTTPError("http://z", 302, "Found", {}, None)  # type: ignore[arg-type]
+
+    def opener(req: urllib.request.Request) -> Any:
+        raise err
+
+    with pytest.raises(ZakupyError, match=r"przekierowanie \(HTTP 302\)"):
+        fetch_purchases("http://z", TOKEN, opener=opener)
+
+
+def test_default_opener_does_not_follow_redirect_with_bearer() -> None:
+    import threading
+    from http.server import BaseHTTPRequestHandler, HTTPServer
+
+    seen: list[str | None] = []
+
+    class Target(BaseHTTPRequestHandler):
+        def do_GET(self) -> None:
+            seen.append(self.headers.get("Authorization"))
+            self.send_response(200)
+            self.end_headers()
+            self.wfile.write(b"{}")
+
+        def log_message(self, *args: object) -> None:
+            return None
+
+    target = HTTPServer(("127.0.0.1", 0), Target)
+    target_port = target.server_address[1]
+
+    class Redirector(BaseHTTPRequestHandler):
+        def do_GET(self) -> None:
+            self.send_response(302)
+            self.send_header("Location", f"http://127.0.0.1:{target_port}/x")
+            self.end_headers()
+
+        def log_message(self, *args: object) -> None:
+            return None
+
+    redirector = HTTPServer(("127.0.0.1", 0), Redirector)
+    servers = (target, redirector)
+    threads = [threading.Thread(target=s.serve_forever, daemon=True) for s in servers]
+    for t in threads:
+        t.start()
+    try:
+        with pytest.raises(ZakupyError, match="przekierowanie"):
+            fetch_purchases(f"http://127.0.0.1:{redirector.server_address[1]}", TOKEN)
+    finally:
+        for s in servers:
+            s.shutdown()
+            s.server_close()
+    assert seen == []

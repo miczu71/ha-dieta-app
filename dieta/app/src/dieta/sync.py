@@ -39,6 +39,7 @@ CatalogFetchFn = Callable[[str, str], list[CatalogItem]]
 ShelfFetchFn = Callable[[str, str], tuple[list[ShelfItem], list[str]]]
 CATALOG_REFRESH_DAYS = 7
 MISSING_CONFIG = "Brak adresu albo tokena Zakupów w opcjach Diety."
+EMPTY_CATALOG = "Zakupy zwróciły pusty katalog."
 
 
 def _no_ask(names: list[str]) -> list[dict[str, object]] | None:
@@ -171,6 +172,9 @@ def sync_catalog(
         items = fetch(url, token)
     except ZakupyError as exc:
         store.set_meta("catalog_sync_error", str(exc))
+        return 0
+    if not items:
+        store.set_meta("catalog_sync_error", EMPTY_CATALOG)
         return 0
     store.upsert_catalog_items(items, today.isoformat())
     mapped = {row.ean for row in store.catalog_map_rows()}

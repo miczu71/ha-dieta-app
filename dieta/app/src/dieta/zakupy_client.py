@@ -70,8 +70,18 @@ class ShelfItem:
 Opener = Callable[[urllib.request.Request], Any]
 
 
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    """Przekierowanie kończy się ``HTTPError`` 3xx — nagłówek Bearer nie idzie pod inny host."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):  # type: ignore[no-untyped-def]
+        return None
+
+
+_OPENER = urllib.request.build_opener(_NoRedirect)
+
+
 def _open(req: urllib.request.Request) -> Any:
-    return urllib.request.urlopen(req, timeout=TIMEOUT_S)
+    return _OPENER.open(req, timeout=TIMEOUT_S)
 
 
 def _opt_float(value: object) -> float | None:
@@ -125,6 +135,8 @@ def _get_json(
             return {"busy": True}
         if exc.code in (401, 403):
             raise ZakupyError(f"Zakupy odrzuciły token (HTTP {exc.code}).") from None
+        if 300 <= exc.code < 400:
+            raise ZakupyError(f"Zakupy zwróciły przekierowanie (HTTP {exc.code}).") from None
         if exc.code == 503:
             raise ZakupyError("API Zakupów wyłączone (brak api_token po stronie Zakupów).") from None
         raise ZakupyError(f"Zakupy zwróciły HTTP {exc.code}.") from None

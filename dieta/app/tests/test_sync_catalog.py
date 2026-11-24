@@ -222,3 +222,16 @@ def test_sync_shelf_writes_absent_list_to_meta(tmp_path: Path) -> None:
 
     assert sync_shelf(store, _settings(tmp_path), TODAY, fetch=fetch) == 1
     assert json.loads(store.get_meta("shelf_absent_json") or "") == ["5900008", "5900009"]
+
+
+def test_empty_catalog_keeps_old_snapshot_and_sync_at(tmp_path: Path) -> None:
+    store = _store(tmp_path)
+    assert sync_catalog(store, _settings(tmp_path), TODAY, fetch=_fetch, ask=None) > 0
+    snapshot = [(i.ean, i.price) for i in store.catalog_items()]
+    factor = store.get_meta("frisco_factor_json")
+    later = TODAY + timedelta(days=30)
+    assert sync_catalog(store, _settings(tmp_path), later, fetch=lambda u, t: [], ask=None) == 0
+    assert store.get_meta("catalog_sync_error") == "Zakupy zwróciły pusty katalog."
+    assert [(i.ean, i.price) for i in store.catalog_items()] == snapshot
+    assert store.get_meta("catalog_sync_at") == TODAY.isoformat()
+    assert store.get_meta("frisco_factor_json") == factor
