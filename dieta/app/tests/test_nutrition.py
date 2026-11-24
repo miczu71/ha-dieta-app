@@ -1,11 +1,20 @@
 from __future__ import annotations
 
 import dataclasses
-from datetime import date
+from datetime import date, timedelta
 
 import pytest
 
-from dieta.nutrition import Macros, bmr_mifflin, macros, target_kcal, tdee, trend_7d
+from dieta.nutrition import (
+    Macros,
+    bmr_katch,
+    bmr_mifflin,
+    macros,
+    target_kcal,
+    tdee,
+    trend_7d,
+    trend_rate_kg_week,
+)
 
 
 def test_bmr_male() -> None:
@@ -111,3 +120,29 @@ def test_trend_sorts_input() -> None:
 
 def test_trend_empty() -> None:
     assert trend_7d([]) == []
+
+
+def test_bmr_katch_from_lean_mass() -> None:
+    # 370 + 21.6 * 64 = 1752.4
+    assert bmr_katch(64.0) == pytest.approx(1752.4)
+
+
+def test_trend_rate_falling() -> None:
+    # 21 dni, -0,07 kg/dzień = -0,49 kg/tydz.
+    points = [(date(2024, 1, 1) + timedelta(days=i), 80.0 - 0.07 * i) for i in range(22)]
+    assert trend_rate_kg_week(points) == pytest.approx(-0.49)
+
+
+def test_trend_rate_rising() -> None:
+    points = [(date(2024, 1, 1) + timedelta(days=i), 80.0 + 0.035 * i) for i in range(22)]
+    assert trend_rate_kg_week(points) == pytest.approx(0.245)
+
+
+def test_trend_rate_needs_four_points() -> None:
+    points = [(date(2024, 1, 1) + timedelta(days=i * 7), 80.0 - i) for i in range(3)]
+    assert trend_rate_kg_week(points) is None
+
+
+def test_trend_rate_needs_span_of_14_days() -> None:
+    points = [(date(2024, 1, 1) + timedelta(days=i * 3), 80.0 - i) for i in range(5)]  # rozpiętość 12 dni
+    assert trend_rate_kg_week(points) is None

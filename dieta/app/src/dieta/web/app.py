@@ -8,8 +8,8 @@ import re
 import time
 from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
-from dataclasses import dataclass
-from datetime import date, datetime
+from dataclasses import dataclass, field, replace
+from datetime import date, datetime, timedelta
 from importlib import metadata
 from pathlib import Path
 from typing import Literal, cast
@@ -23,12 +23,12 @@ from .. import nutrition, push, zepp
 from ..names import person_name, validate_name
 from ..pipeline import CrawlRunner, default_crawl_runner
 from ..settings import Settings
-from ..store import PERSON_IDS, Profile, Store
-from ..targets import person_targets
+from ..store import PERSON_IDS, BodyRow, Profile, Store
+from ..targets import kcal_suggestion, person_targets
 from ..zepp_service import ZeppService
 from ..zepp_sync import start as start_zepp_sync
 from .catalog import make_catalog_router
-from .chart import weight_chart
+from .chart import body_chart, weight_chart
 from .dzis import make_dzis_router
 from .kupujemy import SyncRunner, default_runner, make_router, seconds_until
 from .lista import make_lista_router
@@ -78,6 +78,21 @@ class Card:
     macros: nutrition.Macros | None = None
     chart: str = ""
     recent: list[tuple[date, float]] | None = None
+    trend: float | None = None
+    suggestion: int | None = None
+    bmr_label: str = "Mifflin"
+    body_age_days: int | None = None
+    body_chart: str = ""
+    history_chart: str = ""
+    body_rows: list[tuple[str, BodyRow]] = field(default_factory=list)
+
+
+def _weekly(points: list[tuple[date, float]]) -> list[tuple[date, float]]:
+    """Średnie tygodniowe; kluczem poniedziałek tygodnia."""
+    buckets: dict[date, list[float]] = {}
+    for d, kg in points:
+        buckets.setdefault(d - timedelta(days=d.weekday()), []).append(kg)
+    return [(mon, sum(v) / len(v)) for mon, v in sorted(buckets.items())]
 
 
 def build_card(store: Store, settings: Settings, person_id: int) -> Card:
@@ -88,8 +103,9 @@ def build_card(store: Store, settings: Settings, person_id: int) -> Card:
     points = store.weights(person_id, 90)
     card.chart = weight_chart(points, nutrition.trend_7d(points))
     card.recent = list(reversed(points))[:5]
+    card.trend = nutrition.trend_rate_kg_week(points)
     target = person_targets(store, settings, person_id)
-    if target:
+    if target and profile:
         card.bmr, card.tdee, card.auto_kcal, card.kcal = (
             target.bmr,
             target.tdee,
@@ -97,6 +113,16 @@ def build_card(store: Store, settings: Settings, person_id: int) -> Card:
             target.kcal,
         )
         card.macros = target.macros
+        card.bmr_label = "Katch-McArdle" if target.bmr_formula == "katch" else "Mifflin"
+        card.body_age_days = target.body_age_days
+        card.suggestion = kcal_suggestion(profile.goal, profile.pace_kg_week, card.kcal or 0, card.trend)
+    body_rows = store.body_measurements(person_id)
+    if body_rows:
+        card.body_chart = body_chart(body_rows)
+        card.history_chart = weight_chart(_weekly(store.weights(person_id, 3650)), [])
+        card.body_rows = [
+            (datetime.fromtimestamp(r.ts).strftime("%d.%m.%Y"), r) for r in reversed(body_rows[-30:])
+        ]
     return card
 
 
@@ -271,6 +297,19 @@ def create_app(
             return _back("profil")
         store.save_profile(profile)
         return _back()
+
+    @app.post("/profile/{person_id}/kcal")
+    async def save_kcal(person_id: int, kcal: str = Form("")) -> Response:
+        _person(person_id)
+        profile = store.profile(person_id)
+        try:
+            value = int(kcal)
+        except ValueError:
+            return _back("profil", up=2)
+        if profile is None or not 800 <= value <= 6000:
+            return _back("profil", up=2)
+        store.save_profile(replace(profile, kcal_override=value))
+        return _back(up=2)
 
     @app.post("/weight/{person_id}")
     async def add_weight(person_id: int, day: str = Form(...), kg: str = Form(...)) -> Response:

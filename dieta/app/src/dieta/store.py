@@ -760,6 +760,18 @@ class Store:
             row = conn.execute(sql, (person_id,)).fetchone()
         return None if row is None else BodyRow(*row)
 
+    def latest_composition(self, person_id: int) -> BodyRow | None:
+        """Najnowszy pomiar z tłuszczem i wagą (podstawa BMR Katch-McArdle)."""
+        _check_person(person_id)
+        sql = (
+            f"SELECT {', '.join(_BODY_COLUMNS)} FROM body_measurement "
+            "WHERE person_id = ? AND fat_pct IS NOT NULL AND weight_kg IS NOT NULL "
+            "ORDER BY ts DESC LIMIT 1"
+        )
+        with closing(self._connect()) as conn:
+            row = conn.execute(sql, (person_id,)).fetchone()
+        return None if row is None else BodyRow(*row)
+
     def weights(self, person_id: int, days: int = 90) -> list[tuple[date, float]]:
         """Wpisy z ostatnich ``days`` dni (włącznie), liczone wstecz od najnowszego wpisu osoby."""
         _check_person(person_id)

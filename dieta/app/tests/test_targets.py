@@ -1,10 +1,10 @@
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 
 from dieta import nutrition
 from dieta.settings import Settings
-from dieta.store import Profile, Store
-from dieta.targets import person_targets
+from dieta.store import BodyRow, Profile, Store
+from dieta.targets import kcal_suggestion, person_targets
 from dieta.web.app import build_card
 
 
@@ -77,3 +77,79 @@ def test_build_card_equivalent_with_and_without_override(tmp_path: Path) -> None
 def test_build_card_without_data_has_no_targets(tmp_path: Path) -> None:
     card = build_card(Store(tmp_path / "d.db"), _settings(tmp_path), 1)
     assert card.kcal is None and card.macros is None and card.bmr is None
+
+
+def _body_ts(day: date) -> int:
+    return int(datetime(day.year, day.month, day.day, 12).timestamp())
+
+
+def _body(day: date, fat_pct: float | None = 20.0) -> BodyRow:
+    return BodyRow(ts=_body_ts(day), source="zepp", weight_kg=70.0, fat_pct=fat_pct)
+
+
+def test_without_body_composition_uses_mifflin(tmp_path: Path) -> None:
+    store = Store(tmp_path / "d.db")
+    store.save_profile(_profile(1))
+    store.add_weight(1, date(2026, 11, 20), 70.0)
+    t = person_targets(store, _settings(tmp_path), 1, today=date(2026, 11, 20))
+    assert t is not None and t.bmr_formula == "mifflin" and t.body_age_days is None
+
+
+def test_body_composition_14_days_old_uses_katch(tmp_path: Path) -> None:
+    store = Store(tmp_path / "d.db")
+    store.save_profile(_profile(1))
+    store.add_weight(1, date(2026, 11, 20), 70.0)
+    store.add_body_measurements(1, [_body(date(2026, 11, 6))])
+    t = person_targets(store, _settings(tmp_path), 1, today=date(2026, 11, 20))
+    assert t is not None and t.bmr_formula == "katch" and t.body_age_days == 14
+    # lbm = 70 * 0,8 = 56 kg; 370 + 21,6 * 56 = 1579,6
+    assert t.bmr == 1580
+
+
+def test_body_composition_15_days_old_uses_mifflin(tmp_path: Path) -> None:
+    store = Store(tmp_path / "d.db")
+    store.save_profile(_profile(1))
+    store.add_weight(1, date(2026, 11, 20), 70.0)
+    store.add_body_measurements(1, [_body(date(2026, 11, 5))])
+    t = person_targets(store, _settings(tmp_path), 1, today=date(2026, 11, 20))
+    assert t is not None and t.bmr_formula == "mifflin" and t.body_age_days is None
+
+
+def test_body_row_without_fat_is_ignored(tmp_path: Path) -> None:
+    store = Store(tmp_path / "d.db")
+    store.save_profile(_profile(1))
+    store.add_weight(1, date(2026, 11, 20), 70.0)
+    store.add_body_measurements(1, [_body(date(2026, 11, 19), fat_pct=None)])
+    t = person_targets(store, _settings(tmp_path), 1, today=date(2026, 11, 20))
+    assert t is not None and t.bmr_formula == "mifflin"
+
+
+def test_suggestion_lose_too_slow_reduces_kcal() -> None:
+    # oczekiwane -0,5; trend -0,2 → delta 0,3 → 2200 - 330 = 1870
+    assert kcal_suggestion("lose", 0.5, 2200, -0.2) == 1870
+
+
+def test_suggestion_lose_on_track_is_none() -> None:
+    assert kcal_suggestion("lose", 0.5, 2200, -0.5) is None
+
+
+def test_suggestion_maintain_drifting_up_reduces_kcal() -> None:
+    # delta 0,5 → 2000 - 550 = 1450 → zaokrąglenie do 10: 1450
+    assert kcal_suggestion("maintain", 0.0, 2000, 0.5) == 1450
+
+
+def test_suggestion_gain_too_slow_increases_kcal() -> None:
+    # oczekiwane +0,25; trend 0 → delta -0,25 → granica, brak zmiany
+    assert kcal_suggestion("gain", 0.25, 2500, 0.0) is None
+    # oczekiwane +0,5; trend 0 → delta -0,5 → 2500 + 550 = 3050
+    assert kcal_suggestion("gain", 0.5, 2500, 0.0) == 3050
+
+
+def test_suggestion_none_without_trend() -> None:
+    assert kcal_suggestion("lose", 0.5, 2200, None) is None
+
+
+def test_suggestion_threshold_is_inclusive() -> None:
+    # |delta| == 0,25 → None; 0,26 → zmiana
+    assert kcal_suggestion("maintain", 0.0, 2000, 0.25) is None
+    assert kcal_suggestion("maintain", 0.0, 2000, 0.26) == 1710

@@ -1,4 +1,4 @@
-"""Obliczenia żywieniowe: BMR (Mifflin-St Jeor), TDEE, cel kcal, makroskładniki, trend wagi."""
+"""Obliczenia żywieniowe: BMR (Mifflin-St Jeor, Katch-McArdle), TDEE, cel kcal, makroskładniki, trend wagi."""
 
 from __future__ import annotations
 
@@ -71,3 +71,31 @@ def trend_7d(points: list[tuple[date, float]]) -> list[tuple[date, float]]:
         window = [w for dd, w in ordered if start <= dd <= d]
         result.append((d, sum(window) / len(window)))
     return result
+
+
+def bmr_katch(lbm_kg: float) -> float:
+    if lbm_kg <= 0:
+        raise ValueError("lbm_kg must be > 0")
+    return 370 + 21.6 * lbm_kg
+
+
+def trend_rate_kg_week(points: list[tuple[date, float]], days: int = 21) -> float | None:
+    """Nachylenie regresji liniowej wagi z ostatnich ``days`` dni (kg/tydz.).
+
+    ``None``, gdy w oknie jest < 4 punktów albo rozpiętość dat < 14 dni.
+    """
+    if not points:
+        return None
+    latest = max(d for d, _ in points)
+    window = [(d.toordinal(), w) for d, w in points if d >= latest - timedelta(days=days - 1)]
+    if len(window) < 4:
+        return None
+    xs = [x for x, _ in window]
+    if max(xs) - min(xs) < 14:
+        return None
+    n = len(window)
+    mx = sum(xs) / n
+    my = sum(w for _, w in window) / n
+    sxx = sum((x - mx) ** 2 for x in xs)
+    sxy = sum((x - mx) * (w - my) for x, w in window)
+    return sxy / sxx * DAYS_PER_WEEK

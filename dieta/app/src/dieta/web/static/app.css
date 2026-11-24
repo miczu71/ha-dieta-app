@@ -140,6 +140,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font-sans)
 .wc-dot{fill:var(--muted)}
 .wc-line{stroke:var(--accent);stroke-width:2.5;stroke-linejoin:round}
 .wc-t{fill:var(--muted);font:11px var(--font-mono)}
+.wc-line-alt{stroke:var(--muted);stroke-dasharray:4 3}
 .dz-row,.dz-form{display:grid;gap:var(--space-3);grid-template-columns:repeat(auto-fit,minmax(150px,1fr));align-items:end}
 .dz-form{margin-top:var(--space-3)}
 .dz-row{margin-top:var(--space-2)}

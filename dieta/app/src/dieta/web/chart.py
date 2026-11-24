@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
+
+from ..store import BodyRow
 
 W, H = 600, 180
 PAD_L, PAD_R, PAD_T, PAD_B = 40, 12, 12, 24
@@ -43,4 +45,52 @@ def weight_chart(points: list[tuple[date, float]], trend: list[tuple[date, float
         f'<svg viewBox="0 0 {W} {H}" class="wc" role="img" aria-label="Wykres wagi z średnią 7 dni">'
         f'<line x1="{PAD_L}" y1="{H - PAD_B}" x2="{W - PAD_R}" y2="{H - PAD_B}" class="wc-ax"/>'
         f"{line}{dots}{labels}</svg>"
+    )
+
+
+BODY_DAYS = 90
+
+
+def body_chart(rows: list[BodyRow]) -> str:
+    """SVG: % tłuszczu (linia ciągła) i % mięśni (przerywana) z ostatnich 90 dni; pusty ciąg bez danych."""
+    dated = [
+        (datetime.fromtimestamp(r.ts).date(), r)
+        for r in rows
+        if r.fat_pct is not None or r.muscle_pct is not None
+    ]
+    if not dated:
+        return ""
+    last = max(d for d, _ in dated)
+    dated = [(d, r) for d, r in dated if (last - d).days < BODY_DAYS]
+    fat = [(d, float(r.fat_pct)) for d, r in dated if r.fat_pct is not None]
+    muscle = [(d, float(r.muscle_pct)) for d, r in dated if r.muscle_pct is not None]
+    d0 = min(d for d, _ in dated)
+    span = max((last - d0).days, 1)
+    values = [v for _, v in fat + muscle]
+    lo, hi = min(values), max(values)
+    if hi - lo < 1.0:
+        mid = (hi + lo) / 2
+        lo, hi = mid - 0.5, mid + 0.5
+    pw, ph = W - PAD_L - PAD_R, H - PAD_T - PAD_B
+
+    def xy(d: date, v: float) -> tuple[float, float]:
+        return PAD_L + pw * (d - d0).days / span, PAD_T + ph * (1 - (v - lo) / (hi - lo))
+
+    def line(series: list[tuple[date, float]], cls: str) -> str:
+        if not series:
+            return ""
+        pts = [xy(d, v) for d, v in series]
+        dots = "".join(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="3" class="wc-dot"/>' for x, y in pts)
+        return f'<path d="{_path(pts)}" class="{cls}" fill="none"/>{dots}'
+
+    labels = (
+        f'<text x="{PAD_L - 6}" y="{PAD_T + 4}" class="wc-t" text-anchor="end">{hi:.1f}</text>'
+        f'<text x="{PAD_L - 6}" y="{H - PAD_B}" class="wc-t" text-anchor="end">{lo:.1f}</text>'
+        f'<text x="{PAD_L}" y="{H - 6}" class="wc-t">{d0.strftime("%d.%m")}</text>'
+        f'<text x="{W - PAD_R}" y="{H - 6}" class="wc-t" text-anchor="end">{last.strftime("%d.%m")}</text>'
+    )
+    return (
+        f'<svg viewBox="0 0 {W} {H}" class="wc" role="img" aria-label="Skład ciała: tłuszcz i mięśnie w %">'
+        f'<line x1="{PAD_L}" y1="{H - PAD_B}" x2="{W - PAD_R}" y2="{H - PAD_B}" class="wc-ax"/>'
+        f"{line(fat, 'wc-line')}{line(muscle, 'wc-line wc-line-alt')}{labels}</svg>"
     )
