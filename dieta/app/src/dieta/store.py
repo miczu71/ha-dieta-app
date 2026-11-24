@@ -597,7 +597,12 @@ class Store:
 
     @property
     def data_version(self) -> int:
-        """Licznik zapisów (commitów) w tym procesie; klucz cache wyników liczonych z bazy."""
+        """Licznik zapisów (commitów) w tym procesie; klucz cache wyników liczonych z bazy.
+
+        Poprawne tylko przy jednym procesie: `__main__.serve` woła `uvicorn.run` bez `workers`,
+        więc każdy zapis przechodzi przez ten sam licznik. Drugi worker miałby własny licznik
+        i cache nie widziałby cudzych zapisów.
+        """
         return _CountingConnection.commits
 
     def person_names(self) -> dict[int, str]:
